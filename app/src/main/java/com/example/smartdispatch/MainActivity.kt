@@ -330,7 +330,7 @@ fun SkillScoreTab(viewModel: MainViewModel) {
     }
 }
 
-// ========== Tab 3: 工序流程（横向表格，和原表一样） ==========
+// ========== Tab 3: 工序流程（横向表格，只固定首行） ==========
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProcessFlowTab(viewModel: MainViewModel) {
@@ -351,8 +351,6 @@ fun ProcessFlowTab(viewModel: MainViewModel) {
 
     // 共享横向滚动状态，表头和数据行联动
     val scrollState = rememberScrollState()
-    // 共享垂直滚动状态，固定列和数据区域同步
-    val lazyListState = rememberLazyListState()
 
     Box(modifier = Modifier.fillMaxSize()) {
         if (products.isEmpty()) {
@@ -361,53 +359,35 @@ fun ProcessFlowTab(viewModel: MainViewModel) {
             }
         } else {
             Column(modifier = Modifier.fillMaxSize()) {
-                // 固定列（型号名称、产能、人数）
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Row {
-                        Box(modifier = Modifier.width(120.dp).height(36.dp).background(MaterialTheme.colorScheme.primaryContainer), contentAlignment = Alignment.Center) { Text("型号名称", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
-                        Box(modifier = Modifier.width(60.dp).height(36.dp).background(MaterialTheme.colorScheme.primaryContainer), contentAlignment = Alignment.Center) { Text("产能", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
-                        Box(modifier = Modifier.width(50.dp).height(36.dp).background(MaterialTheme.colorScheme.primaryContainer), contentAlignment = Alignment.Center) { Text("人数", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+                // 固定首行表头（横向滚动）
+                Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState).background(MaterialTheme.colorScheme.primaryContainer)) {
+                    Box(modifier = Modifier.width(120.dp).height(36.dp), contentAlignment = Alignment.Center) { Text("型号名称", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+                    Box(modifier = Modifier.width(60.dp).height(36.dp), contentAlignment = Alignment.Center) { Text("产能", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+                    Box(modifier = Modifier.width(50.dp).height(36.dp), contentAlignment = Alignment.Center) { Text("人数", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+                    repeat(maxProcesses) { i ->
+                        Box(modifier = Modifier.width(72.dp).height(36.dp), contentAlignment = Alignment.Center) { Text("工序${i + 1}", fontWeight = FontWeight.Bold, fontSize = 11.sp) }
                     }
+                    Box(modifier = Modifier.width(60.dp).height(36.dp)) {} // 操作列
                 }
-                // 可滚动的工序列区域
-                Row(modifier = Modifier.fillMaxSize()) {
-                    // 固定列区域
-                    LazyColumn(modifier = Modifier.width(230.dp).fillMaxHeight(), state = lazyListState) {
-                        items(products, key = { it.id }) { product ->
-                            Row(modifier = Modifier.fillMaxWidth().height(44.dp)) {
-                                Box(modifier = Modifier.width(120.dp).height(44.dp).border(0.5.dp, Color(0xFFE0E0E0)).padding(horizontal = 4.dp), contentAlignment = Alignment.CenterStart) { Text(product.name, fontSize = 11.sp, maxLines = 2, overflow = TextOverflow.Ellipsis) }
-                                Box(modifier = Modifier.width(60.dp).height(44.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) { Text(product.capacity.toString(), fontSize = 12.sp) }
-                                Box(modifier = Modifier.width(50.dp).height(44.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) { Text(product.requiredPeople.toString(), fontSize = 12.sp) }
-                            }
-                        }
-                    }
-                    // 可横向滚动的工序区域
-                    Column(modifier = Modifier.fillMaxSize()) {
-                        // 工序表头（和内容同步横向滚动）
-                        Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState).background(MaterialTheme.colorScheme.primaryContainer)) {
-                            repeat(maxProcesses) { i ->
-                                Box(modifier = Modifier.width(72.dp).height(36.dp), contentAlignment = Alignment.Center) { Text("工序${i + 1}", fontWeight = FontWeight.Bold, fontSize = 11.sp) }
-                            }
-                            Box(modifier = Modifier.width(60.dp).height(36.dp)) {} // 操作列
-                        }
-                        Divider()
-                        // 工序数据行（和表头同步横向滚动，和固定列同步垂直滚动）
-                        LazyColumn(modifier = Modifier.fillMaxSize(), state = lazyListState) {
-                            items(products, key = { it.id }) { product ->
-                                val processes = processMap[product.id] ?: emptyList()
-                                Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState)) {
-                                    for (i in 0 until maxProcesses) {
-                                        val pp = processes.getOrNull(i)
-                                        Box(modifier = Modifier.width(72.dp).height(44.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
-                                            if (pp != null) {
-                                                Text(pp.processName, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                            }
-                                        }
-                                    }
-                                    Box(modifier = Modifier.width(60.dp).height(44.dp), contentAlignment = Alignment.Center) {
-                                        IconButton(onClick = { viewModel.deleteProduct(product) }, modifier = Modifier.size(28.dp)) { Icon(Icons.Default.Delete, null, tint = Color(0xFFC62828), modifier = Modifier.size(16.dp)) }
+                Divider()
+                // 数据行（横向滚动，无固定列）
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    items(products, key = { it.id }) { product ->
+                        val processes = processMap[product.id] ?: emptyList()
+                        Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState)) {
+                            Box(modifier = Modifier.width(120.dp).height(44.dp).border(0.5.dp, Color(0xFFE0E0E0)).padding(horizontal = 4.dp), contentAlignment = Alignment.CenterStart) { Text(product.name, fontSize = 11.sp, maxLines = 2, overflow = TextOverflow.Ellipsis) }
+                            Box(modifier = Modifier.width(60.dp).height(44.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) { Text(product.capacity.toString(), fontSize = 12.sp) }
+                            Box(modifier = Modifier.width(50.dp).height(44.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) { Text(product.requiredPeople.toString(), fontSize = 12.sp) }
+                            for (i in 0 until maxProcesses) {
+                                val pp = processes.getOrNull(i)
+                                Box(modifier = Modifier.width(72.dp).height(44.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
+                                    if (pp != null) {
+                                        Text(pp.processName, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                     }
                                 }
+                            }
+                            Box(modifier = Modifier.width(60.dp).height(44.dp), contentAlignment = Alignment.Center) {
+                                IconButton(onClick = { viewModel.deleteProduct(product) }, modifier = Modifier.size(28.dp)) { Icon(Icons.Default.Delete, null, tint = Color(0xFFC62828), modifier = Modifier.size(16.dp)) }
                             }
                         }
                     }
@@ -450,20 +430,27 @@ fun DispatchTab(viewModel: MainViewModel) {
         processMap = map
     }
 
-    // 型号名称输入框（在表格第一行）
-    var searchName by remember { mutableStateOf("") }
-    val filteredProducts = if (searchName.isBlank()) products else products.filter { it.name.contains(searchName.trim(), ignoreCase = true) }
+    // 多个输入框（3~8个），用户输入型号名称来筛选
+    val inputCount = 6
+    var inputNames by remember { mutableStateOf(List(inputCount) { "" }) }
+
+    // 根据输入框筛选产品（只保留有输入且匹配的）
+    val selectedProducts = inputNames.mapNotNull { name ->
+        if (name.isBlank()) null
+        else products.find { it.name.contains(name.trim(), ignoreCase = true) }
+    }
 
     // 按产品分组排工结果
     val groupedAssignments = result?.assignments?.groupBy { it.productName } ?: emptyMap()
 
     // 共享横向滚动状态
     val scrollState = rememberScrollState()
-    // 共享垂直滚动状态
-    val lazyListState = rememberLazyListState()
+
+    // 请假人员列表
+    val leavePeople = persons.filter { it.onLeave }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // 顶部操作栏（只保留执行排工按钮和统计）
+        // 顶部操作栏
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             Button(onClick = { viewModel.executeDispatch() }, modifier = Modifier.weight(1f), enabled = !isLoading) {
                 if (isLoading) { CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary) } else { Icon(Icons.Default.PlayArrow, null) }
@@ -483,104 +470,87 @@ fun DispatchTab(viewModel: MainViewModel) {
 
         Divider()
 
-        // 电子表格布局（和原表一样）
-        Box(modifier = Modifier.fillMaxSize()) {
-            // 固定请假人员列
-            Column(modifier = Modifier.width(72.dp).fillMaxHeight().background(MaterialTheme.colorScheme.surface)) {
-                // 第一行：请假人员标题
-                Box(modifier = Modifier.height(40.dp).width(72.dp).background(Color(0xFFBBDEFB)), contentAlignment = Alignment.Center) { Text("请假人员", fontWeight = FontWeight.Bold, fontSize = 11.sp) }
-                LazyColumn(modifier = Modifier.fillMaxWidth(), state = lazyListState) {
-                    val leavePeople = persons.filter { it.onLeave }
-                    items(leavePeople.size + 1) { rowIndex ->
-                        val person = leavePeople.getOrNull(rowIndex)
-                        Box(modifier = Modifier.height(40.dp).fillMaxWidth().border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
-                            if (person != null) {
-                                Text(person.name, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            }
+        // 表格布局（无固定列，全部跟随横向滚动）
+        Column(modifier = Modifier.fillMaxSize()) {
+            // 第一行：请假人员 + 多个输入框（每个占2列）
+            Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState).background(Color(0xFFBBDEFB))) {
+                Box(modifier = Modifier.width(72.dp).height(40.dp), contentAlignment = Alignment.Center) { Text("请假人员", fontWeight = FontWeight.Bold, fontSize = 11.sp) }
+                inputNames.forEachIndexed { index, name ->
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { inputNames = inputNames.toMutableList().apply { set(index, it) } },
+                        label = { Text("型号${index + 1}", fontSize = 9.sp) },
+                        singleLine = true,
+                        modifier = Modifier.width(140.dp).height(40.dp).padding(1.dp),
+                        textStyle = androidx.compose.ui.text.TextStyle(fontSize = 10.sp)
+                    )
+                }
+                // 状态列
+                Box(modifier = Modifier.width(72.dp).height(40.dp), contentAlignment = Alignment.Center) { Text("状态", fontWeight = FontWeight.Bold, fontSize = 11.sp) }
+            }
+            Divider()
+            // 第二行：请假人名 + 产能/人数
+            Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState)) {
+                // 请假人员第一行
+                Box(modifier = Modifier.width(72.dp).height(36.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
+                    val p = leavePeople.getOrNull(0)
+                    if (p != null) Text(p.name, fontSize = 11.sp) else Text("")
+                }
+                inputNames.forEachIndexed { index, name ->
+                    val product = if (name.isNotBlank()) products.find { it.name.contains(name.trim(), ignoreCase = true) } else null
+                    Row(modifier = Modifier.width(140.dp).height(36.dp)) {
+                        Box(modifier = Modifier.weight(1f).fillMaxHeight().border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
+                            Text(product?.capacity?.toString() ?: "", fontSize = 11.sp, color = Color(0xFF666666))
+                        }
+                        Box(modifier = Modifier.weight(1f).fillMaxHeight().border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
+                            Text(product?.requiredPeople?.toString() ?: "", fontSize = 11.sp, color = Color(0xFF666666))
                         }
                     }
                 }
+                // 状态列
+                Box(modifier = Modifier.width(72.dp).height(36.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
+                    Text(result?.statusMessage ?: "", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = if ((result?.remainingCount ?: 0) >= 0) Color(0xFF2E7D32) else Color(0xFFC62828))
+                }
             }
-            // 可横向滚动的产品列区域
-            Row(modifier = Modifier.fillMaxSize().padding(start = 72.dp)) {
-                Column(modifier = Modifier.fillMaxSize()) {
-                    // 第一行：输入框 + 型号名称（每个型号占2列）
-                    Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState).background(Color(0xFFBBDEFB))) {
-                        // 输入框占2列宽度
-                        OutlinedTextField(
-                            value = searchName,
-                            onValueChange = { searchName = it },
-                            label = { Text("输入型号名称", fontSize = 10.sp) },
-                            singleLine = true,
-                            modifier = Modifier.width(140.dp).height(40.dp).padding(2.dp),
-                            textStyle = androidx.compose.ui.text.TextStyle(fontSize = 11.sp)
-                        )
-                        // 每个产品型号占2列（工序名+人员名）
-                        filteredProducts.forEach { product ->
-                            Box(modifier = Modifier.width(140.dp).height(40.dp), contentAlignment = Alignment.Center) {
-                                Text(product.name, fontWeight = FontWeight.Bold, fontSize = 10.sp, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                            }
-                        }
-                        // 状态列
-                        Box(modifier = Modifier.width(72.dp).height(40.dp), contentAlignment = Alignment.Center) { Text("状态", fontWeight = FontWeight.Bold, fontSize = 11.sp) }
-                    }
-                    Divider()
-                    // 第二行：产能 + 人数（每个产品占2列）
+            Divider()
+            // 数据行（请假人员 + 工序名 + 人员名）
+            LazyColumn(modifier = Modifier.fillMaxSize()) {
+                val maxProductRows = selectedProducts.maxOfOrNull { product ->
+                    val processes = processMap[product.id] ?: emptyList()
+                    val assignments = groupedAssignments[product.name] ?: emptyList()
+                    maxOf(processes.size, assignments.size)
+                } ?: 0
+                val maxRows = maxOf(maxProductRows, leavePeople.size, 1)
+
+                items(maxRows) { rowIndex ->
                     Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState)) {
-                        // 输入框对应的空列
-                        Box(modifier = Modifier.width(140.dp).height(36.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) { Text("", fontSize = 11.sp) }
-                        filteredProducts.forEach { product ->
-                            Row(modifier = Modifier.width(140.dp).height(36.dp)) {
-                                Box(modifier = Modifier.weight(1f).fillMaxHeight().border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) { Text(product.capacity.toString(), fontSize = 11.sp, color = Color(0xFF666666)) }
-                                Box(modifier = Modifier.weight(1f).fillMaxHeight().border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) { Text(product.requiredPeople.toString(), fontSize = 11.sp, color = Color(0xFF666666)) }
-                            }
+                        // 请假人员列（跟随滚动）
+                        Box(modifier = Modifier.width(72.dp).height(40.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
+                            val person = leavePeople.getOrNull(rowIndex)
+                            if (person != null) Text(person.name, fontSize = 11.sp)
                         }
-                        // 状态列
-                        Box(modifier = Modifier.width(72.dp).height(36.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
-                            Text(result?.statusMessage ?: "", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = if ((result?.remainingCount ?: 0) >= 0) Color(0xFF2E7D32) else Color(0xFFC62828))
-                        }
-                    }
-                    Divider()
-                    // 数据行（工序名 + 人员名，每个产品占2列）
-                    LazyColumn(modifier = Modifier.fillMaxSize(), state = lazyListState) {
-                        // 计算最大行数（包括请假人员行数）
-                        val leaveCount = persons.filter { it.onLeave }.size
-                        val maxProductRows = filteredProducts.maxOfOrNull { product ->
-                            val processes = processMap[product.id] ?: emptyList()
-                            val assignments = groupedAssignments[product.name] ?: emptyList()
-                            maxOf(processes.size, assignments.size)
-                        } ?: 0
-                        val maxRows = maxOf(maxProductRows, leaveCount, 1)
+                        // 每个输入框对应的产品：工序名 + 人员名
+                        inputNames.forEachIndexed { index, name ->
+                            val product = if (name.isNotBlank()) products.find { it.name.contains(name.trim(), ignoreCase = true) } else null
+                            val processes = if (product != null) (processMap[product.id] ?: emptyList()) else emptyList()
+                            val assignments = if (product != null) (groupedAssignments[product.name] ?: emptyList()) else emptyList()
+                            val processName = processes.getOrNull(rowIndex)?.processName ?: ""
+                            val assignedPerson = assignments.getOrNull(rowIndex)?.assignedPerson ?: ""
 
-                        items(maxRows) { rowIndex ->
-                            Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState)) {
-                                // 输入框对应的空列
-                                Box(modifier = Modifier.width(140.dp).height(40.dp).border(0.5.dp, Color(0xFFE0E0E0)))
-                                // 每个产品：工序名列 + 人员名列
-                                filteredProducts.forEach { product ->
-                                    val processes = processMap[product.id] ?: emptyList()
-                                    val assignments = groupedAssignments[product.name] ?: emptyList()
-                                    val processName = processes.getOrNull(rowIndex)?.processName ?: ""
-                                    val assignedPerson = assignments.getOrNull(rowIndex)?.assignedPerson ?: ""
-
-                                    Row(modifier = Modifier.width(140.dp).height(40.dp)) {
-                                        // 工序名称列
-                                        Box(modifier = Modifier.weight(1f).fillMaxHeight().border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
-                                            if (processName.isNotEmpty()) { Text(processName, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, color = Color(0xFF666666)) }
-                                        }
-                                        // 人员姓名列
-                                        Box(modifier = Modifier.weight(1f).fillMaxHeight().border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
-                                            if (assignedPerson.isNotEmpty()) { Text(assignedPerson, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = Color(0xFF1976D2)) }
-                                        }
-                                    }
+                            Row(modifier = Modifier.width(140.dp).height(40.dp)) {
+                                Box(modifier = Modifier.weight(1f).fillMaxHeight().border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
+                                    if (processName.isNotEmpty()) Text(processName, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, color = Color(0xFF666666))
                                 }
-                                // 状态列：显示未分配人员
-                                Box(modifier = Modifier.width(72.dp).height(40.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
-                                    val unassigned = result?.unassignedPeople ?: emptyList()
-                                    val person = unassigned.getOrNull(rowIndex)
-                                    if (person != null) { Text(person, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                                Box(modifier = Modifier.weight(1f).fillMaxHeight().border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
+                                    if (assignedPerson.isNotEmpty()) Text(assignedPerson, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = Color(0xFF1976D2))
                                 }
                             }
+                        }
+                        // 状态列：未分配人员
+                        Box(modifier = Modifier.width(72.dp).height(40.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
+                            val unassigned = result?.unassignedPeople ?: emptyList()
+                            val person = unassigned.getOrNull(rowIndex)
+                            if (person != null) Text(person, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
