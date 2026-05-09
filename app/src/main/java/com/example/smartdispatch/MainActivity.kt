@@ -395,7 +395,7 @@ fun ProcessFlowTab(viewModel: MainViewModel) {
                             if (processes.isNotEmpty()) {
                                 Spacer(Modifier.height(8.dp))
                                 processes.forEachIndexed { index, pp ->
-                                    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalArrangement = Alignment.CenterVertically) {
+                                    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                                         Text("${index + 1}. ${pp.processName}", fontSize = 13.sp, modifier = Modifier.weight(1f))
                                         IconButton(onClick = { viewModel.deleteProcessFromProduct(pp) }, modifier = Modifier.size(28.dp)) { Icon(Icons.Default.Close, null, tint = Color(0xFFBDBDBD), modifier = Modifier.size(16.dp)) }
                                     }
