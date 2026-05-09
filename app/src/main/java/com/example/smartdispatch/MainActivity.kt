@@ -412,7 +412,7 @@ fun ProcessFlowTab(viewModel: MainViewModel) {
     }
 }
 
-// ========== Tab 4: 智能排工（行高28dp，列宽60dp） ==========
+// ========== Tab 4: 智能排工（行高24dp，列宽50dp） ==========
 @Composable
 fun DispatchTab(viewModel: MainViewModel) {
     val isLoading by viewModel.isLoading.collectAsState()
@@ -439,20 +439,20 @@ fun DispatchTab(viewModel: MainViewModel) {
     val leavePeople = persons.filter { it.onLeave }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // 压缩操作栏
-        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+        // 极限压缩操作栏
+        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 0.dp), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
             Button(onClick = {
                 val names = selectedProducts.map { it.name }
                 viewModel.executeDispatch(names)
-            }, modifier = Modifier.weight(1f), enabled = !isLoading, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)) {
-                if (isLoading) { CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary) } else { Icon(Icons.Default.PlayArrow, null, modifier = Modifier.size(16.dp)) }
-                Spacer(Modifier.width(4.dp)); Text("执行排工", fontSize = 13.sp)
+            }, modifier = Modifier.weight(1f), enabled = !isLoading, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) {
+                if (isLoading) { CircularProgressIndicator(modifier = Modifier.size(12.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary) } else { Icon(Icons.Default.PlayArrow, null, modifier = Modifier.size(14.dp)) }
+                Spacer(Modifier.width(2.dp)); Text("执行排工", fontSize = 12.sp)
             }
         }
 
         // 压缩统计栏
         result?.let { r ->
-            Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
+            Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 0.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
                 StatItem("总人数", r.totalPeople.toString())
                 StatItem("请假", r.leaveCount.toString())
                 StatItem("已分配", r.assignedCount.toString())
@@ -463,22 +463,22 @@ fun DispatchTab(viewModel: MainViewModel) {
         // 表格区域
         Box(modifier = Modifier.fillMaxSize()) {
             Column(modifier = Modifier.fillMaxSize()) {
-                // 第一行：请假人员标题 + 输入框（每列60dp，产品占2列=120dp）
+                // 第一行：请假人员标题 + 输入框（每列50dp，产品占2列=100dp）
                 Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState).background(Color(0xFFBBDEFB))) {
-                    Box(modifier = Modifier.width(72.dp).height(28.dp), contentAlignment = Alignment.Center) { Text("请假人员", fontWeight = FontWeight.Bold, fontSize = 10.sp) }
+                    Box(modifier = Modifier.width(60.dp).height(24.dp), contentAlignment = Alignment.Center) { Text("请假人员", fontWeight = FontWeight.Bold, fontSize = 9.sp) }
                     inputNames.forEachIndexed { index, name ->
-                        Box(modifier = Modifier.width(120.dp).height(28.dp).padding(1.dp)) {
+                        Box(modifier = Modifier.width(100.dp).height(24.dp).padding(1.dp)) {
                             BasicTextField(
                                 value = name,
                                 onValueChange = { viewModel.updateInputName(index, it) },
                                 modifier = Modifier.fillMaxSize(),
-                                textStyle = androidx.compose.ui.text.TextStyle(fontSize = 10.sp, color = Color.Black),
+                                textStyle = androidx.compose.ui.text.TextStyle(fontSize = 9.sp, color = Color.Black),
                                 singleLine = true,
                                 cursorBrush = androidx.compose.ui.graphics.SolidColor(Color.Black),
                                 decorationBox = { innerTextField ->
-                                    Box(modifier = Modifier.fillMaxSize().background(Color.White, RoundedCornerShape(4.dp)).padding(horizontal = 4.dp), contentAlignment = Alignment.CenterStart) {
+                                    Box(modifier = Modifier.fillMaxSize().background(Color.White, RoundedCornerShape(3.dp)).padding(horizontal = 3.dp), contentAlignment = Alignment.CenterStart) {
                                         if (name.isEmpty()) {
-                                            Text("型号${index + 1}", fontSize = 9.sp, color = Color(0xFFAAAAAA), maxLines = 1)
+                                            Text("型号${index + 1}", fontSize = 8.sp, color = Color(0xFFAAAAAA), maxLines = 1)
                                         }
                                         innerTextField()
                                     }
@@ -490,18 +490,18 @@ fun DispatchTab(viewModel: MainViewModel) {
                 Divider()
                 // 第二行：请假人名 + 产能/人数
                 Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState)) {
-                    Box(modifier = Modifier.width(72.dp).height(28.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier.width(60.dp).height(24.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
                         val p = leavePeople.getOrNull(0)
-                        if (p != null) Text(p.name, fontSize = 10.sp) else Text("")
+                        if (p != null) Text(p.name, fontSize = 9.sp) else Text("")
                     }
                     inputNames.forEachIndexed { index, name ->
                         val product = if (name.isNotBlank()) products.find { it.name.contains(name.trim(), ignoreCase = true) } else null
-                        Row(modifier = Modifier.width(120.dp).height(28.dp)) {
+                        Row(modifier = Modifier.width(100.dp).height(24.dp)) {
                             Box(modifier = Modifier.weight(1f).fillMaxHeight().border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
-                                Text(product?.capacity?.toString() ?: "", fontSize = 10.sp, color = Color(0xFF666666))
+                                Text(product?.capacity?.toString() ?: "", fontSize = 9.sp, color = Color(0xFF666666))
                             }
                             Box(modifier = Modifier.weight(1f).fillMaxHeight().border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
-                                Text(product?.requiredPeople?.toString() ?: "", fontSize = 10.sp, color = Color(0xFF666666))
+                                Text(product?.requiredPeople?.toString() ?: "", fontSize = 9.sp, color = Color(0xFF666666))
                             }
                         }
                     }
@@ -518,9 +518,9 @@ fun DispatchTab(viewModel: MainViewModel) {
 
                     items(maxRows) { rowIndex ->
                         Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState)) {
-                            Box(modifier = Modifier.width(72.dp).height(28.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
+                            Box(modifier = Modifier.width(60.dp).height(24.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
                                 val person = leavePeople.getOrNull(rowIndex + 1)
-                                if (person != null) Text(person.name, fontSize = 10.sp)
+                                if (person != null) Text(person.name, fontSize = 9.sp)
                             }
                             inputNames.forEachIndexed { index, name ->
                                 val product = if (name.isNotBlank()) products.find { it.name.contains(name.trim(), ignoreCase = true) } else null
@@ -529,12 +529,12 @@ fun DispatchTab(viewModel: MainViewModel) {
                                 val processName = processes.getOrNull(rowIndex)?.processName ?: ""
                                 val assignedPerson = assignments.getOrNull(rowIndex)?.assignedPerson ?: ""
 
-                                Row(modifier = Modifier.width(120.dp).height(28.dp)) {
+                                Row(modifier = Modifier.width(100.dp).height(24.dp)) {
                                     Box(modifier = Modifier.weight(1f).fillMaxHeight().border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
-                                        if (processName.isNotEmpty()) Text(processName, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, color = Color(0xFF666666))
+                                        if (processName.isNotEmpty()) Text(processName, fontSize = 9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, color = Color(0xFF666666))
                                     }
                                     Box(modifier = Modifier.weight(1f).fillMaxHeight().border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
-                                        if (assignedPerson.isNotEmpty()) Text(assignedPerson, fontSize = 10.sp, fontWeight = FontWeight.Medium, color = Color(0xFF1976D2))
+                                        if (assignedPerson.isNotEmpty()) Text(assignedPerson, fontSize = 9.sp, fontWeight = FontWeight.Medium, color = Color(0xFF1976D2))
                                     }
                                 }
                             }
@@ -546,13 +546,13 @@ fun DispatchTab(viewModel: MainViewModel) {
                     if (unassigned.isNotEmpty()) {
                         item {
                             Divider()
-                            Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState).padding(vertical = 2.dp)) {
-                                Box(modifier = Modifier.width(72.dp).height(28.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
-                                    Text("未分配", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFFC62828))
+                            Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState)) {
+                                Box(modifier = Modifier.width(60.dp).height(24.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
+                                    Text("未分配", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFFC62828))
                                 }
                                 unassigned.forEach { person ->
-                                    Box(modifier = Modifier.width(72.dp).height(28.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
-                                        Text(person, fontSize = 10.sp, color = Color(0xFFE65100))
+                                    Box(modifier = Modifier.width(60.dp).height(24.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
+                                        Text(person, fontSize = 9.sp, color = Color(0xFFE65100))
                                     }
                                 }
                             }
@@ -567,7 +567,7 @@ fun DispatchTab(viewModel: MainViewModel) {
 @Composable
 fun StatItem(label: String, value: String, valueColor: Color = MaterialTheme.colorScheme.primary) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = valueColor)
-        Text(label, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = valueColor)
+        Text(label, fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
