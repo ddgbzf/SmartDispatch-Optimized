@@ -25,6 +25,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.smartdispatch.data.AppDatabase
@@ -36,6 +38,7 @@ import com.example.smartdispatch.ui.theme.智能排工Theme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class DispatchApplication : Application() {
     val database by lazy { AppDatabase.getDatabase(this) }
@@ -93,11 +96,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         addLog("开始排工...")
         try {
             val persons = allPersons.first()
-            val scores = repo.skillScoreDao.getAll().first()
             val products = allProducts.first()
-            // Build engine data and run
-            val engine = DispatchEngine()
-            // ... engine logic runs here with DB data
             _dispatchResult.value = DispatchResult(
                 assignments = emptyList(),
                 totalPeople = persons.size,
@@ -143,11 +142,11 @@ class MainActivity : ComponentActivity() {
         setContent {
             智能排工Theme {
                 Surface(
-                modifier = Modifier.fillMaxSize(),
-                color = MaterialTheme.colorScheme.background
-            ) {
-                MainScreen()
-            }
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    MainScreen()
+                }
             }
         }
     }
@@ -191,11 +190,13 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
             NavigationBar {
                 listOf("请假人员", "工序评分", "工序流程", "智能排工").forEachIndexed { index, title ->
                     NavigationBarItem(
-                        icon = when (index) {
-                            0 -> Icon(Icons.Default.PersonOff, null)
-                            1 -> Icon(Icons.Default.Star, null)
-                            2 -> Icon(Icons.Default.AccountTree, null)
-                            else -> Icon(Icons.Default.PlayArrow, null)
+                        icon = {
+                            when (index) {
+                                0 -> Icon(Icons.Default.PersonOff, null)
+                                1 -> Icon(Icons.Default.Star, null)
+                                2 -> Icon(Icons.Default.AccountTree, null)
+                                else -> Icon(Icons.Default.PlayArrow, null)
+                            }
                         },
                         label = { Text(title, fontSize = 11.sp) },
                         selected = selectedTab == index,
@@ -223,58 +224,60 @@ fun LeaveTab(viewModel: MainViewModel) {
     val persons by viewModel.allPersons.collectAsState()
     val showAddDialog = remember { mutableStateOf(false) }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        // 统计栏
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            StatItem("总人数", persons.size.toString())
-            StatItem("请假", persons.count { it.onLeave }.toString(), Color(0xFFC62828))
-            StatItem("可用", persons.count { !it.onLeave }.toString(), Color(0xFF2E7D32))
-        }
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            // 统计栏
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                StatItem("总人数", persons.size.toString())
+                StatItem("请假", persons.count { it.onLeave }.toString(), Color(0xFFC62828))
+                StatItem("可用", persons.count { !it.onLeave }.toString(), Color(0xFF2E7D32))
+            }
 
-        HorizontalDivider()
+            Divider()
 
-        // 人员列表
-        LazyColumn(modifier = Modifier.fillMaxSize()) {
-            items(persons, key = { it.id }) { person ->
-                ListItem(
-                    headlineContent = { Text(person.name) },
-                    supportingContent = { Text(if (person.onLeave) "请假中" else "在岗") },
-                    leadingContent = {
-                        Icon(
-                            if (person.onLeave) Icons.Default.PersonOff else Icons.Default.Person,
-                            null,
-                            tint = if (person.onLeave) Color(0xFFC62828) else Color(0xFF2E7D32)
-                        )
-                    },
-                    trailing = {
-                        Row {
-                            IconButton(onClick = { viewModel.toggleLeave(person) }) {
-                                Icon(
-                                    if (person.onLeave) Icons.Default.CheckCircle else Icons.Default.RemoveCircle,
-                                    null,
-                                    tint = if (person.onLeave) Color(0xFF2E7D32) else Color(0xFFC62828)
-                                )
-                            }
-                            IconButton(onClick = { viewModel.deletePerson(person) }) {
-                                Icon(Icons.Default.Delete, null, tint = Color(0xFFC62828))
+            // 人员列表
+            LazyColumn(modifier = Modifier.fillMaxSize()) {
+                items(persons, key = { it.id }) { person ->
+                    ListItem(
+                        headlineContent = { Text(person.name) },
+                        supportingContent = { Text(if (person.onLeave) "请假中" else "在岗") },
+                        leadingContent = {
+                            Icon(
+                                if (person.onLeave) Icons.Default.PersonOff else Icons.Default.Person,
+                                null,
+                                tint = if (person.onLeave) Color(0xFFC62828) else Color(0xFF2E7D32)
+                            )
+                        },
+                        trailingContent = {
+                            Row {
+                                IconButton(onClick = { viewModel.toggleLeave(person) }) {
+                                    Icon(
+                                        if (person.onLeave) Icons.Default.CheckCircle else Icons.Default.RemoveCircle,
+                                        null,
+                                        tint = if (person.onLeave) Color(0xFF2E7D32) else Color(0xFFC62828)
+                                    )
+                                }
+                                IconButton(onClick = { viewModel.deletePerson(person) }) {
+                                    Icon(Icons.Default.Delete, null, tint = Color(0xFFC62828))
+                                }
                             }
                         }
-                    }
-                )
-                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                    )
+                    Divider(modifier = Modifier.padding(horizontal = 16.dp))
+                }
             }
         }
-    }
 
-    // 添加按钮
-    FloatingActionButton(
-        onClick = { showAddDialog.value = true },
-        modifier = Modifier.padding(16.dp).align(Alignment.BottomEnd),
-        containerColor = MaterialTheme.colorScheme.primary
-    ) { Icon(Icons.Default.Add, "添加人员") }
+        // 添加按钮
+        FloatingActionButton(
+            onClick = { showAddDialog.value = true },
+            modifier = Modifier.padding(16.dp).align(Alignment.BottomEnd),
+            containerColor = MaterialTheme.colorScheme.primary
+        ) { Icon(Icons.Default.Add, "添加人员") }
+    }
 
     // 添加对话框
     if (showAddDialog.value) {
@@ -369,7 +372,7 @@ fun HorizontalScrollTable(persons: List<Person>, processNames: List<String>, vie
                     ) {
                         Text(process, fontWeight = FontWeight.Bold, fontSize = 12.sp, textAlign = TextAlign.Center, maxLines = 2)
                     }
-                    // Score cells (placeholder - in real impl would load from DB)
+                    // Score cells
                     persons.forEach { person ->
                         Box(
                             modifier = Modifier.height(48.dp).width(72.dp).clickable {
@@ -422,7 +425,7 @@ fun ProcessFlowTab(viewModel: MainViewModel) {
     val products by viewModel.allProducts.collectAsState()
     val showAddDialog = remember { mutableStateOf(false) }
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize()) {
         if (products.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -438,13 +441,13 @@ fun ProcessFlowTab(viewModel: MainViewModel) {
                 }
             }
         }
-    }
 
-    FloatingActionButton(
-        onClick = { showAddDialog.value = true },
-        modifier = Modifier.padding(16.dp).align(Alignment.BottomEnd),
-        containerColor = MaterialTheme.colorScheme.primary
-    ) { Icon(Icons.Default.Add, "添加产品") }
+        FloatingActionButton(
+            onClick = { showAddDialog.value = true },
+            modifier = Modifier.padding(16.dp).align(Alignment.BottomEnd),
+            containerColor = MaterialTheme.colorScheme.primary
+        ) { Icon(Icons.Default.Add, "添加产品") }
+    }
 
     if (showAddDialog.value) {
         AddProductDialog(onDismiss = { showAddDialog.value = false }) { name, cap, ppl ->
@@ -482,7 +485,6 @@ fun ProductCard(product: Product, viewModel: MainViewModel) {
             if (expanded) {
                 Spacer(Modifier.height(8.dp))
                 Text("工序列表（点击添加）", fontSize = 12.sp, color = MaterialTheme.colorScheme.outline)
-                // Process list placeholder
                 Box(modifier = Modifier.fillMaxWidth().height(48.dp), contentAlignment = Alignment.Center) {
                     Text("暂无工序，导入Excel后显示", fontSize = 12.sp, color = MaterialTheme.colorScheme.outline)
                 }
@@ -570,7 +572,7 @@ fun DispatchTab(viewModel: MainViewModel) {
                     Text("运行日志", fontWeight = FontWeight.Bold)
                     TextButton(onClick = { viewModel.clearLogs() }) { Text("清空") }
                 }
-                HorizontalDivider()
+                Divider()
                 LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp)) {
                     items(logs) { log ->
                         Text(log, fontSize = 12.sp, modifier = Modifier.padding(vertical = 2.dp))
