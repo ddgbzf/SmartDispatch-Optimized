@@ -166,7 +166,7 @@ class DispatchEngine {
                 people.add(name)
                 scores[name] = mutableMapOf()
                 for ((colIndex, processName) in processNames.withIndex()) {
-                    val score = row.getCell(colIndex + 1)?.numericCellValue?.toInt() ?: 0
+                    val score = getCellIntValue(row, colIndex + 1)
                     scores[name]!![processName] = score
                 }
             }
@@ -180,6 +180,7 @@ class DispatchEngine {
         val sheet = workbook.getSheet("工序流程") ?: throw Exception("缺失工序流程表")
         
         val headerRow = sheet.getRow(0)
+        if (headerRow == null) throw Exception("工序流程表表头为空")
         val headers = (0 until headerRow.lastCellNum).map { 
             headerRow.getCell(it)?.stringCellValue ?: "" 
         }
@@ -188,22 +189,40 @@ class DispatchEngine {
         val peopleCol = headers.indexOf("人数").takeIf { it >= 0 } ?: 2
         val processCols = headers.mapIndexed { index, s -> if (s.startsWith("工序")) index else -1 }.filter { it >= 0 }
         
+        Log.d("DispatchEngine", "工序流程表头: $headers")
+        Log.d("DispatchEngine", "产能列: $capacityCol, 人数列: $peopleCol, 工序列: $processCols")
+        
         val products = mutableMapOf<String, Product>()
         
         for (rowIndex in 1..sheet.lastRowNum) {
             val row = sheet.getRow(rowIndex) ?: continue
-            val productName = row.getCell(0)?.stringCellValue ?: continue
+            val productName = row.getCell(0)?.stringCellValue?.trim() ?: continue
+            if (productName.isEmpty()) continue
             
-            val capacity = row.getCell(capacityCol)?.numericCellValue?.toInt() ?: 0
-            val requiredPeople = row.getCell(peopleCol)?.numericCellValue?.toInt() ?: 0
+            val capacity = getCellIntValue(row, capacityCol)
+            val requiredPeople = getCellIntValue(row, peopleCol)
             val processes = processCols.mapNotNull { col ->
                 row.getCell(col)?.stringCellValue?.trim()?.takeIf { it.isNotEmpty() }
             }
             
+            Log.d("DispatchEngine", "产品: $productName, 产能: $capacity, 人数: $requiredPeople, 工序: $processes")
             products[productName] = Product(productName, capacity, requiredPeople, processes)
         }
         
         productInfo = products
+    }
+    
+    private fun getCellIntValue(row: Row, colIndex: Int): Int {
+        val cell = row.getCell(colIndex) ?: return 0
+        return try {
+            cell.numericCellValue.toInt()
+        } catch (e: Exception) {
+            try {
+                cell.stringCellValue?.trim()?.toIntOrNull() ?: 0
+            } catch (e2: Exception) {
+                0
+            }
+        }
     }
     
     private fun loadMainSheet(workbook: Workbook) {
