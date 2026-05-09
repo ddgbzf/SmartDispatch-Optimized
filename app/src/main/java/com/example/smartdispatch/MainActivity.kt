@@ -69,13 +69,24 @@ fun DispatchApp() {
     
     val engine = remember { DispatchEngine() }
     
-    // 文件选择器
+    // 文件选择器 - 支持多种Excel MIME类型
     val filePicker = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument()
     ) { uri ->
-        uri?.let {
-            selectedFileUri = it
-            logs = logs + "已选择文件: ${it.lastPathSegment}"
+        if (uri != null) {
+            selectedFileUri = uri
+            val fileName = uri.lastPathSegment ?: "未知文件"
+            logs = logs + "已选择文件: $fileName"
+            
+            // 检查文件类型
+            val mimeType = context.contentResolver.getType(uri)
+            logs = logs + "文件类型: ${mimeType ?: "未知"}"
+            
+            if (mimeType == null || (!mimeType.contains("spreadsheet") && !mimeType.contains("excel"))) {
+                logs = logs + "⚠️ 警告: 文件可能不是Excel格式"
+            }
+        } else {
+            logs = logs + "❌ 未选择文件"
         }
     }
     
@@ -166,7 +177,15 @@ fun DispatchApp() {
                     ) {
                         // 选择文件按钮
                         Button(
-                            onClick = { filePicker.launch(arrayOf("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")) },
+                            onClick = { 
+                                // 支持多种Excel MIME类型
+                                filePicker.launch(arrayOf(
+                                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                    "application/vnd.ms-excel",
+                                    "application/octet-stream",
+                                    "*/*"
+                                )) 
+                            },
                             modifier = Modifier.weight(1f),
                             enabled = !isLoading
                         ) {
@@ -188,23 +207,29 @@ fun DispatchApp() {
                                     try {
                                         val input = context.contentResolver.openInputStream(selectedFileUri!!)
                                         if (input != null) {
-                                            val success = withContext(Dispatchers.IO) {
+                                            val (success, errorMsg) = withContext(Dispatchers.IO) {
                                                 engine.loadFromExcel(input)
                                             }
                                             if (success) {
-                                                logs = logs + "数据加载成功，开始排工..."
+                                                logs = logs + "✅ 数据加载成功，开始排工..."
                                                 val result = withContext(Dispatchers.IO) {
                                                     engine.executeDispatch()
                                                 }
                                                 dispatchResult = result
-                                                logs = logs + "排工完成！${result.statusMessage}"
+                                                logs = logs + "✅ 排工完成！${result.statusMessage}"
+                                                Toast.makeText(context, "排工完成！", Toast.LENGTH_SHORT).show()
                                             } else {
-                                                logs = logs + "数据加载失败"
+                                                logs = logs + "❌ 数据加载失败: $errorMsg"
+                                                Toast.makeText(context, "加载失败: $errorMsg", Toast.LENGTH_LONG).show()
                                             }
                                             input.close()
+                                        } else {
+                                            logs = logs + "❌ 无法打开文件"
+                                            Toast.makeText(context, "无法打开文件", Toast.LENGTH_SHORT).show()
                                         }
                                     } catch (e: Exception) {
-                                        logs = logs + "错误: ${e.message}"
+                                        logs = logs + "❌ 错误: ${e.message}"
+                                        Toast.makeText(context, "错误: ${e.message}", Toast.LENGTH_LONG).show()
                                     }
                                     isLoading = false
                                 }

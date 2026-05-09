@@ -24,26 +24,53 @@ class DispatchEngine {
     
     /**
      * 加载Excel数据
+     * @return Pair<是否成功, 错误信息>
      */
-    fun loadFromExcel(inputStream: InputStream): Boolean {
+    fun loadFromExcel(inputStream: InputStream): Pair<Boolean, String?> {
         return try {
+            // 检查是否是有效的XLSX文件
+            if (!inputStream.markSupported()) {
+                return Pair(false, "无法读取文件流")
+            }
+            
             val workbook = XSSFWorkbook(inputStream)
             
             // 1. 读取工序评分表
-            loadSkillScores(workbook)
+            try {
+                loadSkillScores(workbook)
+            } catch (e: Exception) {
+                workbook.close()
+                return Pair(false, "工序评分表错误: ${e.message}")
+            }
             
             // 2. 读取工序流程表
-            loadProductInfo(workbook)
+            try {
+                loadProductInfo(workbook)
+            } catch (e: Exception) {
+                workbook.close()
+                return Pair(false, "工序流程表错误: ${e.message}")
+            }
             
             // 3. 读取智能排工主表
-            loadMainSheet(workbook)
+            try {
+                loadMainSheet(workbook)
+            } catch (e: Exception) {
+                workbook.close()
+                return Pair(false, "智能排工主表错误: ${e.message}")
+            }
             
             workbook.close()
             Log.d("DispatchEngine", "数据加载成功: 人员${allPeople.size}人, 产品${productInfo.size}个")
-            true
+            Pair(true, null)
+        } catch (e: org.apache.poi.openxml4j.exceptions.NotOfficeXmlFileException) {
+            Log.e("DispatchEngine", "不是有效的Office XML文件: ${e.message}")
+            Pair(false, "不是有效的.xlsx文件，请确保文件格式正确")
+        } catch (e: org.apache.poi.openxml4j.exceptions.InvalidFormatException) {
+            Log.e("DispatchEngine", "文件格式无效: ${e.message}")
+            Pair(false, "文件格式无效，请使用标准的.xlsx文件")
         } catch (e: Exception) {
             Log.e("DispatchEngine", "加载失败: ${e.message}")
-            false
+            Pair(false, "加载失败: ${e.message}")
         }
     }
     
