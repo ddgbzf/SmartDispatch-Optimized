@@ -95,14 +95,16 @@ class DispatchEngine {
 
     fun executeDispatch(): DispatchResult {
         assignedPeople.clear()
-        val availablePeople = allPeople.filter { it !in leaveList }
         val processQueue = buildProcessQueue()
+        Log.d("DispatchEngine", "工序队列大小: ${processQueue.size}, 产品数: ${productInfo.size}, 评分人数: ${skillScores.size}")
 
         val assignments = mutableListOf<ProcessAssignment>()
         for (item in processQueue) {
             val (priority, productCol, inner) = item
             val (rowIndex, processName, productName) = inner
-            val person = assignPerson(processName, availablePeople)
+            // 每次分配前重新计算可用人员（和py脚本一致）
+            val currentAvailable = allPeople.filter { it !in leaveList && it !in assignedPeople }
+            val person = assignPerson(processName, currentAvailable)
             if (person != null) {
                 assignments.add(ProcessAssignment(
                     productName = productName,
@@ -115,8 +117,11 @@ class DispatchEngine {
         }
 
         val assignedCount = assignedPeople.size
-        val remaining = availablePeople.size - assignedCount
-        val unassigned = availablePeople.filter { it !in assignedPeople }
+        val finalAvailable = allPeople.filter { it !in leaveList }
+        val remaining = finalAvailable.size - assignedCount
+        val unassigned = finalAvailable.filter { it !in assignedPeople }
+
+        Log.d("DispatchEngine", "分配结果: 总${allPeople.size}, 请假${leaveList.size}, 可用${finalAvailable.size}, 已分${assignedCount}, 剩余${remaining}")
 
         return DispatchResult(
             assignments = assignments,

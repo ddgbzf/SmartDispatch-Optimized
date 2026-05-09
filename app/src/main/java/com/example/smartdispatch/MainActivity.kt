@@ -9,7 +9,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.*
-import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,7 +22,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -95,24 +93,34 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
     fun deleteProcessFromProduct(process: ProductProcess) = viewModelScope.launch { repo.deleteProcess(process) }
 
-    fun executeDispatch() = viewModelScope.launch {
+    fun executeDispatch(selectedProductNames: List<String> = emptyList()) = viewModelScope.launch {
         _isLoading.value = true
         addLog("开始排工...")
         try {
             val engine = DispatchEngine()
             val persons = allPersons.first()
-            val products = allProducts.first()
+            val allProductsList = allProducts.first()
             val processNames = allProcessNames.first()
             val peopleNames = persons.map { it.name }
             val leaveNames = persons.filter { it.onLeave }.map { it.name }
+
+            // 只对选中的产品排工（如果为空则排所有产品）
+            val targetProducts = if (selectedProductNames.isNotEmpty()) {
+                allProductsList.filter { it.name in selectedProductNames }
+            } else {
+                allProductsList
+            }
+
             val productMap = mutableMapOf<String, com.example.smartdispatch.model.Product>()
-            for (product in products) {
+            for (product in targetProducts) {
                 val processes = repo.getProcessesOnce(product.id)
                 productMap[product.name] = com.example.smartdispatch.model.Product(
                     product.name, product.capacity, product.requiredPeople,
                     processes.map { it.processName }
                 )
             }
+            addLog("排工产品数: ${productMap.size}")
+
             val scoreMap = mutableMapOf<String, MutableMap<String, Int>>()
             for (person in persons) {
                 val scores = repo.getScoresByPerson(person.id)
@@ -120,12 +128,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 for (s in scores) { pScores[s.processName] = s.score }
                 scoreMap[person.name] = pScores
             }
+            addLog("评分人数: ${scoreMap.size}, 工序优先级数: ${processNames.size}")
+
             engine.setSkillScoresData(scoreMap)
             val result = withContext(Dispatchers.IO) {
                 engine.runWithData(peopleNames, leaveNames, productMap, processNames)
             }
             _dispatchResult.value = result
-            addLog("✅ 排工完成！${result.statusMessage}")
+            addLog("✅ 排工完成！分配${result.assignedCount}人, ${result.statusMessage}")
         } catch (e: Exception) { addLog("❌ 错误: ${e.message}") }
         _isLoading.value = false
     }
@@ -426,13 +436,17 @@ fun DispatchTab(viewModel: MainViewModel) {
     val scrollState = rememberScrollState()
     val leavePeople = persons.filter { it.onLeave }
 
-    // 双指缩放
+    // 双指缩放（不拦截单指滚动）
     var scale by remember { mutableFloatStateOf(1f) }
 
     Column(modifier = Modifier.fillMaxSize()) {
         // 压缩操作栏
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-            Button(onClick = { viewModel.executeDispatch() }, modifier = Modifier.weight(1f), enabled = !isLoading, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)) {
+            Button(onClick = {
+                // 传入用户选中的产品名
+                val names = selectedProducts.map { it.name }
+                viewModel.executeDispatch(names)
+            }, modifier = Modifier.weight(1f), enabled = !isLoading, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)) {
                 if (isLoading) { CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary) } else { Icon(Icons.Default.PlayArrow, null, modifier = Modifier.size(16.dp)) }
                 Spacer(Modifier.width(4.dp)); Text("执行排工", fontSize = 13.sp)
             }
@@ -448,16 +462,8 @@ fun DispatchTab(viewModel: MainViewModel) {
             }
         }
 
-        // 表格区域（支持缩放）
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .pointerInput(Unit) {
-                    detectTransformGestures { _, pan, zoom, _ ->
-                        scale = max(0.5f, min(3f, scale * zoom))
-                    }
-                }
-        ) {
+        // 表格区域（缩放通过graphicsLayer，不拦截触摸事件）
+        Box(modifier = Modifier.fillMaxSize()) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
