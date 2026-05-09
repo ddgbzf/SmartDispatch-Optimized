@@ -150,9 +150,25 @@ class DispatchEngine {
         val sheet = workbook.getSheet("工序评分") ?: throw Exception("缺失工序评分表")
         
         val headerRow = sheet.getRow(0)
-        val processNames = (1 until headerRow.lastCellNum).map { 
+        if (headerRow == null) throw Exception("工序评分表表头为空")
+        
+        // 实际结构: A=技能评分/姓名, B=工号, C起=工序名(班长/组长/调机手...)
+        // 跳过A列("技能评分")和B列("工号")，从C列开始才是工序名
+        val allHeaders = (0 until headerRow.lastCellNum).map { 
+            headerRow.getCell(it)?.stringCellValue ?: "" 
+        }
+        Log.d("DispatchEngine", "工序评分表头: $allHeaders")
+        
+        // 找到工序列的起始位置（跳过"技能评分"和"工号"）
+        val processStartCol = allHeaders.indexOfFirst { it == "工号" }.let { 
+            if (it >= 0) it + 1 else 2  // 工号列的下一列开始
+        }
+        
+        val processNames = (processStartCol until headerRow.lastCellNum).map { 
             headerRow.getCell(it)?.stringCellValue ?: "" 
         }.filter { it.isNotEmpty() }
+        
+        Log.d("DispatchEngine", "工序名列表: $processNames, 起始列: $processStartCol")
         
         processPriority = processNames.withIndex().associate { it.value to it.index }
         
@@ -161,12 +177,14 @@ class DispatchEngine {
         
         for (rowIndex in 1..sheet.lastRowNum) {
             val row = sheet.getRow(rowIndex) ?: continue
+            // A列是姓名
             val name = cleanName(row.getCell(0)?.stringCellValue)
             if (name != null) {
                 people.add(name)
                 scores[name] = mutableMapOf()
-                for ((colIndex, processName) in processNames.withIndex()) {
-                    val score = getCellIntValue(row, colIndex + 1)
+                for ((i, processName) in processNames.withIndex()) {
+                    val col = processStartCol + i
+                    val score = getCellIntValue(row, col)
                     scores[name]!![processName] = score
                 }
             }
