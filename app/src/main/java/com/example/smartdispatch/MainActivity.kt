@@ -11,6 +11,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -20,8 +21,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.TransformOrigin
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -69,6 +68,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
     private val _scoreVersion = MutableStateFlow(0)
     val scoreVersion: StateFlow<Int> = _scoreVersion.asStateFlow()
+    // 智能排工页输入框状态（跨页面保持）
+    private val _inputNames = MutableStateFlow(List(6) { "" })
+    val inputNames: StateFlow<List<String>> = _inputNames.asStateFlow()
+    fun updateInputName(index: Int, value: String) {
+        _inputNames.update { it.toMutableList().apply { set(index, value) } }
+    }
 
     fun addLog(msg: String) { _logs.update { it + msg } }
     fun clearLogs() { _logs.update { emptyList() } }
@@ -407,13 +412,14 @@ fun ProcessFlowTab(viewModel: MainViewModel) {
     }
 }
 
-// ========== Tab 4: 智能排工（行高28dp，支持缩放） ==========
+// ========== Tab 4: 智能排工（行高28dp，列宽60dp） ==========
 @Composable
 fun DispatchTab(viewModel: MainViewModel) {
     val isLoading by viewModel.isLoading.collectAsState()
     val result by viewModel.dispatchResult.collectAsState()
     val persons by viewModel.allPersons.collectAsState()
     val products by viewModel.allProducts.collectAsState()
+    val inputNames by viewModel.inputNames.collectAsState()
     val repo = (LocalContext.current.applicationContext as DispatchApplication).repository
 
     var processMap by remember { mutableStateOf<Map<Int, List<ProductProcess>>>(emptyMap()) }
@@ -422,10 +428,6 @@ fun DispatchTab(viewModel: MainViewModel) {
         for (product in products) { map[product.id] = repo.getProcessesOnce(product.id) }
         processMap = map
     }
-
-    // 多个输入框
-    val inputCount = 6
-    var inputNames by remember { mutableStateOf(List(inputCount) { "" }) }
 
     val selectedProducts = inputNames.mapNotNull { name ->
         if (name.isBlank()) null
@@ -436,14 +438,10 @@ fun DispatchTab(viewModel: MainViewModel) {
     val scrollState = rememberScrollState()
     val leavePeople = persons.filter { it.onLeave }
 
-    // 双指缩放（不拦截单指滚动）
-    var scale by remember { mutableFloatStateOf(1f) }
-
     Column(modifier = Modifier.fillMaxSize()) {
         // 压缩操作栏
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
             Button(onClick = {
-                // 传入用户选中的产品名
                 val names = selectedProducts.map { it.name }
                 viewModel.executeDispatch(names)
             }, modifier = Modifier.weight(1f), enabled = !isLoading, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)) {
@@ -462,38 +460,31 @@ fun DispatchTab(viewModel: MainViewModel) {
             }
         }
 
-        // 表格区域（缩放通过graphicsLayer，不拦截触摸事件）
+        // 表格区域
         Box(modifier = Modifier.fillMaxSize()) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer {
-                        scaleX = scale
-                        scaleY = scale
-                        transformOrigin = TransformOrigin(0f, 0f)
-                    }
-            ) {
-                // 第一行：请假人员标题 + 输入框
+            Column(modifier = Modifier.fillMaxSize()) {
+                // 第一行：请假人员标题 + 输入框（每列60dp，产品占2列=120dp）
                 Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState).background(Color(0xFFBBDEFB))) {
                     Box(modifier = Modifier.width(72.dp).height(28.dp), contentAlignment = Alignment.Center) { Text("请假人员", fontWeight = FontWeight.Bold, fontSize = 10.sp) }
                     inputNames.forEachIndexed { index, name ->
-                        OutlinedTextField(
-                            value = name,
-                            onValueChange = { inputNames = inputNames.toMutableList().apply { set(index, it) } },
-                            label = { Text("型号${index + 1}", fontSize = 9.sp) },
-                            singleLine = true,
-                            modifier = Modifier.width(140.dp).height(28.dp),
-                            textStyle = androidx.compose.ui.text.TextStyle(fontSize = 10.sp, color = Color.Black),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedTextColor = Color.Black,
-                                unfocusedTextColor = Color.Black,
-                                focusedLabelColor = Color(0xFF1565C0),
-                                unfocusedLabelColor = Color(0xFF999999),
-                                cursorColor = Color.Black,
-                                focusedBorderColor = Color(0xFF1565C0),
-                                unfocusedBorderColor = Color(0xFF90CAF9)
+                        Box(modifier = Modifier.width(120.dp).height(28.dp).padding(1.dp)) {
+                            BasicTextField(
+                                value = name,
+                                onValueChange = { viewModel.updateInputName(index, it) },
+                                modifier = Modifier.fillMaxSize(),
+                                textStyle = androidx.compose.ui.text.TextStyle(fontSize = 10.sp, color = Color.Black),
+                                singleLine = true,
+                                cursorBrush = androidx.compose.ui.graphics.SolidColor(Color.Black),
+                                decorationBox = { innerTextField ->
+                                    Box(modifier = Modifier.fillMaxSize().background(Color.White, RoundedCornerShape(4.dp)).padding(horizontal = 4.dp), contentAlignment = Alignment.CenterStart) {
+                                        if (name.isEmpty()) {
+                                            Text("型号${index + 1}", fontSize = 9.sp, color = Color(0xFFAAAAAA), maxLines = 1)
+                                        }
+                                        innerTextField()
+                                    }
+                                }
                             )
-                        )
+                        }
                     }
                 }
                 Divider()
@@ -505,7 +496,7 @@ fun DispatchTab(viewModel: MainViewModel) {
                     }
                     inputNames.forEachIndexed { index, name ->
                         val product = if (name.isNotBlank()) products.find { it.name.contains(name.trim(), ignoreCase = true) } else null
-                        Row(modifier = Modifier.width(140.dp).height(28.dp)) {
+                        Row(modifier = Modifier.width(120.dp).height(28.dp)) {
                             Box(modifier = Modifier.weight(1f).fillMaxHeight().border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
                                 Text(product?.capacity?.toString() ?: "", fontSize = 10.sp, color = Color(0xFF666666))
                             }
@@ -516,7 +507,7 @@ fun DispatchTab(viewModel: MainViewModel) {
                     }
                 }
                 Divider()
-                // 数据行：请假人员（从第2个开始）+ 工序名 + 人员名
+                // 数据行
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     val maxProductRows = selectedProducts.maxOfOrNull { product ->
                         val processes = processMap[product.id] ?: emptyList()
@@ -527,12 +518,10 @@ fun DispatchTab(viewModel: MainViewModel) {
 
                     items(maxRows) { rowIndex ->
                         Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState)) {
-                            // 请假人员（从第2个开始，避免和第二行重复）
                             Box(modifier = Modifier.width(72.dp).height(28.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
                                 val person = leavePeople.getOrNull(rowIndex + 1)
                                 if (person != null) Text(person.name, fontSize = 10.sp)
                             }
-                            // 每个输入框对应的产品
                             inputNames.forEachIndexed { index, name ->
                                 val product = if (name.isNotBlank()) products.find { it.name.contains(name.trim(), ignoreCase = true) } else null
                                 val processes = if (product != null) (processMap[product.id] ?: emptyList()) else emptyList()
@@ -540,7 +529,7 @@ fun DispatchTab(viewModel: MainViewModel) {
                                 val processName = processes.getOrNull(rowIndex)?.processName ?: ""
                                 val assignedPerson = assignments.getOrNull(rowIndex)?.assignedPerson ?: ""
 
-                                Row(modifier = Modifier.width(140.dp).height(28.dp)) {
+                                Row(modifier = Modifier.width(120.dp).height(28.dp)) {
                                     Box(modifier = Modifier.weight(1f).fillMaxHeight().border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
                                         if (processName.isNotEmpty()) Text(processName, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, color = Color(0xFF666666))
                                     }

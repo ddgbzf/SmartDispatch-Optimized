@@ -118,10 +118,12 @@ class DispatchEngine {
 
         val assignedCount = assignedPeople.size
         val finalAvailable = allPeople.filter { it !in leaveList }
-        val remaining = finalAvailable.size - assignedCount
+        // 总需求人数 = 各产品的需求人数之和（和py脚本一致）
+        val totalDemand = productInfo.values.sumOf { it.requiredPeople }
+        val remaining = finalAvailable.size - totalDemand
         val unassigned = finalAvailable.filter { it !in assignedPeople }
 
-        Log.d("DispatchEngine", "分配结果: 总${allPeople.size}, 请假${leaveList.size}, 可用${finalAvailable.size}, 已分${assignedCount}, 剩余${remaining}")
+        Log.d("DispatchEngine", "分配结果: 总${allPeople.size}, 请假${leaveList.size}, 可用${finalAvailable.size}, 已分${assignedCount}, 总需求${totalDemand}, 差值${remaining}")
 
         return DispatchResult(
             assignments = assignments,
