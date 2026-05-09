@@ -28,11 +28,6 @@ class DispatchEngine {
      */
     fun loadFromExcel(inputStream: InputStream): Pair<Boolean, String?> {
         return try {
-            // 检查是否是有效的XLSX文件
-            if (!inputStream.markSupported()) {
-                return Pair(false, "无法读取文件流")
-            }
-            
             val workbook = XSSFWorkbook(inputStream)
             
             // 1. 读取工序评分表
