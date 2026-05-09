@@ -47,6 +47,12 @@ class DispatchRepository(
     suspend fun deleteProcess(process: ProductProcess) = productProcessDao.delete(process)
     suspend fun getProcesses(productId: Int): Flow<List<ProductProcess>> = productProcessDao.getByProduct(productId)
 
+    suspend fun getPersonById(id: Int): Person? = personDao.findById(id)
+
+    suspend fun getScoresByPerson(personId: Int): List<SkillScore> = skillScoreDao.getByPersonOnce(personId)
+
+    suspend fun getProcessesOnce(productId: Int): List<ProductProcess> = productProcessDao.getByProductOnce(productId)
+
     suspend fun updateAssignment(assignment: Assignment) = assignmentDao.update(assignment)
     suspend fun deleteDynamicAssignments() = assignmentDao.deleteDynamic()
     suspend fun clearAllAssignments() = assignmentDao.deleteAll()

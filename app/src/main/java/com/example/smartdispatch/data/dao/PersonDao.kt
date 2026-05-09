@@ -6,13 +6,13 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface PersonDao {
-    @Query("SELECT * FROM persons ORDER BY name")
+    @Query("SELECT * FROM persons ORDER BY id")
     fun getAll(): Flow<List<Person>>
 
-    @Query("SELECT * FROM persons WHERE onLeave = 1 ORDER BY name")
+    @Query("SELECT * FROM persons WHERE onLeave = 1 ORDER BY id")
     fun getOnLeave(): Flow<List<Person>>
 
-    @Query("SELECT * FROM persons WHERE onLeave = 0 ORDER BY name")
+    @Query("SELECT * FROM persons WHERE onLeave = 0 ORDER BY id")
     fun getAvailable(): Flow<List<Person>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -32,4 +32,7 @@ interface PersonDao {
 
     @Query("SELECT * FROM persons WHERE name = :name LIMIT 1")
     suspend fun findByName(name: String): Person?
+
+    @Query("SELECT * FROM persons WHERE id = :id")
+    suspend fun findById(id: Int): Person?
 }

@@ -9,7 +9,7 @@ import com.example.smartdispatch.data.entity.*
 
 @Database(
     entities = [Person::class, SkillScore::class, Product::class, ProductProcess::class, Assignment::class],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -29,7 +29,7 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "smart_dispatch.db"
-                ).build()
+                ).fallbackToDestructiveMigration().build()
                 INSTANCE = instance
                 instance
             }

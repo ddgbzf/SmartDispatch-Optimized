@@ -69,6 +69,28 @@ class DispatchEngine {
         )
     }
 
+    /**
+     * 使用数据库传入的数据执行排工
+     */
+    fun runWithData(
+        people: List<String>,
+        leaveNames: List<String>,
+        products: Map<String, Product>,
+        processNames: List<String>
+    ): DispatchResult {
+        allPeople = people
+        leaveList = leaveNames
+        productInfo = products
+        parsedProcessNames = processNames
+        processPriority = processNames.withIndex().associate { it.value to it.index }
+        // skillScores 从数据库加载时需要通过 setSkillScores 设置
+        return executeDispatch()
+    }
+
+    fun setSkillScoresData(scores: Map<String, Map<String, Int>>) {
+        skillScores = scores
+    }
+
     fun executeDispatch(): DispatchResult {
         assignedPeople.clear()
         val availablePeople = allPeople.filter { it !in leaveList }

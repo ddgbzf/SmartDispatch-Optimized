@@ -12,7 +12,7 @@ interface SkillScoreDao {
     @Query("SELECT * FROM skill_scores WHERE personId = :personId")
     fun getByPerson(personId: Int): Flow<List<SkillScore>>
 
-    @Query("SELECT DISTINCT processName FROM skill_scores ORDER BY processName")
+    @Query("SELECT DISTINCT processName FROM skill_scores ORDER BY id")
     fun getAllProcessNames(): Flow<List<String>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -32,4 +32,7 @@ interface SkillScoreDao {
 
     @Query("SELECT * FROM skill_scores WHERE personId = :personId AND processName = :processName LIMIT 1")
     suspend fun find(personId: Int, processName: String): SkillScore?
+
+    @Query("SELECT * FROM skill_scores WHERE personId = :personId ORDER BY id")
+    suspend fun getByPersonOnce(personId: Int): List<SkillScore>
 }

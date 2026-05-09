@@ -29,4 +29,7 @@ interface ProductProcessDao {
 
     @Query("DELETE FROM product_processes")
     suspend fun deleteAll()
+
+    @Query("SELECT * FROM product_processes WHERE productId = :productId ORDER BY sortOrder")
+    suspend fun getByProductOnce(productId: Int): List<ProductProcess>
 }

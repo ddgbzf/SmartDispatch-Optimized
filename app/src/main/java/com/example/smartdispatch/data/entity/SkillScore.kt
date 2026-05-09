@@ -16,5 +16,6 @@ data class SkillScore(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val personId: Int,
     val processName: String,
-    val score: Int = 0
+    val score: Int = 0,
+    val insertOrder: Int = 0
 )
