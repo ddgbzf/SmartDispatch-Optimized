@@ -457,6 +457,7 @@ fun ProcessFlowTab(viewModel: MainViewModel) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProductCard(product: Product, viewModel: MainViewModel) {
     var expanded by remember { mutableStateOf(false) }
