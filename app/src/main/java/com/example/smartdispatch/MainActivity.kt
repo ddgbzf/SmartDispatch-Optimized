@@ -434,12 +434,11 @@ fun ProcessFlowTab(viewModel: MainViewModel) {
     }
 }
 
-// ========== Tab 4: 智能排工（电子表格布局，和原表一样） ==========
+// ========== Tab 4: 智能排工（和原表一样布局） ==========
 @Composable
 fun DispatchTab(viewModel: MainViewModel) {
     val isLoading by viewModel.isLoading.collectAsState()
     val result by viewModel.dispatchResult.collectAsState()
-    val logs by viewModel.logs.collectAsState()
     val persons by viewModel.allPersons.collectAsState()
     val products by viewModel.allProducts.collectAsState()
     val repo = (LocalContext.current.applicationContext as DispatchApplication).repository
@@ -451,9 +450,8 @@ fun DispatchTab(viewModel: MainViewModel) {
         processMap = map
     }
 
-    // 型号名称输入框
+    // 型号名称输入框（在表格第一行）
     var searchName by remember { mutableStateOf("") }
-    // 根据搜索过滤产品
     val filteredProducts = if (searchName.isBlank()) products else products.filter { it.name.contains(searchName.trim(), ignoreCase = true) }
 
     // 按产品分组排工结果
@@ -465,17 +463,9 @@ fun DispatchTab(viewModel: MainViewModel) {
     val lazyListState = rememberLazyListState()
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // 顶部操作栏
+        // 顶部操作栏（只保留执行排工按钮和统计）
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            OutlinedTextField(
-                value = searchName,
-                onValueChange = { searchName = it },
-                label = { Text("型号名称", fontSize = 12.sp) },
-                singleLine = true,
-                modifier = Modifier.weight(1f),
-                placeholder = { Text("输入型号名称筛选", fontSize = 12.sp) }
-            )
-            Button(onClick = { viewModel.executeDispatch() }, enabled = !isLoading) {
+            Button(onClick = { viewModel.executeDispatch() }, modifier = Modifier.weight(1f), enabled = !isLoading) {
                 if (isLoading) { CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary) } else { Icon(Icons.Default.PlayArrow, null) }
                 Spacer(Modifier.width(6.dp)); Text("执行排工", fontSize = 14.sp)
             }
@@ -493,66 +483,102 @@ fun DispatchTab(viewModel: MainViewModel) {
 
         Divider()
 
-        // 电子表格布局
+        // 电子表格布局（和原表一样）
         Box(modifier = Modifier.fillMaxSize()) {
             // 固定请假人员列
             Column(modifier = Modifier.width(72.dp).fillMaxHeight().background(MaterialTheme.colorScheme.surface)) {
-                Box(modifier = Modifier.height(36.dp).width(72.dp).background(Color(0xFFBBDEFB)), contentAlignment = Alignment.Center) { Text("请假人员", fontWeight = FontWeight.Bold, fontSize = 11.sp) }
+                // 第一行：请假人员标题
+                Box(modifier = Modifier.height(40.dp).width(72.dp).background(Color(0xFFBBDEFB)), contentAlignment = Alignment.Center) { Text("请假人员", fontWeight = FontWeight.Bold, fontSize = 11.sp) }
                 LazyColumn(modifier = Modifier.fillMaxWidth(), state = lazyListState) {
                     val leavePeople = persons.filter { it.onLeave }
-                    items(leavePeople) { person ->
-                        Box(modifier = Modifier.height(40.dp).fillMaxWidth().border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) { Text(person.name, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                    items(leavePeople.size + 1) { rowIndex ->
+                        val person = leavePeople.getOrNull(rowIndex)
+                        Box(modifier = Modifier.height(40.dp).fillMaxWidth().border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
+                            if (person != null) {
+                                Text(person.name, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
+                        }
                     }
                 }
             }
             // 可横向滚动的产品列区域
             Row(modifier = Modifier.fillMaxSize().padding(start = 72.dp)) {
                 Column(modifier = Modifier.fillMaxSize()) {
-                    // 表头行（和数据行同步横向滚动）
+                    // 第一行：输入框 + 型号名称（每个型号占2列）
                     Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState).background(Color(0xFFBBDEFB))) {
+                        // 输入框占2列宽度
+                        OutlinedTextField(
+                            value = searchName,
+                            onValueChange = { searchName = it },
+                            label = { Text("输入型号名称", fontSize = 10.sp) },
+                            singleLine = true,
+                            modifier = Modifier.width(140.dp).height(40.dp).padding(2.dp),
+                            textStyle = androidx.compose.ui.text.TextStyle(fontSize = 11.sp)
+                        )
+                        // 每个产品型号占2列（工序名+人员名）
                         filteredProducts.forEach { product ->
-                            Box(modifier = Modifier.width(80.dp).height(36.dp), contentAlignment = Alignment.Center) { Text(product.name, fontWeight = FontWeight.Bold, fontSize = 10.sp, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis) }
+                            Box(modifier = Modifier.width(140.dp).height(40.dp), contentAlignment = Alignment.Center) {
+                                Text(product.name, fontWeight = FontWeight.Bold, fontSize = 10.sp, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            }
                         }
                         // 状态列
-                        Box(modifier = Modifier.width(72.dp).height(36.dp), contentAlignment = Alignment.Center) { Text("状态", fontWeight = FontWeight.Bold, fontSize = 11.sp) }
+                        Box(modifier = Modifier.width(72.dp).height(40.dp), contentAlignment = Alignment.Center) { Text("状态", fontWeight = FontWeight.Bold, fontSize = 11.sp) }
                     }
                     Divider()
-                    // 数据行（和表头同步横向滚动，和请假列同步垂直滚动）
+                    // 第二行：产能 + 人数（每个产品占2列）
+                    Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState)) {
+                        // 输入框对应的空列
+                        Box(modifier = Modifier.width(140.dp).height(36.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) { Text("", fontSize = 11.sp) }
+                        filteredProducts.forEach { product ->
+                            Row(modifier = Modifier.width(140.dp).height(36.dp)) {
+                                Box(modifier = Modifier.weight(1f).fillMaxHeight().border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) { Text(product.capacity.toString(), fontSize = 11.sp, color = Color(0xFF666666)) }
+                                Box(modifier = Modifier.weight(1f).fillMaxHeight().border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) { Text(product.requiredPeople.toString(), fontSize = 11.sp, color = Color(0xFF666666)) }
+                            }
+                        }
+                        // 状态列
+                        Box(modifier = Modifier.width(72.dp).height(36.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
+                            Text(result?.statusMessage ?: "", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = if ((result?.remainingCount ?: 0) >= 0) Color(0xFF2E7D32) else Color(0xFFC62828))
+                        }
+                    }
+                    Divider()
+                    // 数据行（工序名 + 人员名，每个产品占2列）
                     LazyColumn(modifier = Modifier.fillMaxSize(), state = lazyListState) {
-                        // 计算最大行数
-                        val maxRows = maxOf(
-                            filteredProducts.maxOfOrNull { product ->
-                                val processes = processMap[product.id] ?: emptyList()
-                                val assignments = groupedAssignments[product.name] ?: emptyList()
-                                maxOf(processes.size, assignments.size)
-                            } ?: 0,
-                            1
-                        )
+                        // 计算最大行数（包括请假人员行数）
+                        val leaveCount = persons.filter { it.onLeave }.size
+                        val maxProductRows = filteredProducts.maxOfOrNull { product ->
+                            val processes = processMap[product.id] ?: emptyList()
+                            val assignments = groupedAssignments[product.name] ?: emptyList()
+                            maxOf(processes.size, assignments.size)
+                        } ?: 0
+                        val maxRows = maxOf(maxProductRows, leaveCount, 1)
 
                         items(maxRows) { rowIndex ->
                             Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState)) {
+                                // 输入框对应的空列
+                                Box(modifier = Modifier.width(140.dp).height(40.dp).border(0.5.dp, Color(0xFFE0E0E0)))
+                                // 每个产品：工序名列 + 人员名列
                                 filteredProducts.forEach { product ->
                                     val processes = processMap[product.id] ?: emptyList()
                                     val assignments = groupedAssignments[product.name] ?: emptyList()
                                     val processName = processes.getOrNull(rowIndex)?.processName ?: ""
                                     val assignedPerson = assignments.getOrNull(rowIndex)?.assignedPerson ?: ""
 
-                                    Box(modifier = Modifier.width(80.dp).height(40.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
-                                        Column {
-                                            if (processName.isNotEmpty()) { Text(processName, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, color = Color(0xFF666666)) }
+                                    Row(modifier = Modifier.width(140.dp).height(40.dp)) {
+                                        // 工序名称列
+                                        Box(modifier = Modifier.weight(1f).fillMaxHeight().border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
+                                            if (processName.isNotEmpty()) { Text(processName, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, color = Color(0xFF666666)) }
+                                        }
+                                        // 人员姓名列
+                                        Box(modifier = Modifier.weight(1f).fillMaxHeight().border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
                                             if (assignedPerson.isNotEmpty()) { Text(assignedPerson, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = Color(0xFF1976D2)) }
                                         }
                                     }
                                 }
-                                // 状态列
+                                // 状态列：显示未分配人员
                                 Box(modifier = Modifier.width(72.dp).height(40.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
-                                    if (rowIndex == 0) {
-                                        Text(result?.statusMessage ?: "", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if ((result?.remainingCount ?: 0) >= 0) Color(0xFF2E7D32) else Color(0xFFC62828))
-                                    } else {
-                                        val unassigned = result?.unassignedPeople ?: emptyList()
-                                        val person = unassigned.getOrNull(rowIndex - 1)
-                                        if (person != null) { Text(person, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                                    }
+                                    val unassigned = result?.unassignedPeople ?: emptyList()
+                                    val person = unassigned.getOrNull(rowIndex)
+                                    if (person != null) { Text(person, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                                 }
                             }
                         }
