@@ -122,8 +122,40 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val engine = DispatchEngine()
                 val (success, error) = withContext(Dispatchers.IO) { engine.loadFromExcel(input) }
                 if (success) {
-                    addLog("✅ 导入成功")
-                    Toast.makeText(ctx, "导入成功", Toast.LENGTH_SHORT).show()
+                    // 将解析的数据写入数据库
+                    val data = engine.getParsedData()
+                    val repo = (ctx as DispatchApplication).repository
+                    withContext(Dispatchers.IO) {
+                        repo.clearAll()
+                        // 写入人员（含请假状态）
+                        for (name in data.people) {
+                            repo.addPerson(name)
+                        }
+                        // 设置请假状态
+                        val allP = repo.allPersons.first()
+                        for (person in allP) {
+                            if (person.name in data.leaveList) {
+                                repo.updatePerson(person.copy(onLeave = true))
+                            }
+                        }
+                        // 写入技能评分
+                        val updatedP = repo.allPersons.first()
+                        for (person in updatedP) {
+                            val scores = data.skillScores[person.name] ?: continue
+                            for ((processName, score) in scores) {
+                                repo.setSkillScore(person.id, processName, score)
+                            }
+                        }
+                        // 写入产品
+                        for ((name, product) in data.products) {
+                            val pid = repo.addProduct(name, product.capacity, product.requiredPeople)
+                            for ((offset, processName) in product.processes.withIndex()) {
+                                repo.addProcess(pid.toInt(), processName, offset)
+                            }
+                        }
+                    }
+                    addLog("✅ 导入成功: ${data.people.size}人, ${data.products.size}个产品")
+                    Toast.makeText(ctx, "导入成功: ${data.people.size}人, ${data.products.size}个产品", Toast.LENGTH_SHORT).show()
                 } else {
                     addLog("❌ $error")
                     Toast.makeText(ctx, error, Toast.LENGTH_LONG).show()
