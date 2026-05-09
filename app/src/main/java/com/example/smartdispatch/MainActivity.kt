@@ -21,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
@@ -463,27 +464,29 @@ fun DispatchTab(viewModel: MainViewModel) {
                     .graphicsLayer {
                         scaleX = scale
                         scaleY = scale
-                        transformOrigin = Offset.Zero
+                        transformOrigin = TransformOrigin(0f, 0f)
                     }
             ) {
                 // 第一行：请假人员标题 + 输入框
                 Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState).background(Color(0xFFBBDEFB))) {
                     Box(modifier = Modifier.width(72.dp).height(28.dp), contentAlignment = Alignment.Center) { Text("请假人员", fontWeight = FontWeight.Bold, fontSize = 10.sp) }
                     inputNames.forEachIndexed { index, name ->
-                        BasicTextField(
+                        OutlinedTextField(
                             value = name,
                             onValueChange = { inputNames = inputNames.toMutableList().apply { set(index, it) } },
-                            modifier = Modifier.width(140.dp).height(28.dp).padding(horizontal = 4.dp, vertical = 4.dp),
-                            textStyle = androidx.compose.ui.text.TextStyle(fontSize = 10.sp, color = Color.Black),
+                            label = { Text("型号${index + 1}", fontSize = 9.sp) },
                             singleLine = true,
-                            decorationBox = { innerTextField ->
-                                Box(contentAlignment = Alignment.CenterStart, modifier = Modifier.padding(start = 4.dp)) {
-                                    if (name.isEmpty()) {
-                                        Text("型号${index + 1}", fontSize = 10.sp, color = Color(0xFF999999))
-                                    }
-                                    innerTextField()
-                                }
-                            }
+                            modifier = Modifier.width(140.dp).height(28.dp),
+                            textStyle = androidx.compose.ui.text.TextStyle(fontSize = 10.sp, color = Color.Black),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = Color.Black,
+                                unfocusedTextColor = Color.Black,
+                                focusedLabelColor = Color(0xFF1565C0),
+                                unfocusedLabelColor = Color(0xFF999999),
+                                cursorColor = Color.Black,
+                                focusedBorderColor = Color(0xFF1565C0),
+                                unfocusedBorderColor = Color(0xFF90CAF9)
+                            )
                         )
                     }
                 }
