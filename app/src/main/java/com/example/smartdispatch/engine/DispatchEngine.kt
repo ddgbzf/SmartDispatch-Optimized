@@ -4,6 +4,7 @@ import android.util.Log
 import com.example.smartdispatch.model.*
 import org.apache.poi.ss.usermodel.*
 import org.apache.poi.xssf.usermodel.XSSFWorkbook
+import org.apache.poi.xssf.usermodel.XSSFColor
 import java.io.InputStream
 import java.io.OutputStream
 
@@ -60,7 +61,9 @@ class DispatchEngine {
         
         // 分配人员
         val assignments = mutableListOf<ProcessAssignment>()
-        for ((priority, productCol, rowIndex, processName, productName) in processQueue) {
+        for (item in processQueue) {
+            val (priority, productCol, inner) = item
+            val (rowIndex, processName, productName) = inner
             val person = assignPerson(processName, availablePeople)
             if (person != null) {
                 assignments.add(ProcessAssignment(
