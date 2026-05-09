@@ -83,6 +83,8 @@ class DispatchEngine {
         productInfo = products
         parsedProcessNames = processNames
         processPriority = processNames.withIndex().associate { it.value to it.index }
+        // 为数据库来源的数据自动构建 productColumnMap
+        productColumnMap = products.keys.withIndex().associate { (index, name) -> name to (index * 2 + 1) }
         // skillScores 从数据库加载时需要通过 setSkillScores 设置
         return executeDispatch()
     }
