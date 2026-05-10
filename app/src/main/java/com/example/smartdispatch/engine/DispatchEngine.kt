@@ -293,16 +293,13 @@ class DispatchEngine {
             // 固定产品优先级为负数，确保排在前面
             val fixedBonus = if (product.isFixed) -10000 else 0
             for ((offset, processName) in product.processes.withIndex()) {
-                val priority = (processPriority[processName] ?: Int.MAX_VALUE) + fixedBonus
+                // 使用产品工序表中的顺序（offset）作为优先级，而不是评分表顺序
+                val priority = offset + fixedBonus
                 val rowIndex = 3 + offset
-                // 记录工序名和优先级
-                if (debugLogs.size < 200) {
-                    debugLogs.add("工序: $processName, 优先级: ${processPriority[processName] ?: "无"}")
-                }
                 queue.add(ProcessQueueItem(priority, productCol, rowIndex, processName, productName))
             }
         }
-        // 排序规则：优先级 → 产品列号 → 行偏移（与py脚本一致）
+        // 排序规则：优先级（产品工序顺序） → 产品列号 → 行偏移
         return queue.sortedWith(compareBy({ it.priority }, { it.productCol }, { it.rowIndex }))
     }
 
