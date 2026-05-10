@@ -178,6 +178,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _scoreVersion.update { it + 1 }
     }
 
+    fun updateProcessName(productId: Int, processId: Int, newName: String) = viewModelScope.launch {
+        repo.updateProcess(ProductProcess(id = processId, productId = productId, processName = newName))
+    }
+
+    fun deleteProcess(process: ProductProcess) = viewModelScope.launch {
+        repo.deleteProcess(process)
+    }
+
+    fun addProcessToProduct(productId: Int, processName: String) = viewModelScope.launch {
+        // 获取当前最大排序号
+        val processes = repo.getProcessesOnce(productId)
+        repo.addProcess(productId, processName, processes.size)
+    }
+
     fun addProduct(name: String, capacity: Int, requiredPeople: Int) = viewModelScope.launch {
         repo.addProduct(name, capacity, requiredPeople)
     }
@@ -187,10 +201,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         repo.updateProduct(product.copy(isFixed = !product.isFixed))
     }
 
-    fun addProcessToProduct(productId: Int, processName: String) = viewModelScope.launch {
-        val processes = repo.getProcessesOnce(productId)
-        repo.addProcess(productId, processName, processes.size)
-    }
     fun deleteProcessFromProduct(process: ProductProcess) = viewModelScope.launch { repo.deleteProcess(process) }
     
     private suspend fun executeDispatchInternal(selectedProductNames: List<String>) {
@@ -293,6 +303,153 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    // 设置页面（全屏对话框）
+    if (showSettings) {
+        SettingsScreen(viewModel = viewModel, onDismiss = { showSettings = false })
+    }
+}
+
+// ========== 设置页面（搜索编辑工序流程） ==========
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
+    val products by viewModel.allProducts.collectAsState()
+    val repo = (LocalContext.current.applicationContext as DispatchApplication).repository
+    var searchText by remember { mutableStateOf("") }
+    var editingProduct by remember { mutableStateOf<Product?>(null) }
+    var editingProcesses by remember { mutableStateOf<List<ProductProcess>>(emptyList()) }
+
+    // 搜索过滤（输入2字符以上才过滤）
+    val filteredProducts = remember(searchText, products) {
+        if (searchText.length < 2) emptyList()
+        else products.filter { it.name.contains(searchText.trim(), ignoreCase = true) }.take(30)
+    }
+
+    // 编辑产品时加载工序
+    LaunchedEffect(editingProduct) {
+        if (editingProduct != null) {
+            editingProcesses = repo.getProcessesOnce(editingProduct!!.id)
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("设置", fontWeight = FontWeight.Bold) },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth().height(500.dp)) {
+                if (editingProduct != null) {
+                    // 编辑模式：显示产品名和工序列表
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = { editingProduct = null }) { Icon(Icons.Default.ArrowBack, null) }
+                        Text(editingProduct!!.name, fontWeight = FontWeight.Bold, fontSize = 14.sp, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    // 工序列表
+                    LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        items(editingProcesses.size) { index ->
+                            val process = editingProcesses[index]
+                            var editName by remember { mutableStateOf(process.processName) }
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                                Text("${index + 1}.", fontSize = 12.sp, color = Color(0xFF666666), modifier = Modifier.width(24.dp))
+                                OutlinedTextField(
+                                    value = editName,
+                                    onValueChange = { editName = it },
+                                    singleLine = true,
+                                    textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp),
+                                    modifier = Modifier.weight(1f).height(36.dp)
+                                )
+                                // 保存修改
+                                IconButton(onClick = {
+                                    viewModel.updateProcessName(editingProduct!!.id, process.id, editName.trim())
+                                    val newList = editingProcesses.toMutableList()
+                                    newList[index] = process.copy(processName = editName.trim())
+                                    editingProcesses = newList
+                                }, enabled = editName.trim() != process.processName && editName.isNotBlank()) {
+                                    Icon(Icons.Default.Check, null, tint = Color(0xFF2E7D32), modifier = Modifier.size(20.dp))
+                                }
+                                // 删除工序
+                                IconButton(onClick = {
+                                    viewModel.deleteProcess(process)
+                                    val newList = editingProcesses.toMutableList()
+                                    newList.removeAt(index)
+                                    editingProcesses = newList
+                                }) {
+                                    Icon(Icons.Default.Delete, null, tint = Color(0xFFC62828), modifier = Modifier.size(20.dp))
+                                }
+                            }
+                        }
+                        // 添加新工序
+                        item {
+                            var newProcessName by remember { mutableStateOf("") }
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                                Text("${editingProcesses.size + 1}.", fontSize = 12.sp, color = Color(0xFF666666), modifier = Modifier.width(24.dp))
+                                OutlinedTextField(
+                                    value = newProcessName,
+                                    onValueChange = { newProcessName = it },
+                                    singleLine = true,
+                                    placeholder = { Text("新工序名称", fontSize = 12.sp) },
+                                    textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp),
+                                    modifier = Modifier.weight(1f).height(36.dp)
+                                )
+                                IconButton(onClick = {
+                                    if (newProcessName.isNotBlank()) {
+                                        viewModel.addProcessToProduct(editingProduct!!.id, newProcessName.trim())
+                                        editingProcesses = editingProcesses + ProductProcess(productId = editingProduct!!.id, processName = newProcessName.trim(), sortOrder = editingProcesses.size)
+                                        newProcessName = ""
+                                    }
+                                }, enabled = newProcessName.isNotBlank()) {
+                                    Icon(Icons.Default.Add, null, tint = Color(0xFF1976D2), modifier = Modifier.size(20.dp))
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    // 搜索模式
+                    OutlinedTextField(
+                        value = searchText,
+                        onValueChange = { searchText = it },
+                        placeholder = { Text("输入型号名称搜索（至少2个字符）") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text("共${products.size}个产品，已过滤${filteredProducts.size}个", fontSize = 11.sp, color = Color(0xFF666666))
+                    Spacer(Modifier.height(4.dp))
+                    LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        if (searchText.length < 2) {
+                            item {
+                                Box(modifier = Modifier.fillMaxWidth().padding(vertical = 40.dp), contentAlignment = Alignment.Center) {
+                                    Text("请输入至少2个字符搜索", color = Color(0xFF999999))
+                                }
+                            }
+                        } else if (filteredProducts.isEmpty()) {
+                            item {
+                                Box(modifier = Modifier.fillMaxWidth().padding(vertical = 40.dp), contentAlignment = Alignment.Center) {
+                                    Text("未找到匹配的产品", color = Color(0xFF999999))
+                                }
+                            }
+                        } else {
+                            items(filteredProducts) { product ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().clickable { editingProduct = product }.padding(vertical = 6.dp, horizontal = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(product.name, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                        Text("产能:${product.capacity} 人数:${product.requiredPeople}${if (product.isFixed) " 🔒固定" else ""}", fontSize = 11.sp, color = Color(0xFF666666))
+                                    }
+                                    Icon(Icons.Default.Edit, null, tint = Color(0xFF1976D2), modifier = Modifier.size(18.dp))
+                                }
+                                Divider()
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("关闭") } }
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -300,6 +457,7 @@ class MainActivity : ComponentActivity() {
 fun MainScreen(viewModel: MainViewModel = viewModel()) {
     // 智能排工页为首页
     var selectedTab by remember { mutableIntStateOf(3) }
+    var showSettings by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
@@ -342,6 +500,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                     actions = {
                         IconButton(onClick = { filePicker.launch(arrayOf("*/*")) }) { Icon(Icons.Default.FileUpload, "导入") }
                         IconButton(onClick = { exportPicker.launch("排工结果_${System.currentTimeMillis()}.xlsx") }) { Icon(Icons.Default.FileDownload, "导出") }
+                        IconButton(onClick = { showSettings = true }) { Icon(Icons.Default.Settings, "设置") }
                     }
                 )
             }

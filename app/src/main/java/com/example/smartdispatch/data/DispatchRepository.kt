@@ -44,6 +44,7 @@ class DispatchRepository(
     suspend fun addProcess(productId: Int, processName: String, sortOrder: Int) {
         productProcessDao.insert(ProductProcess(productId = productId, processName = processName, sortOrder = sortOrder))
     }
+    suspend fun updateProcess(process: ProductProcess) = productProcessDao.update(process)
     suspend fun deleteProcess(process: ProductProcess) = productProcessDao.delete(process)
     suspend fun getProcesses(productId: Int): Flow<List<ProductProcess>> = productProcessDao.getByProduct(productId)
 
