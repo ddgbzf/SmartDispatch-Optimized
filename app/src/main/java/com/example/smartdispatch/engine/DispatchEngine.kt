@@ -284,7 +284,8 @@ class DispatchEngine {
             for ((offset, processName) in product.processes.withIndex()) {
                 val priority = (processPriority[processName] ?: Int.MAX_VALUE) + fixedBonus
                 val rowIndex = 3 + offset
-                queue.add(Triple(priority, productCol, Triple(rowIndex, processName, productName)))
+                val item: Triple<Int, Int, Triple<Int, String, String>> = Triple(priority, productCol, Triple(rowIndex, processName, productName))
+                queue.add(item)
             }
         }
         return queue.sortedBy { it.first }
