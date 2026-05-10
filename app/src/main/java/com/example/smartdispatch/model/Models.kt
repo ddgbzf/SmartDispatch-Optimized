@@ -7,7 +7,8 @@ data class Product(
     val name: String,
     val capacity: Int = 0,      // 产能
     val requiredPeople: Int = 0, // 需求人数
-    val processes: List<String> = emptyList() // 工序列表
+    val processes: List<String> = emptyList(), // 工序列表
+    val isFixed: Boolean = false  // 固定状态标记
 )
 
 /**

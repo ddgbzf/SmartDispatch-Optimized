@@ -276,11 +276,13 @@ class DispatchEngine {
     }
 
     private fun buildProcessQueue(): List<Triple<Int, Int, Triple<Int, String, String>>> {
-        val queue = mutableListOf<Triple<Int, Int, Triple<Int, String, String>>>()
+        val queue = mutableListOf<Triple<Int, Int, Triple<Int, String, String>>()
         for ((productName, product) in productInfo) {
             val productCol = productColumnMap[productName] ?: continue
+            // 固定产品优先级为负数，确保排在前面
+            val fixedBonus = if (product.isFixed) -10000 else 0
             for ((offset, processName) in product.processes.withIndex()) {
-                val priority = processPriority[processName] ?: Int.MAX_VALUE
+                val priority = (processPriority[processName] ?: Int.MAX_VALUE) + fixedBonus
                 val rowIndex = 3 + offset
                 queue.add(Triple(priority, productCol, Triple(rowIndex, processName, productName)))
             }

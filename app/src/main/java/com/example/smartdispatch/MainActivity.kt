@@ -111,6 +111,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     
+    // 缩放级别（用于智能排工页）
+    private val _zoomScale = MutableStateFlow(1.0f)
+    val zoomScale: StateFlow<Float> = _zoomScale.asStateFlow()
+    fun setZoomScale(scale: Float) { _zoomScale.value = scale.coerceIn(0.5f, 2.0f) }
+    fun zoomIn() { _zoomScale.value = (_zoomScale.value + 0.1f).coerceIn(0.5f, 2.0f) }
+    fun zoomOut() { _zoomScale.value = (_zoomScale.value - 0.1f).coerceIn(0.5f, 2.0f) }
+
     fun selectProduct(index: Int, productName: String) {
         updateInputName(index, productName)
         _focusedInputIndex.value = -1 // 关闭下拉列表
@@ -152,6 +159,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
     fun updateProduct(product: Product) = viewModelScope.launch { repo.updateProduct(product) }
     fun deleteProduct(product: Product) = viewModelScope.launch { repo.deleteProduct(product) }
+    fun toggleProductFixed(product: Product) = viewModelScope.launch { 
+        repo.updateProduct(product.copy(isFixed = !product.isFixed))
+    }
 
     fun addProcessToProduct(productId: Int, processName: String) = viewModelScope.launch {
         val processes = repo.getProcessesOnce(productId)
@@ -181,7 +191,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val processes = repo.getProcessesOnce(product.id)
                 productMap[product.name] = com.example.smartdispatch.model.Product(
                     product.name, product.capacity, product.requiredPeople,
-                    processes.map { it.processName }
+                    processes.map { it.processName }, product.isFixed
                 )
             }
             addLog("排工产品数: ${productMap.size}")
@@ -474,6 +484,7 @@ fun ProcessFlowTab(viewModel: MainViewModel) {
                     Box(modifier = Modifier.width(120.dp).height(28.dp), contentAlignment = Alignment.Center) { Text("型号名称", fontWeight = FontWeight.Bold, fontSize = 11.sp) }
                     Box(modifier = Modifier.width(60.dp).height(28.dp), contentAlignment = Alignment.Center) { Text("产能", fontWeight = FontWeight.Bold, fontSize = 11.sp) }
                     Box(modifier = Modifier.width(50.dp).height(28.dp), contentAlignment = Alignment.Center) { Text("人数", fontWeight = FontWeight.Bold, fontSize = 11.sp) }
+                    Box(modifier = Modifier.width(40.dp).height(28.dp), contentAlignment = Alignment.Center) { Text("固定", fontWeight = FontWeight.Bold, fontSize = 11.sp) }
                     repeat(maxProcesses) { i ->
                         Box(modifier = Modifier.width(72.dp).height(28.dp), contentAlignment = Alignment.Center) { Text("工序${i + 1}", fontWeight = FontWeight.Bold, fontSize = 10.sp) }
                     }
@@ -484,10 +495,22 @@ fun ProcessFlowTab(viewModel: MainViewModel) {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     items(products, key = { it.id }) { product ->
                         val processes = processMap[product.id] ?: emptyList()
-                        Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState)) {
+                        val rowBg = if (product.isFixed) Color(0xFFFFF9C4) else Color.Transparent  // 黄色背景
+                        Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState).background(rowBg)) {
                             Box(modifier = Modifier.width(120.dp).height(28.dp).border(0.5.dp, Color(0xFFE0E0E0)).padding(horizontal = 4.dp), contentAlignment = Alignment.CenterStart) { Text(product.name, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                             Box(modifier = Modifier.width(60.dp).height(28.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) { Text(product.capacity.toString(), fontSize = 11.sp) }
                             Box(modifier = Modifier.width(50.dp).height(28.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) { Text(product.requiredPeople.toString(), fontSize = 11.sp) }
+                            // 固定状态开关
+                            Box(modifier = Modifier.width(40.dp).height(28.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
+                                IconButton(onClick = { viewModel.toggleProductFixed(product) }, modifier = Modifier.size(24.dp)) {
+                                    Icon(
+                                        if (product.isFixed) Icons.Default.Star else Icons.Default.StarBorder,
+                                        contentDescription = "固定",
+                                        tint = if (product.isFixed) Color(0xFFFBC02D) else Color(0xFFBDBDBD),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
                             for (i in 0 until maxProcesses) {
                                 val pp = processes.getOrNull(i)
                                 Box(modifier = Modifier.width(72.dp).height(28.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
@@ -522,7 +545,7 @@ fun ProcessFlowTab(viewModel: MainViewModel) {
     }
 }
 
-// ========== Tab 4: 智能排工（自动排工，横屏优化） ==========
+// ========== Tab 4: 智能排工（自动排工，横屏优化，缩放功能） ==========
 @Composable
 fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
     val isLoading by viewModel.isLoading.collectAsState()
@@ -532,6 +555,7 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
     val inputNames by viewModel.inputNames.collectAsState()
     val focusedIndex by viewModel.focusedInputIndex.collectAsState()
     val matchedProducts by viewModel.matchedProducts.collectAsState()
+    val zoomScale by viewModel.zoomScale.collectAsState()
     val repo = (LocalContext.current.applicationContext as DispatchApplication).repository
 
     var processMap by remember { mutableStateOf<Map<Int, List<ProductProcess>>>(emptyMap()) }
@@ -555,22 +579,41 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
         viewModel.autoDispatch()
     }
 
-    // 根据横竖屏调整尺寸
-    val rowHeight = if (isLandscape) 20.dp else 22.dp
-    val colWidth = if (isLandscape) 45.dp else 50.dp
+    // 根据横竖屏和缩放级别调整尺寸
+    val baseRowHeight = if (isLandscape) 20.dp else 22.dp
+    val baseColWidth = if (isLandscape) 45.dp else 50.dp
+    val baseFontSize = if (isLandscape) 9.sp else 10.sp
+    
+    val rowHeight = (baseRowHeight.value * zoomScale).dp
+    val colWidth = (baseColWidth.value * zoomScale).dp
     val productWidth = colWidth * 2
-    val fontSize = if (isLandscape) 9.sp else 10.sp
+    val fontSize = (baseFontSize.value * zoomScale).sp
     val statFontSize = if (isLandscape) 11.sp else 14.sp
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // 竖屏时显示统计栏（横屏时在标题栏显示）
-        if (!isLandscape) {
-            result?.let { r ->
-                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
-                    StatItem("总人数", r.totalPeople.toString())
-                    StatItem("请假", r.leaveCount.toString(), Color(0xFFC62828))
-                    StatItem("已分配", r.assignedCount.toString(), Color(0xFF1976D2))
-                    StatItem(if (r.remainingCount >= 0) "剩余" else "欠缺", kotlin.math.abs(r.remainingCount).toString(), if (r.remainingCount >= 0) Color(0xFF2E7D32) else Color(0xFFC62828))
+        // 缩放控制栏
+        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            // 竖屏时显示统计栏（横屏时在标题栏显示）
+            if (!isLandscape) {
+                result?.let { r ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        StatItem("总人数", r.totalPeople.toString())
+                        StatItem("请假", r.leaveCount.toString(), Color(0xFFC62828))
+                        StatItem("已分配", r.assignedCount.toString(), Color(0xFF1976D2))
+                        StatItem(if (r.remainingCount >= 0) "剩余" else "欠缺", kotlin.math.abs(r.remainingCount).toString(), if (r.remainingCount >= 0) Color(0xFF2E7D32) else Color(0xFFC62828))
+                    }
+                }
+            } else {
+                Spacer(Modifier.weight(1f))
+            }
+            // 缩放按钮
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = { viewModel.zoomOut() }, modifier = Modifier.size(28.dp)) {
+                    Icon(Icons.Default.Remove, "缩小", modifier = Modifier.size(16.dp))
+                }
+                Text("${(zoomScale * 100).toInt()}%", fontSize = 10.sp, modifier = Modifier.padding(horizontal = 4.dp))
+                IconButton(onClick = { viewModel.zoomIn() }, modifier = Modifier.size(28.dp)) {
+                    Icon(Icons.Default.Add, "放大", modifier = Modifier.size(16.dp))
                 }
             }
         }
@@ -635,7 +678,9 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
                     }
                     inputNames.forEachIndexed { index, name ->
                         val product = if (name.isNotBlank()) products.find { it.name.contains(name.trim(), ignoreCase = true) } else null
-                        Row(modifier = Modifier.width(productWidth).height(rowHeight)) {
+                        // 固定产品显示黄色背景
+                        val cellBg = if (product?.isFixed == true) Color(0xFFFFF9C4) else Color.Transparent
+                        Row(modifier = Modifier.width(productWidth).height(rowHeight).background(cellBg)) {
                             Box(modifier = Modifier.weight(1f).fillMaxHeight().border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
                                 Text(product?.capacity?.toString() ?: "", fontSize = fontSize, color = Color(0xFF666666))
                             }
@@ -667,8 +712,10 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
                                 val assignments = if (product != null) (groupedAssignments[product.name] ?: emptyList()) else emptyList()
                                 val processName = processes.getOrNull(rowIndex)?.processName ?: ""
                                 val assignedPerson = assignments.getOrNull(rowIndex)?.assignedPerson ?: ""
+                                // 固定产品显示黄色背景
+                                val cellBg = if (product?.isFixed == true) Color(0xFFFFF9C4) else Color.Transparent
 
-                                Row(modifier = Modifier.width(productWidth).height(rowHeight)) {
+                                Row(modifier = Modifier.width(productWidth).height(rowHeight).background(cellBg)) {
                                     Box(modifier = Modifier.weight(1f).fillMaxHeight().border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
                                         if (processName.isNotEmpty()) Text(processName, fontSize = fontSize, maxLines = 1, overflow = TextOverflow.Ellipsis, color = Color(0xFF666666))
                                     }

@@ -8,5 +8,6 @@ data class Product(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val name: String,
     val capacity: Int = 0,
-    val requiredPeople: Int = 0
+    val requiredPeople: Int = 0,
+    val isFixed: Boolean = false  // 固定状态标记
 )
