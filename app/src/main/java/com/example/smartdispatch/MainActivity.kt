@@ -21,7 +21,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -44,7 +43,6 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.max
-import kotlin.math.min
 
 class DispatchApplication : Application() {
     val database by lazy { AppDatabase.getDatabase(this) }
@@ -727,15 +725,5 @@ fun StatItem(label: String, value: String, valueColor: Color = MaterialTheme.col
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(value, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = valueColor)
         Text(label, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-}
-
-@Composable
-fun StatItemRow(total: String, leave: String, assigned: String, remain: String, remainColor: Color) {
-    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(total, fontSize = 10.sp, color = Color(0xFF666666))
-        Text(leave, fontSize = 10.sp, color = Color(0xFFC62828))
-        Text(assigned, fontSize = 10.sp, color = Color(0xFF1976D2))
-        Text(remain, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = remainColor)
     }
 }
