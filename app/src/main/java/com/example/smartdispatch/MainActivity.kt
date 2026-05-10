@@ -325,7 +325,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                     }
                 }
             } else {
-                NavigationBar {
+                NavigationBar(modifier = Modifier.height(48.dp)) {
                     listOf("请假人员", "工序评分", "工序流程", "智能排工").forEachIndexed { index, title ->
                         NavigationBarItem(
                             icon = { when (index) { 0 -> Icon(Icons.Default.PersonOff, null); 1 -> Icon(Icons.Default.Star, null); 2 -> Icon(Icons.Default.AccountTree, null); else -> Icon(Icons.Default.PlayArrow, null) } },
@@ -354,6 +354,8 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
 fun LeaveTab(viewModel: MainViewModel) {
     val persons by viewModel.allPersons.collectAsState()
     val showAddDialog = remember { mutableStateOf(false) }
+    val showDeleteConfirm = remember { mutableStateOf(false) }
+    var deletingPerson by remember { mutableStateOf<Person?>(null) }
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
             Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
@@ -374,7 +376,7 @@ fun LeaveTab(viewModel: MainViewModel) {
                         Text(if (person.onLeave) "请假中" else "在岗", fontSize = 12.sp, color = if (person.onLeave) Color(0xFFC62828) else Color(0xFF2E7D32))
                         Spacer(Modifier.width(8.dp))
                         IconButton(onClick = { viewModel.toggleLeave(person) }, modifier = Modifier.size(32.dp)) { Icon(if (person.onLeave) Icons.Default.CheckCircle else Icons.Default.RemoveCircle, null, tint = if (person.onLeave) Color(0xFF2E7D32) else Color(0xFFC62828), modifier = Modifier.size(20.dp)) }
-                        IconButton(onClick = { viewModel.deletePerson(person) }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Delete, null, tint = Color(0xFFC62828), modifier = Modifier.size(20.dp)) }
+                        IconButton(onClick = { deletingPerson = person; showDeleteConfirm.value = true }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Delete, null, tint = Color(0xFFC62828), modifier = Modifier.size(20.dp)) }
                     }
                     Divider(modifier = Modifier.padding(horizontal = 8.dp))
                 }
@@ -385,6 +387,9 @@ fun LeaveTab(viewModel: MainViewModel) {
     if (showAddDialog.value) {
         var name by remember { mutableStateOf("") }
         AlertDialog(onDismissRequest = { showAddDialog.value = false }, title = { Text("添加人员") }, text = { OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("姓名") }, singleLine = true, modifier = Modifier.fillMaxWidth()) }, confirmButton = { TextButton(onClick = { if (name.isNotBlank()) { viewModel.addPerson(name.trim()); showAddDialog.value = false } }, enabled = name.isNotBlank()) { Text("确定") } }, dismissButton = { TextButton(onClick = { showAddDialog.value = false }) { Text("取消") } })
+        if (showDeleteConfirm.value && deletingPerson != null) {
+            AlertDialog(onDismissRequest = { showDeleteConfirm.value = false }, title = { Text("确认删除") }, text = { Text("确定要删除「${deletingPerson!!.name}」吗？") }, confirmButton = { TextButton(onClick = { viewModel.deletePerson(deletingPerson!!); showDeleteConfirm.value = false }) { Text("删除", color = Color(0xFFC62828)) } }, dismissButton = { TextButton(onClick = { showDeleteConfirm.value = false }) { Text("取消") } })
+        }
     }
 }
 
@@ -466,6 +471,8 @@ fun ProcessFlowTab(viewModel: MainViewModel) {
     val repo = (LocalContext.current.applicationContext as DispatchApplication).repository
     val showAddProductDialog = remember { mutableStateOf(false) }
     val showAddProcessDialog = remember { mutableStateOf(false) }
+    val showDeleteProductConfirm = remember { mutableStateOf(false) }
+    var deletingProduct by remember { mutableStateOf<Product?>(null) }
 
     var processMap by remember { mutableStateOf<Map<Int, List<ProductProcess>>>(emptyMap()) }
     LaunchedEffect(products) {
@@ -526,7 +533,7 @@ fun ProcessFlowTab(viewModel: MainViewModel) {
                                     }
                                 }
                                 Box(modifier = Modifier.width(48.dp).height(28.dp), contentAlignment = Alignment.Center) {
-                                    IconButton(onClick = { viewModel.deleteProduct(product) }, modifier = Modifier.size(24.dp)) { Icon(Icons.Default.Delete, null, tint = Color(0xFFC62828), modifier = Modifier.size(14.dp)) }
+                                    IconButton(onClick = { deletingProduct = product; showDeleteProductConfirm.value = true }, modifier = Modifier.size(24.dp)) { Icon(Icons.Default.Delete, null, tint = Color(0xFFC62828), modifier = Modifier.size(14.dp)) }
                                 }
                             }
                         }
@@ -551,6 +558,9 @@ fun ProcessFlowTab(viewModel: MainViewModel) {
         var processName by remember { mutableStateOf("") }
         var selectedProduct by remember { mutableStateOf(products.firstOrNull()?.name ?: "") }
         AlertDialog(onDismissRequest = { showAddProcessDialog.value = false }, title = { Text("添加工序") }, text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { OutlinedTextField(value = selectedProduct, onValueChange = { selectedProduct = it }, label = { Text("产品") }, singleLine = true, readOnly = true, modifier = Modifier.fillMaxWidth().clickable { }); OutlinedTextField(value = processName, onValueChange = { processName = it }, label = { Text("工序名称") }, singleLine = true, modifier = Modifier.fillMaxWidth()) } }, confirmButton = { TextButton(onClick = { val p = products.find { it.name == selectedProduct }; if (p != null && processName.isNotBlank()) { viewModel.addProcessToProduct(p.id, processName.trim()); showAddProcessDialog.value = false } }, enabled = processName.isNotBlank()) { Text("确定") } }, dismissButton = { TextButton(onClick = { showAddProcessDialog.value = false }) { Text("取消") } })
+    }
+    if (showDeleteProductConfirm.value && deletingProduct != null) {
+        AlertDialog(onDismissRequest = { showDeleteProductConfirm.value = false }, title = { Text("确认删除") }, text = { Text("确定要删除「${deletingProduct!!.name}」及其所有工序吗？") }, confirmButton = { TextButton(onClick = { viewModel.deleteProduct(deletingProduct!!); showDeleteProductConfirm.value = false }) { Text("删除", color = Color(0xFFC62828)) } }, dismissButton = { TextButton(onClick = { showDeleteProductConfirm.value = false }) { Text("取消") } })
     }
 }
 
@@ -602,9 +612,9 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
         viewModel.autoDispatch()
     }
 
-    // 根据横竖屏调整尺寸（增大字体和行高）
-    val rowHeight = if (isLandscape) 24.dp else 28.dp
-    val colWidth = if (isLandscape) 52.dp else 56.dp
+    // 根据横竖屏调整尺寸
+    val rowHeight = if (isLandscape) 20.dp else 22.dp
+    val colWidth = if (isLandscape) 45.dp else 50.dp
     val productWidth = colWidth * 2
     val fontSize = if (isLandscape) 11.sp else 12.sp
 
