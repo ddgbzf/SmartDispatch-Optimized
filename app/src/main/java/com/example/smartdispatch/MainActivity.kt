@@ -623,6 +623,21 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
             LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
         }
 
+        // 调试日志区域（表格上方，不会被输入法遮挡）
+        val debugLogs = result?.debugLogs ?: emptyList()
+        if (debugLogs.isNotEmpty()) {
+            Column(modifier = Modifier.fillMaxWidth().height(if (isLandscape) 40.dp else 60.dp).background(Color(0xFFF5F5F5)).padding(2.dp)) {
+                Text("📋 调试日志（共${debugLogs.size}条）", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFF666666))
+                LazyRow(modifier = Modifier.fillMaxSize()) {
+                    items(debugLogs.size) { index ->
+                        val log = debugLogs[index]
+                        val logColor = if (log.startsWith("→")) Color(0xFF1565C0) else Color(0xFF666666)
+                        Text(log, fontSize = 8.sp, color = logColor, modifier = Modifier.padding(horizontal = 4.dp), maxLines = 1)
+                    }
+                }
+            }
+        }
+
         // 表格区域
         Box(modifier = Modifier.fillMaxSize()) {
             Column(modifier = Modifier.fillMaxSize()) {
@@ -746,20 +761,6 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
                                     }
                                 }
                             }
-                        }
-                    }
-
-                    // 调试日志（在表格最后，可滚动查看）
-                    val debugLogs = result?.debugLogs ?: emptyList()
-                    if (debugLogs.isNotEmpty()) {
-                        item {
-                            Divider()
-                            Text("📋 调试日志", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF666666), modifier = Modifier.padding(4.dp))
-                        }
-                        items(debugLogs.size) { index ->
-                            val log = debugLogs[index]
-                            val logColor = if (log.startsWith("→")) Color(0xFF1565C0) else Color(0xFF666666)
-                            Text(log, fontSize = 8.sp, color = logColor, modifier = Modifier.padding(horizontal = 4.dp), maxLines = 1)
                         }
                     }
                 }
