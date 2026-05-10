@@ -751,6 +751,19 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
                 }
             }
         }
+        // 调试日志区域
+        val debugLogs = result?.debugLogs ?: emptyList()
+        if (debugLogs.isNotEmpty()) {
+            Divider()
+            Column(modifier = Modifier.fillMaxWidth().height(120.dp).padding(4.dp)) {
+                Text("调试日志:", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF666666))
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    items(debugLogs.size) { index ->
+                        Text(debugLogs[index], fontSize = 9.sp, color = Color(0xFF666666), maxLines = 1)
+                    }
+                }
+            }
+        }
     }
 }
 

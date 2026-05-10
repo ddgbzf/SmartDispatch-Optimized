@@ -36,6 +36,7 @@ class DispatchEngine {
     private var assignedPeople: MutableSet<String> = mutableSetOf()
     private var productColumnMap: Map<String, Int> = emptyMap()
     private var parsedProcessNames: List<String> = emptyList()
+    private val debugLogs = mutableListOf<String>()  // 调试日志
 
     fun loadFromExcel(inputStream: InputStream): Pair<Boolean, String?> {
         return try {
@@ -104,6 +105,7 @@ class DispatchEngine {
 
     fun executeDispatch(): DispatchResult {
         assignedPeople.clear()
+        debugLogs.clear()  // 清空历史日志
         val processQueue = buildProcessQueue()
         Log.d("DispatchEngine", "工序队列大小: ${processQueue.size}, 产品数: ${productInfo.size}, 评分人数: ${skillScores.size}")
 
@@ -138,7 +140,8 @@ class DispatchEngine {
             assignedCount = assignedCount,
             remainingCount = remaining,
             unassignedPeople = unassigned,
-            statusMessage = if (remaining >= 0) "剩余${remaining}人" else "欠缺${-remaining}人"
+            statusMessage = if (remaining >= 0) "剩余${remaining}人" else "欠缺${-remaining}人",
+            debugLogs = debugLogs.toList()  // 返回调试日志
         )
     }
 
@@ -302,14 +305,19 @@ class DispatchEngine {
             .filter { it !in assignedPeople }
             .mapNotNull { person ->
                 val score = skillScores[person]?.get(processName) ?: 0
-                // 调试日志：记录评分查询结果
-                Log.d("DispatchEngine", "评分查询: $person / $processName = $score")
+                // 记录到调试日志（限制数量避免过多）
+                if (debugLogs.size < 200) {
+                    debugLogs.add("$person / $processName = $score")
+                }
                 if (score > 0) person to score else null
             }
             .sortedByDescending { it.second }
 
         val bestPerson = candidates.firstOrNull()?.first
-        Log.d("DispatchEngine", "工序[$processName] 候选人: ${candidates.size}人, 选中: ${bestPerson ?: "无"}")
+        // 记录选中结果
+        if (debugLogs.size < 200) {
+            debugLogs.add("→ [$processName] 候选${candidates.size}人, 选中:${bestPerson ?: "无"}")
+        }
         if (bestPerson != null) assignedPeople.add(bestPerson)
         return bestPerson
     }

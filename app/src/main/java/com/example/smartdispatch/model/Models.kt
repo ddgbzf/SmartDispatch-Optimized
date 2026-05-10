@@ -32,7 +32,8 @@ data class DispatchResult(
     val assignedCount: Int,
     val remainingCount: Int,
     val unassignedPeople: List<String>,
-    val statusMessage: String
+    val statusMessage: String,
+    val debugLogs: List<String> = emptyList()  // 调试日志
 )
 
 /**
