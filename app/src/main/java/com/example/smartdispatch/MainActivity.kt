@@ -24,6 +24,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -93,9 +94,28 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
     
     fun updateInputName(index: Int, value: String) {
-        val newList = _inputNames.value.toMutableList().apply { set(index, value) }
+        val oldList = _inputNames.value
+        val oldValue = oldList.getOrNull(index) ?: ""
+        val newList = oldList.toMutableList().apply { set(index, value) }
         saveInputNames(newList)
         _inputNames.value = newList
+        
+        // 检查是否需要自动排工
+        viewModelScope.launch {
+            if (value.isBlank()) {
+                // 清空时重新排工（移除该产品）
+                autoDispatch()
+            } else {
+                // 检查是否匹配到唯一产品
+                val products = allProducts.first()
+                val matches = products.filter { it.name.contains(value.trim(), ignoreCase = true) }
+                if (matches.size == 1) {
+                    // 匹配到唯一产品，自动排工
+                    autoDispatch()
+                }
+                // 多个匹配时不操作（保留之前结果）
+            }
+        }
     }
     
     // 当前正在编辑的输入框索引
@@ -765,9 +785,9 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
 
                     items(maxRows) { rowIndex ->
                         Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState)) {
-                            Box(modifier = Modifier.width(60.dp).height(rowHeight).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
+                            Box(modifier = Modifier.width(60.dp).height(rowHeight).border(0.5.dp, Color(0xFFE0E0E0)).background(Color(0xFFFFCDD2)), contentAlignment = Alignment.Center) {
                                 val person = leavePeople.getOrNull(rowIndex + 1)
-                                if (person != null) Text(person.name, fontSize = fontSize)
+                                if (person != null) Text(person.name, fontSize = fontSize, fontWeight = FontWeight.Medium, color = Color(0xFFC62828))
                             }
                             inputNames.forEachIndexed { index, name ->
                                 val product = if (name.isNotBlank()) products.find { it.name.contains(name.trim(), ignoreCase = true) } else null
@@ -777,15 +797,15 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
                                 // 按 rowIndex 匹配分配人员（rowIndex = 3 + 工序偏移）
                                 val currentRowIndex = rowIndex + 3
                                 val assignedPerson = assignments.find { it.rowIndex == currentRowIndex }?.assignedPerson ?: ""
-                                // 固定产品显示黄色背景
-                                val cellBg = if (product?.isFixed == true) Color(0xFFFFF9C4) else Color.Transparent
+                                // 固定产品显示深黄色背景
+                                val cellBg = if (product?.isFixed == true) Color(0xFFFFD54F) else Color.Transparent
 
                                 Row(modifier = Modifier.width(productWidth).height(rowHeight).background(cellBg)) {
                                     Box(modifier = Modifier.weight(1f).fillMaxHeight().border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
-                                        if (processName.isNotEmpty()) Text(processName, fontSize = fontSize, maxLines = 1, overflow = TextOverflow.Ellipsis, color = Color(0xFF666666))
+                                        if (processName.isNotEmpty()) Text(processName, fontSize = fontSize, maxLines = 1, overflow = TextOverflow.Ellipsis, color = Color(0xFF424242))
                                     }
-                                    Box(modifier = Modifier.weight(1f).fillMaxHeight().border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
-                                        if (assignedPerson.isNotEmpty()) Text(assignedPerson, fontSize = fontSize, fontWeight = FontWeight.Medium, color = Color(0xFF1976D2))
+                                    Box(modifier = Modifier.weight(1f).fillMaxHeight().border(0.5.dp, Color(0xFFE0E0E0)).background(Color(0xFF1976D2)), contentAlignment = Alignment.Center) {
+                                        if (assignedPerson.isNotEmpty()) Text(assignedPerson, fontSize = fontSize, fontWeight = FontWeight.Bold, color = Color.White)
                                     }
                                 }
                             }
@@ -798,12 +818,12 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
                         item {
                             Divider()
                             Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState)) {
-                                Box(modifier = Modifier.width(60.dp).height(rowHeight).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
-                                    Text("未分", fontSize = fontSize, fontWeight = FontWeight.Bold, color = Color(0xFFC62828))
+                                Box(modifier = Modifier.width(60.dp).height(rowHeight).border(0.5.dp, Color(0xFFE0E0E0)).background(Color(0xFFFFE0B2)), contentAlignment = Alignment.Center) {
+                                    Text("未分", fontSize = fontSize, fontWeight = FontWeight.Bold, color = Color(0xFFE65100))
                                 }
                                 unassigned.forEach { person ->
                                     Box(modifier = Modifier.width(60.dp).height(rowHeight).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
-                                        Text(person, fontSize = fontSize, color = Color(0xFFE65100))
+                                        Text(person, fontSize = fontSize, color = Color(0xFF757575), fontStyle = FontStyle.Italic)
                                     }
                                 }
                             }
