@@ -34,6 +34,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.smartdispatch.data.AppDatabase
 import com.example.smartdispatch.data.DispatchRepository
+import com.example.smartdispatch.data.UserPreferences
 import com.example.smartdispatch.data.entity.*
 import com.example.smartdispatch.engine.DispatchEngine
 import com.example.smartdispatch.model.DispatchResult
@@ -51,10 +52,12 @@ class DispatchApplication : Application() {
         database.personDao(), database.skillScoreDao(),
         database.productDao(), database.productProcessDao(), database.assignmentDao()
     )}
+    val userPreferences by lazy { UserPreferences(this) }
 }
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val repo = (application as DispatchApplication).repository
+    private val userPrefs = (application as DispatchApplication).userPreferences
     private val prefs = application.getSharedPreferences("dispatch_state", Context.MODE_PRIVATE)
     
     val allPersons = repo.allPersons.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
@@ -63,6 +66,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val allProcessNames = repo.allProcessNames.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     val allProducts = repo.allProducts.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     val allAssignments = repo.allAssignments.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+    val recentProducts = userPrefs.recentProducts.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     private val _logs = MutableStateFlow(listOf<String>())
     val logs: StateFlow<List<String>> = _logs.asStateFlow()
@@ -100,13 +104,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun setFocusedInput(index: Int) { _focusedInputIndex.value = index }
     fun clearFocus() { _focusedInputIndex.value = -1 }
     
-    // 匹配的型号名称列表（用于自动完成，输入2字符以上才显示）
-    val matchedProducts: StateFlow<List<String>> = combine(_inputNames, _focusedInputIndex, allProducts) { names, focusIndex, products ->
+    // 匹配的型号名称列表（用于自动完成，输入2字符以上才显示，按最近使用排序）
+    val matchedProducts: StateFlow<List<String>> = combine(_inputNames, _focusedInputIndex, allProducts, recentProducts) { names, focusIndex, products, recent ->
         if (focusIndex < 0 || focusIndex >= names.size) emptyList()
         else {
             val text = names[focusIndex].trim()
             if (text.length < 2) emptyList()
-            else products.filter { it.name.contains(text, ignoreCase = true) }.map { it.name }.take(10)
+            else {
+                val matched = products.filter { it.name.contains(text, ignoreCase = true) }.map { it.name }
+                // 按最近使用排序：最近使用的排在前面
+                matched.sortedBy { productName ->
+                    val recentIndex = recent.indexOf(productName)
+                    if (recentIndex >= 0) recentIndex else Int.MAX_VALUE
+                }.take(10)
+            }
         }
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     
@@ -206,6 +217,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
             _dispatchResult.value = result
             addLog("✅ 排工完成！分配${result.assignedCount}人, ${result.statusMessage}")
+            // 保存最近使用的产品
+            selectedProductNames.forEach { name ->
+                userPrefs.addRecentProduct(name)
+            }
         } catch (e: Exception) { addLog("❌ 错误: ${e.message}") }
         _isLoading.value = false
     }
