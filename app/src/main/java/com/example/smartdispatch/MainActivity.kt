@@ -129,7 +129,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun autoDispatch() {
         viewModelScope.launch {
             val names = _inputNames.value.mapNotNull { name ->
-                if (name.isNotBlank()) allProducts.first().find { it.name.contains(name.trim(), ignoreCase = true) }?.name
+                if (name.isNotBlank()) {
+                    allProducts.first().find { it.name.contains(name.trim(), ignoreCase = true) }?.name
+                } else {
+                    null
+                }
             }.distinct()
             if (names.isNotEmpty()) {
                 executeDispatchInternal(names)
