@@ -16,6 +16,15 @@ data class ParsedData(
     val products: Map<String, Product>
 )
 
+// 用于工序队列的数据类，避免复杂的泛型嵌套
+private data class ProcessQueueItem(
+    val priority: Int,
+    val productCol: Int,
+    val rowIndex: Int,
+    val processName: String,
+    val productName: String
+)
+
 class DispatchEngine {
 
     private var allPeople: List<String> = emptyList()
@@ -100,18 +109,15 @@ class DispatchEngine {
 
         val assignments = mutableListOf<ProcessAssignment>()
         for (item in processQueue) {
-            val (priority, productCol, inner) = item
-            val (rowIndex, processName, productName) = inner
-            // 每次分配前重新计算可用人员（和py脚本一致）
             val currentAvailable = allPeople.filter { it !in leaveList && it !in assignedPeople }
-            val person = assignPerson(processName, currentAvailable)
+            val person = assignPerson(item.processName, currentAvailable)
             if (person != null) {
                 assignments.add(ProcessAssignment(
-                    productName = productName,
-                    processName = processName,
+                    productName = item.productName,
+                    processName = item.processName,
                     assignedPerson = person,
-                    rowIndex = rowIndex,
-                    columnIndex = productCol + 1
+                    rowIndex = item.rowIndex,
+                    columnIndex = item.productCol + 1
                 ))
             }
         }
@@ -275,8 +281,8 @@ class DispatchEngine {
         fixedPositions = fixed
     }
 
-    private fun buildProcessQueue(): List<Triple<Int, Int, Triple<Int, String, String>>> {
-        val queue = mutableListOf<Triple<Int, Int, Triple<Int, String, String>>()
+    private fun buildProcessQueue(): List<ProcessQueueItem> {
+        val queue = mutableListOf<ProcessQueueItem>()
         for ((productName, product) in productInfo) {
             val productCol = productColumnMap[productName] ?: continue
             // 固定产品优先级为负数，确保排在前面
@@ -284,11 +290,10 @@ class DispatchEngine {
             for ((offset, processName) in product.processes.withIndex()) {
                 val priority = (processPriority[processName] ?: Int.MAX_VALUE) + fixedBonus
                 val rowIndex = 3 + offset
-                val item: Triple<Int, Int, Triple<Int, String, String>> = Triple(priority, productCol, Triple(rowIndex, processName, productName))
-                queue.add(item)
+                queue.add(ProcessQueueItem(priority, productCol, rowIndex, processName, productName))
             }
         }
-        return queue.sortedBy { it.first }
+        return queue.sortedBy { it.priority }
     }
 
     private fun assignPerson(processName: String, availablePeople: List<String>): String? {
