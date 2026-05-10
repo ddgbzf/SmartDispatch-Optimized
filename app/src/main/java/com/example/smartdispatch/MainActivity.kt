@@ -298,7 +298,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                         IconButton(onClick = { filePicker.launch(arrayOf("*/*")) }) { Icon(Icons.Default.FileUpload, "导入", modifier = Modifier.size(20.dp)) }
                         IconButton(onClick = { exportPicker.launch("排工结果_${System.currentTimeMillis()}.xlsx") }) { Icon(Icons.Default.FileDownload, "导出", modifier = Modifier.size(20.dp)) }
                     },
-                    modifier = Modifier.height(36.dp)
+                    modifier = Modifier.height(32.dp)
                 )
             } else {
                 TopAppBar(
@@ -314,7 +314,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
         bottomBar = {
             // 横屏时压缩底部导航
             if (isLandscape) {
-                NavigationBar(modifier = Modifier.height(40.dp)) {
+                NavigationBar(modifier = Modifier.height(36.dp)) {
                     listOf("请假", "评分", "流程", "排工").forEachIndexed { index, title ->
                         NavigationBarItem(
                             icon = { when (index) { 0 -> Icon(Icons.Default.PersonOff, null, modifier = Modifier.size(18.dp)); 1 -> Icon(Icons.Default.Star, null, modifier = Modifier.size(18.dp)); 2 -> Icon(Icons.Default.AccountTree, null, modifier = Modifier.size(18.dp)); else -> Icon(Icons.Default.PlayArrow, null, modifier = Modifier.size(18.dp)) } },

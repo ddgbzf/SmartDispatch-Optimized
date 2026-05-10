@@ -106,7 +106,9 @@ class DispatchEngine {
     fun executeDispatch(): DispatchResult {
         assignedPeople.clear()
         debugLogs.clear()  // 清空历史日志
+        debugLogs.add("=== 排工开始 ===")
         val processQueue = buildProcessQueue()
+        debugLogs.add("队列: ${processQueue.size}工序, ${productInfo.size}产品, ${skillScores.size}评分")
         Log.d("DispatchEngine", "工序队列大小: ${processQueue.size}, 产品数: ${productInfo.size}, 评分人数: ${skillScores.size}")
 
         val assignments = mutableListOf<ProcessAssignment>()
