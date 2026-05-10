@@ -30,7 +30,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.unit.Dp
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -581,12 +580,12 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
     }
 
     // 根据横竖屏和缩放级别调整尺寸
-    val baseRowHeight = if (isLandscape) 20f else 22f
-    val baseColWidth = if (isLandscape) 45f else 50f
-    val baseFontSize = if (isLandscape) 9f else 10f
+    val baseRowHeight = if (isLandscape) 20 else 22
+    val baseColWidth = if (isLandscape) 45 else 50
+    val baseFontSize = if (isLandscape) 9 else 10
     
-    val rowHeight = Dp(baseRowHeight * zoomScale)
-    val colWidth = Dp(baseColWidth * zoomScale)
+    val rowHeight = (baseRowHeight * zoomScale).dp
+    val colWidth = (baseColWidth * zoomScale).dp
     val productWidth = colWidth * 2
     val fontSize = (baseFontSize * zoomScale).sp
     val statFontSize = if (isLandscape) 11.sp else 14.sp
