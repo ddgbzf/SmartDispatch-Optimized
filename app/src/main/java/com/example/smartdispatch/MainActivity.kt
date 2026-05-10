@@ -37,6 +37,7 @@ import com.example.smartdispatch.data.DispatchRepository
 import com.example.smartdispatch.data.entity.*
 import com.example.smartdispatch.engine.DispatchEngine
 import com.example.smartdispatch.model.DispatchResult
+import com.example.smartdispatch.model.ProcessAssignment
 import com.example.smartdispatch.ui.theme.智能排工Theme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
@@ -579,7 +580,7 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
 
     // 按输入框索引匹配分配结果（支持相同型号多实例）
     val assignmentsByIndex = remember(result, inputNames) {
-        if (result == null) return@remember emptyMap<Int, List<ProcessAssignment>>()
+        val r = result ?: return@remember emptyMap<Int, List<ProcessAssignment>>()
         val map = mutableMapOf<Int, List<ProcessAssignment>>()
         val nameCount = mutableMapOf<String, Int>()
         for ((index, name) in inputNames.withIndex()) {
@@ -588,7 +589,7 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
             val count = nameCount.getOrDefault(cleanName, 0)
             nameCount[cleanName] = count + 1
             val uniqueKey = "${cleanName}@$count"
-            map[index] = result.assignments.filter { it.productName == uniqueKey }
+            map[index] = r.assignments.filter { it.productName == uniqueKey }
         }
         map
     }
