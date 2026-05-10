@@ -748,18 +748,19 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
                             }
                         }
                     }
-                }
-            }
-        }
-        // 调试日志区域
-        val debugLogs = result?.debugLogs ?: emptyList()
-        if (debugLogs.isNotEmpty()) {
-            Divider()
-            Column(modifier = Modifier.fillMaxWidth().height(120.dp).padding(4.dp)) {
-                Text("调试日志:", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF666666))
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    items(debugLogs.size) { index ->
-                        Text(debugLogs[index], fontSize = 9.sp, color = Color(0xFF666666), maxLines = 1)
+
+                    // 调试日志（在表格最后，可滚动查看）
+                    val debugLogs = result?.debugLogs ?: emptyList()
+                    if (debugLogs.isNotEmpty()) {
+                        item {
+                            Divider()
+                            Text("📋 调试日志", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF666666), modifier = Modifier.padding(4.dp))
+                        }
+                        items(debugLogs.size) { index ->
+                            val log = debugLogs[index]
+                            val logColor = if (log.startsWith("→")) Color(0xFF1565C0) else Color(0xFF666666)
+                            Text(log, fontSize = 8.sp, color = logColor, modifier = Modifier.padding(horizontal = 4.dp), maxLines = 1)
+                        }
                     }
                 }
             }
