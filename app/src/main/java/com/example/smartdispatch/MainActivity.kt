@@ -589,8 +589,8 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
             val count = nameCount.getOrDefault(cleanName, 0)
             nameCount[cleanName] = count + 1
             val uniqueKey = "${cleanName}@$count"
-            // 按 rowIndex 排序，确保和工序列表顺序一致
-            map[index] = r.assignments.filter { it.productName == uniqueKey }.sortedBy { it.rowIndex }
+            // 按 rowIndex 匹配分配人员
+            map[index] = r.assignments.filter { it.productName == uniqueKey }
         }
         map
     }
@@ -731,7 +731,9 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
                                 val processes = if (product != null) (processMap[product.id] ?: emptyList()) else emptyList()
                                 val assignments = assignmentsByIndex[index] ?: emptyList()
                                 val processName = processes.getOrNull(rowIndex)?.processName ?: ""
-                                val assignedPerson = assignments.getOrNull(rowIndex)?.assignedPerson ?: ""
+                                // 按 rowIndex 匹配分配人员（rowIndex = 3 + 工序偏移）
+                                val currentRowIndex = rowIndex + 3
+                                val assignedPerson = assignments.find { it.rowIndex == currentRowIndex }?.assignedPerson ?: ""
                                 // 固定产品显示黄色背景
                                 val cellBg = if (product?.isFixed == true) Color(0xFFFFF9C4) else Color.Transparent
 
