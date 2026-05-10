@@ -127,13 +127,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // 自动执行排工（当输入框变化时调用）
     fun autoDispatch() {
         viewModelScope.launch {
+            // 保留重复的型号名称，支持同一型号多实例（如两条产线）
             val names = _inputNames.value.mapNotNull { name ->
                 if (name.isNotBlank()) {
                     allProducts.first().find { it.name.contains(name.trim(), ignoreCase = true) }?.name
                 } else {
                     null
                 }
-            }.distinct()
+            }
             if (names.isNotEmpty()) {
                 executeDispatchInternal(names)
             }
@@ -171,19 +172,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val peopleNames = persons.map { it.name }
             val leaveNames = persons.filter { it.onLeave }.map { it.name }
 
-            val targetProducts = if (selectedProductNames.isNotEmpty()) {
-                allProductsList.filter { it.name in selectedProductNames }
-            } else {
-                allProductsList
-            }
-
+            // 用带索引的key区分相同名称的产品实例（如 "G32705@0", "G32705@1"）
             val productMap = mutableMapOf<String, com.example.smartdispatch.model.Product>()
-            for (product in targetProducts) {
-                val processes = repo.getProcessesOnce(product.id)
-                productMap[product.name] = com.example.smartdispatch.model.Product(
-                    product.name, product.capacity, product.requiredPeople,
-                    processes.map { it.processName }, product.isFixed
-                )
+            val nameCount = mutableMapOf<String, Int>()
+            for (name in selectedProductNames) {
+                val product = allProductsList.find { it.name == name }
+                if (product != null) {
+                    val count = nameCount.getOrDefault(name, 0)
+                    val uniqueKey = "${name}@$count"
+                    nameCount[name] = count + 1
+                    val processes = repo.getProcessesOnce(product.id)
+                    productMap[uniqueKey] = com.example.smartdispatch.model.Product(
+                        name, product.capacity, product.requiredPeople,
+                        processes.map { it.processName }, product.isFixed
+                    )
+                }
             }
             addLog("排工产品数: ${productMap.size}")
 
@@ -574,7 +577,21 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
         else products.find { it.name.contains(name.trim(), ignoreCase = true) }
     }
 
-    val groupedAssignments = result?.assignments?.groupBy { it.productName } ?: emptyMap()
+    // 按输入框索引匹配分配结果（支持相同型号多实例）
+    val assignmentsByIndex = remember(result, inputNames) {
+        if (result == null) return@remember emptyMap<Int, List<ProcessAssignment>>()
+        val map = mutableMapOf<Int, List<ProcessAssignment>>()
+        val nameCount = mutableMapOf<String, Int>()
+        for ((index, name) in inputNames.withIndex()) {
+            if (name.isBlank()) continue
+            val cleanName = products.find { it.name.contains(name.trim(), ignoreCase = true) }?.name ?: continue
+            val count = nameCount.getOrDefault(cleanName, 0)
+            nameCount[cleanName] = count + 1
+            val uniqueKey = "${cleanName}@$count"
+            map[index] = result.assignments.filter { it.productName == uniqueKey }
+        }
+        map
+    }
     val scrollState = rememberScrollState()
     val leavePeople = persons.filter { it.onLeave }
 
@@ -677,9 +694,11 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
                 Divider()
                 // 数据行
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    val maxProductRows = selectedProducts.maxOfOrNull { product ->
-                        val processes = processMap[product.id] ?: emptyList()
-                        val assignments = groupedAssignments[product.name] ?: emptyList()
+                    val maxProductRows = inputNames.indices.maxOfOrNull { index ->
+                        val name = inputNames[index]
+                        val product = if (name.isNotBlank()) products.find { it.name.contains(name.trim(), ignoreCase = true) } else null
+                        val processes = if (product != null) (processMap[product.id] ?: emptyList()) else emptyList()
+                        val assignments = assignmentsByIndex[index] ?: emptyList()
                         maxOf(processes.size, assignments.size)
                     } ?: 0
                     val maxRows = maxOf(maxProductRows, max(leavePeople.size - 1, 0), 1)
@@ -693,7 +712,7 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
                             inputNames.forEachIndexed { index, name ->
                                 val product = if (name.isNotBlank()) products.find { it.name.contains(name.trim(), ignoreCase = true) } else null
                                 val processes = if (product != null) (processMap[product.id] ?: emptyList()) else emptyList()
-                                val assignments = if (product != null) (groupedAssignments[product.name] ?: emptyList()) else emptyList()
+                                val assignments = assignmentsByIndex[index] ?: emptyList()
                                 val processName = processes.getOrNull(rowIndex)?.processName ?: ""
                                 val assignedPerson = assignments.getOrNull(rowIndex)?.assignedPerson ?: ""
                                 // 固定产品显示黄色背景
