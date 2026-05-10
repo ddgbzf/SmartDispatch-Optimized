@@ -283,13 +283,13 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                             // 统计信息并入标题栏
                             val result by viewModel.dispatchResult.collectAsState()
                             result?.let { r ->
-                                Text("总${r.totalPeople}", fontSize = 11.sp, color = Color(0xFF666666))
+                                Text("总${r.totalPeople}", fontSize = 12.sp, color = Color(0xFF666666))
                                 Spacer(Modifier.width(4.dp))
-                                Text("假${r.leaveCount}", fontSize = 11.sp, color = Color(0xFFC62828))
+                                Text("假${r.leaveCount}", fontSize = 12.sp, color = Color(0xFFC62828))
                                 Spacer(Modifier.width(4.dp))
-                                Text("分${r.assignedCount}", fontSize = 11.sp, color = Color(0xFF1976D2))
+                                Text("分${r.assignedCount}", fontSize = 12.sp, color = Color(0xFF1976D2))
                                 Spacer(Modifier.width(4.dp))
-                                Text(if (r.remainingCount >= 0) "余${r.remainingCount}" else "缺${-r.remainingCount}", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (r.remainingCount >= 0) Color(0xFF2E7D32) else Color(0xFFC62828))
+                                Text(if (r.remainingCount >= 0) "余${r.remainingCount}" else "缺${-r.remainingCount}", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (r.remainingCount >= 0) Color(0xFF2E7D32) else Color(0xFFC62828))
                             }
                         }
                     },
@@ -424,11 +424,11 @@ fun SkillScoreTab(viewModel: MainViewModel) {
             // 固定左上角"姓名"单元格 + 可滚动的工序表头
             Row(modifier = Modifier.fillMaxWidth()) {
                 Box(modifier = Modifier.width(72.dp).height(28.dp).background(MaterialTheme.colorScheme.primaryContainer), contentAlignment = Alignment.Center) {
-                    Text("姓名", fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                    Text("姓名", fontWeight = FontWeight.Bold, fontSize = 13.sp)
                 }
                 Row(modifier = Modifier.weight(1f).horizontalScroll(scrollState).background(MaterialTheme.colorScheme.primaryContainer)) {
                     processNames.forEach { process ->
-                        Box(modifier = Modifier.width(64.dp).height(28.dp), contentAlignment = Alignment.Center) { Text(process, fontWeight = FontWeight.Bold, fontSize = 10.sp, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                        Box(modifier = Modifier.width(64.dp).height(28.dp), contentAlignment = Alignment.Center) { Text(process, fontWeight = FontWeight.Bold, fontSize = 12.sp, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                     }
                 }
             }
@@ -437,13 +437,13 @@ fun SkillScoreTab(viewModel: MainViewModel) {
             LazyColumn(modifier = Modifier.fillMaxSize()) {
                 items(persons, key = { it.id }) { person ->
                     Row(modifier = Modifier.fillMaxWidth()) {
-                        Box(modifier = Modifier.width(72.dp).height(28.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) { Text(person.name, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                        Box(modifier = Modifier.width(72.dp).height(28.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) { Text(person.name, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                         Row(modifier = Modifier.weight(1f).horizontalScroll(scrollState)) {
                             processNames.forEach { process ->
                                 val score = scoreMap[Pair(person.id, process)] ?: 0
                                 val bgColor = when { score >= 7 -> Color(0xFFE8F5E9); score >= 4 -> Color(0xFFFFFFF3); score > 0 -> Color(0xFFFFF3E0); else -> Color(0xFFFAFAFA) }
                                 Box(modifier = Modifier.width(64.dp).height(28.dp).background(bgColor).border(0.5.dp, Color(0xFFE0E0E0)).clickable { editingPerson = person; editingProcess = process; currentScore = score.toString(); showEditDialog.value = true }, contentAlignment = Alignment.Center) {
-                                    Text(if (score > 0) score.toString() else "", fontSize = 11.sp, fontWeight = FontWeight.Medium, color = if (score >= 7) Color(0xFF2E7D32) else if (score > 0) Color(0xFFF57F17) else Color(0xFFBDBDBD))
+                                    Text(if (score > 0) score.toString() else "", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = if (score >= 7) Color(0xFF2E7D32) else if (score > 0) Color(0xFFF57F17) else Color(0xFFBDBDBD))
                                 }
                             }
                         }
@@ -486,13 +486,13 @@ fun ProcessFlowTab(viewModel: MainViewModel) {
             Column(modifier = Modifier.fillMaxSize()) {
                 // 固定左上角"型号名称"单元格 + 可滚动的表头
                 Row(modifier = Modifier.fillMaxWidth()) {
-                    Box(modifier = Modifier.width(120.dp).height(28.dp).background(MaterialTheme.colorScheme.primaryContainer), contentAlignment = Alignment.Center) { Text("型号名称", fontWeight = FontWeight.Bold, fontSize = 11.sp) }
+                    Box(modifier = Modifier.width(120.dp).height(28.dp).background(MaterialTheme.colorScheme.primaryContainer), contentAlignment = Alignment.Center) { Text("型号名称", fontWeight = FontWeight.Bold, fontSize = 13.sp) }
                     Row(modifier = Modifier.weight(1f).horizontalScroll(scrollState).background(MaterialTheme.colorScheme.primaryContainer)) {
-                        Box(modifier = Modifier.width(60.dp).height(28.dp), contentAlignment = Alignment.Center) { Text("产能", fontWeight = FontWeight.Bold, fontSize = 11.sp) }
-                        Box(modifier = Modifier.width(50.dp).height(28.dp), contentAlignment = Alignment.Center) { Text("人数", fontWeight = FontWeight.Bold, fontSize = 11.sp) }
-                        Box(modifier = Modifier.width(40.dp).height(28.dp), contentAlignment = Alignment.Center) { Text("固定", fontWeight = FontWeight.Bold, fontSize = 11.sp) }
+                        Box(modifier = Modifier.width(60.dp).height(28.dp), contentAlignment = Alignment.Center) { Text("产能", fontWeight = FontWeight.Bold, fontSize = 13.sp) }
+                        Box(modifier = Modifier.width(50.dp).height(28.dp), contentAlignment = Alignment.Center) { Text("人数", fontWeight = FontWeight.Bold, fontSize = 13.sp) }
+                        Box(modifier = Modifier.width(40.dp).height(28.dp), contentAlignment = Alignment.Center) { Text("固定", fontWeight = FontWeight.Bold, fontSize = 13.sp) }
                         repeat(maxProcesses) { i ->
-                            Box(modifier = Modifier.width(72.dp).height(28.dp), contentAlignment = Alignment.Center) { Text("工序${i + 1}", fontWeight = FontWeight.Bold, fontSize = 10.sp) }
+                            Box(modifier = Modifier.width(72.dp).height(28.dp), contentAlignment = Alignment.Center) { Text("工序${i + 1}", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
                         }
                         Box(modifier = Modifier.width(48.dp).height(28.dp)) {}
                     }
@@ -504,10 +504,10 @@ fun ProcessFlowTab(viewModel: MainViewModel) {
                         val processes = processMap[product.id] ?: emptyList()
                         val rowBg = if (product.isFixed) Color(0xFFFFF9C4) else Color.Transparent
                         Row(modifier = Modifier.fillMaxWidth()) {
-                            Box(modifier = Modifier.width(120.dp).height(28.dp).border(0.5.dp, Color(0xFFE0E0E0)).padding(horizontal = 4.dp).background(rowBg), contentAlignment = Alignment.CenterStart) { Text(product.name, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                            Box(modifier = Modifier.width(120.dp).height(28.dp).border(0.5.dp, Color(0xFFE0E0E0)).padding(horizontal = 4.dp).background(rowBg), contentAlignment = Alignment.CenterStart) { Text(product.name, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                             Row(modifier = Modifier.weight(1f).horizontalScroll(scrollState).background(rowBg)) {
-                                Box(modifier = Modifier.width(60.dp).height(28.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) { Text(product.capacity.toString(), fontSize = 11.sp) }
-                                Box(modifier = Modifier.width(50.dp).height(28.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) { Text(product.requiredPeople.toString(), fontSize = 11.sp) }
+                                Box(modifier = Modifier.width(60.dp).height(28.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) { Text(product.capacity.toString(), fontSize = 13.sp) }
+                                Box(modifier = Modifier.width(50.dp).height(28.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) { Text(product.requiredPeople.toString(), fontSize = 13.sp) }
                                 // 固定状态开关
                                 Box(modifier = Modifier.width(40.dp).height(28.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
                                     IconButton(onClick = { viewModel.toggleProductFixed(product) }, modifier = Modifier.size(24.dp)) {
@@ -522,7 +522,7 @@ fun ProcessFlowTab(viewModel: MainViewModel) {
                                 for (i in 0 until maxProcesses) {
                                     val pp = processes.getOrNull(i)
                                     Box(modifier = Modifier.width(72.dp).height(28.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
-                                        if (pp != null) { Text(pp.processName, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                                        if (pp != null) { Text(pp.processName, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                                     }
                                 }
                                 Box(modifier = Modifier.width(48.dp).height(28.dp), contentAlignment = Alignment.Center) {
@@ -602,11 +602,11 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
         viewModel.autoDispatch()
     }
 
-    // 根据横竖屏调整尺寸（固定值）
-    val rowHeight = if (isLandscape) 20.dp else 22.dp
-    val colWidth = if (isLandscape) 45.dp else 50.dp
+    // 根据横竖屏调整尺寸（增大字体和行高）
+    val rowHeight = if (isLandscape) 24.dp else 28.dp
+    val colWidth = if (isLandscape) 52.dp else 56.dp
     val productWidth = colWidth * 2
-    val fontSize = if (isLandscape) 9.sp else 10.sp
+    val fontSize = if (isLandscape) 11.sp else 12.sp
 
     Column(modifier = Modifier.fillMaxSize()) {
         // 竖屏时显示统计栏（横屏时在标题栏显示）
@@ -776,6 +776,6 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
 fun StatItem(label: String, value: String, valueColor: Color = MaterialTheme.colorScheme.primary) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(value, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = valueColor)
-        Text(label, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(label, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
