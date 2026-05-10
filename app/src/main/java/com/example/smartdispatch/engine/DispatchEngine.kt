@@ -302,11 +302,14 @@ class DispatchEngine {
             .filter { it !in assignedPeople }
             .mapNotNull { person ->
                 val score = skillScores[person]?.get(processName) ?: 0
+                // 调试日志：记录评分查询结果
+                Log.d("DispatchEngine", "评分查询: $person / $processName = $score")
                 if (score > 0) person to score else null
             }
             .sortedByDescending { it.second }
 
         val bestPerson = candidates.firstOrNull()?.first
+        Log.d("DispatchEngine", "工序[$processName] 候选人: ${candidates.size}人, 选中: ${bestPerson ?: "无"}")
         if (bestPerson != null) assignedPeople.add(bestPerson)
         return bestPerson
     }
