@@ -589,7 +589,8 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
             val count = nameCount.getOrDefault(cleanName, 0)
             nameCount[cleanName] = count + 1
             val uniqueKey = "${cleanName}@$count"
-            map[index] = r.assignments.filter { it.productName == uniqueKey }
+            // 按 rowIndex 排序，确保和工序列表顺序一致
+            map[index] = r.assignments.filter { it.productName == uniqueKey }.sortedBy { it.rowIndex }
         }
         map
     }

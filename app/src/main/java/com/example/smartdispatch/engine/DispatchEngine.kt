@@ -295,6 +295,10 @@ class DispatchEngine {
             for ((offset, processName) in product.processes.withIndex()) {
                 val priority = (processPriority[processName] ?: Int.MAX_VALUE) + fixedBonus
                 val rowIndex = 3 + offset
+                // 记录工序名和优先级
+                if (debugLogs.size < 200) {
+                    debugLogs.add("工序: $processName, 优先级: ${processPriority[processName] ?: "无"}")
+                }
                 queue.add(ProcessQueueItem(priority, productCol, rowIndex, processName, productName))
             }
         }
