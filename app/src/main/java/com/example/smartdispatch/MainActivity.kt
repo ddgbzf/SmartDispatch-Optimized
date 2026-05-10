@@ -89,11 +89,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
     
     fun updateInputName(index: Int, value: String) {
-        _inputNames.update { 
-            val newList = it.toMutableList().apply { set(index, value) }
-            saveInputNames(newList)
-            newList
-        }
+        val newList = _inputNames.value.toMutableList().apply { set(index, value) }
+        saveInputNames(newList)
+        _inputNames.value = newList
     }
     
     // 当前正在编辑的输入框索引
@@ -505,7 +503,7 @@ fun DispatchTab(viewModel: MainViewModel) {
         // 极限压缩统计栏（无按钮）
         result?.let { r ->
             Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp, vertical = 0.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
-                StatItem("总${r.totalPeople}", "请假${r.leaveCount}", "分${r.assignedCount}", if (r.remainingCount >= 0) "余${r.remainingCount}" else "缺${-r.remainingCount}", if (r.remainingCount >= 0) Color(0xFF2E7D32) else Color(0xFFC62828))
+                StatItemRow("总${r.totalPeople}", "请假${r.leaveCount}", "分${r.assignedCount}", if (r.remainingCount >= 0) "余${r.remainingCount}" else "缺${-r.remainingCount}", if (r.remainingCount >= 0) Color(0xFF2E7D32) else Color(0xFFC62828))
             }
         }
         if (isLoading) {
@@ -639,7 +637,15 @@ fun DispatchTab(viewModel: MainViewModel) {
 }
 
 @Composable
-fun StatItem(total: String, leave: String, assigned: String, remain: String, remainColor: Color) {
+fun StatItem(label: String, value: String, valueColor: Color = MaterialTheme.colorScheme.primary) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(value, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = valueColor)
+        Text(label, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+fun StatItemRow(total: String, leave: String, assigned: String, remain: String, remainColor: Color) {
     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(total, fontSize = 10.sp, color = Color(0xFF666666))
         Text(leave, fontSize = 10.sp, color = Color(0xFFC62828))
