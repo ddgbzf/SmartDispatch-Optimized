@@ -303,11 +303,6 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-
-    // 设置页面（全屏对话框）
-    if (showSettings) {
-        SettingsScreen(viewModel = viewModel, onDismiss = { showSettings = false })
-    }
 }
 
 // ========== 设置页面（搜索编辑工序流程） ==========
@@ -539,6 +534,11 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                 2 -> ProcessFlowTab(viewModel)
                 3 -> DispatchTab(viewModel, isLandscape)
             }
+        }
+
+        // 设置页面（全屏对话框）
+        if (showSettings) {
+            SettingsScreen(viewModel = viewModel, onDismiss = { showSettings = false })
         }
     }
 }
