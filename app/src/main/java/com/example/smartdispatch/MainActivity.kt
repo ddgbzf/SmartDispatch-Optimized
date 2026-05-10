@@ -126,12 +126,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun deletePerson(person: Person) = viewModelScope.launch { repo.deletePerson(person) }
     
     // 自动执行排工（当输入框变化时调用）
-    fun autoDispatch() = viewModelScope.launch {
-        val names = _inputNames.value.mapNotNull { name ->
-            if (name.isNotBlank()) allProducts.first().find { it.name.contains(name.trim(), ignoreCase = true) }?.name
-        }.distinct()
-        if (names.isNotEmpty()) {
-            executeDispatch(names)
+    fun autoDispatch() {
+        viewModelScope.launch {
+            val names = _inputNames.value.mapNotNull { name ->
+                if (name.isNotBlank()) allProducts.first().find { it.name.contains(name.trim(), ignoreCase = true) }?.name
+            }.distinct()
+            if (names.isNotEmpty()) {
+                executeDispatchInternal(names)
+            }
         }
     }
 
@@ -151,8 +153,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         repo.addProcess(productId, processName, processes.size)
     }
     fun deleteProcessFromProduct(process: ProductProcess) = viewModelScope.launch { repo.deleteProcess(process) }
-
-    fun executeDispatch(selectedProductNames: List<String> = emptyList()) = viewModelScope.launch {
+    
+    private suspend fun executeDispatchInternal(selectedProductNames: List<String>) {
         _isLoading.value = true
         addLog("开始排工...")
         try {
@@ -163,7 +165,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val peopleNames = persons.map { it.name }
             val leaveNames = persons.filter { it.onLeave }.map { it.name }
 
-            // 只对选中的产品排工（如果为空则排所有产品）
             val targetProducts = if (selectedProductNames.isNotEmpty()) {
                 allProductsList.filter { it.name in selectedProductNames }
             } else {
@@ -197,6 +198,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             addLog("✅ 排工完成！分配${result.assignedCount}人, ${result.statusMessage}")
         } catch (e: Exception) { addLog("❌ 错误: ${e.message}") }
         _isLoading.value = false
+    }
+
+    fun executeDispatch(selectedProductNames: List<String> = emptyList()) = viewModelScope.launch {
+        executeDispatchInternal(selectedProductNames)
     }
 
     fun importFromExcel(uri: Uri) = viewModelScope.launch {
