@@ -314,6 +314,8 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
     var searchText by remember { mutableStateOf("") }
     var editingProduct by remember { mutableStateOf<Product?>(null) }
     var editingProcesses by remember { mutableStateOf<List<ProductProcess>>(emptyList()) }
+    var showDeleteProcessConfirm by remember { mutableStateOf(false) }
+    var deletingProcess by remember { mutableStateOf<ProductProcess?>(null) }
 
     // 搜索过滤（输入2字符以上才过滤）
     val filteredProducts = remember(searchText, products) {
@@ -363,12 +365,10 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                                 }, enabled = editName.trim() != process.processName && editName.isNotBlank()) {
                                     Icon(Icons.Default.Check, null, tint = Color(0xFF2E7D32), modifier = Modifier.size(20.dp))
                                 }
-                                // 删除工序
+                                // 删除工序（二次确认）
                                 IconButton(onClick = {
-                                    viewModel.deleteProcess(process)
-                                    val newList = editingProcesses.toMutableList()
-                                    newList.removeAt(index)
-                                    editingProcesses = newList
+                                    deletingProcess = process
+                                    showDeleteProcessConfirm = true
                                 }) {
                                     Icon(Icons.Default.Delete, null, tint = Color(0xFFC62828), modifier = Modifier.size(20.dp))
                                 }
@@ -445,6 +445,22 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("关闭") } }
     )
+    // 删除工序确认对话框
+    if (showDeleteProcessConfirm && deletingProcess != null) {
+        AlertDialog(
+            onDismissRequest = { showDeleteProcessConfirm = false },
+            title = { Text("确认删除") },
+            text = { Text("确定要删除工序「${deletingProcess!!.processName}」吗？") },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.deleteProcess(deletingProcess!!)
+                    editingProcesses = editingProcesses - deletingProcess!!
+                    showDeleteProcessConfirm = false
+                }) { Text("删除", color = Color(0xFFC62828)) }
+            },
+            dismissButton = { TextButton(onClick = { showDeleteProcessConfirm = false }) { Text("取消") } }
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -485,6 +501,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                     actions = {
                         IconButton(onClick = { filePicker.launch(arrayOf("*/*")) }) { Icon(Icons.Default.FileUpload, "导入", modifier = Modifier.size(20.dp)) }
                         IconButton(onClick = { exportPicker.launch("排工结果_${System.currentTimeMillis()}.xlsx") }) { Icon(Icons.Default.FileDownload, "导出", modifier = Modifier.size(20.dp)) }
+                        IconButton(onClick = { showSettings = true }) { Icon(Icons.Default.Settings, "设置", modifier = Modifier.size(20.dp)) }
                     },
                     modifier = Modifier.height(32.dp)
                 )
@@ -503,7 +520,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
         bottomBar = {
             // 横屏时压缩底部导航
             if (isLandscape) {
-                NavigationBar(modifier = Modifier.height(36.dp)) {
+                NavigationBar(modifier = Modifier.height(48.dp)) {
                     listOf("请假", "评分", "流程", "排工").forEachIndexed { index, title ->
                         NavigationBarItem(
                             icon = { when (index) { 0 -> Icon(Icons.Default.PersonOff, null, modifier = Modifier.size(18.dp)); 1 -> Icon(Icons.Default.Star, null, modifier = Modifier.size(18.dp)); 2 -> Icon(Icons.Default.AccountTree, null, modifier = Modifier.size(18.dp)); else -> Icon(Icons.Default.PlayArrow, null, modifier = Modifier.size(18.dp)) } },
@@ -819,10 +836,8 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
     val scrollState = rememberScrollState()
     val leavePeople = persons.filter { it.onLeave }
 
-    // 输入变化时自动执行排工
-    LaunchedEffect(inputNames) {
-        viewModel.autoDispatch()
-    }
+    // 输入变化时自动执行排工（由 updateInputName 中的唯一匹配逻辑触发，这里不再重复触发）
+    // LaunchedEffect(inputNames) { viewModel.autoDispatch() }
 
     // 根据横竖屏调整尺寸
     val rowHeight = if (isLandscape) 20.dp else 22.dp

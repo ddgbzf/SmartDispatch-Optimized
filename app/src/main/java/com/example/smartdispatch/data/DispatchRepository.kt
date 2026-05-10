@@ -20,9 +20,6 @@ class DispatchRepository(
     val allAssignments: Flow<List<Assignment>> = assignmentDao.getAll()
 
     suspend fun addPerson(name: String, employeeId: String = "") = personDao.insert(Person(name = name, employeeId = employeeId))
-    suspend fun setPersonLeave(personId: Int, onLeave: Boolean) {
-        val person = personDao.findByName("") // need to get by id
-    }
     suspend fun updatePerson(person: Person) = personDao.update(person)
     suspend fun deletePerson(person: Person) = personDao.delete(person)
 
