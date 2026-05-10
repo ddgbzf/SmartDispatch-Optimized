@@ -294,7 +294,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                         IconButton(onClick = { filePicker.launch(arrayOf("*/*")) }) { Icon(Icons.Default.FileUpload, "导入", modifier = Modifier.size(20.dp)) }
                         IconButton(onClick = { exportPicker.launch("排工结果_${System.currentTimeMillis()}.xlsx") }) { Icon(Icons.Default.FileDownload, "导出", modifier = Modifier.size(20.dp)) }
                     },
-                    modifier = Modifier.height(40.dp)
+                    modifier = Modifier.height(36.dp)
                 )
             } else {
                 TopAppBar(
@@ -310,7 +310,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
         bottomBar = {
             // 横屏时压缩底部导航
             if (isLandscape) {
-                NavigationBar(modifier = Modifier.height(44.dp)) {
+                NavigationBar(modifier = Modifier.height(40.dp)) {
                     listOf("请假", "评分", "流程", "排工").forEachIndexed { index, title ->
                         NavigationBarItem(
                             icon = { when (index) { 0 -> Icon(Icons.Default.PersonOff, null, modifier = Modifier.size(18.dp)); 1 -> Icon(Icons.Default.Star, null, modifier = Modifier.size(18.dp)); 2 -> Icon(Icons.Default.AccountTree, null, modifier = Modifier.size(18.dp)); else -> Icon(Icons.Default.PlayArrow, null, modifier = Modifier.size(18.dp)) } },
@@ -345,7 +345,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
     }
 }
 
-// ========== Tab 1: 请假人员 ==========
+// ========== Tab 1: 请假人员（紧凑单行布局） ==========
 @Composable
 fun LeaveTab(viewModel: MainViewModel) {
     val persons by viewModel.allPersons.collectAsState()
@@ -360,18 +360,19 @@ fun LeaveTab(viewModel: MainViewModel) {
             Divider()
             LazyColumn(modifier = Modifier.fillMaxSize()) {
                 items(persons, key = { it.id }) { person ->
-                    ListItem(
-                        headlineContent = { Text(person.name) },
-                        supportingContent = { Text(if (person.onLeave) "请假中" else "在岗") },
-                        leadingContent = { Icon(if (person.onLeave) Icons.Default.PersonOff else Icons.Default.Person, null, tint = if (person.onLeave) Color(0xFFC62828) else Color(0xFF2E7D32)) },
-                        trailingContent = {
-                            Row {
-                                IconButton(onClick = { viewModel.toggleLeave(person) }) { Icon(if (person.onLeave) Icons.Default.CheckCircle else Icons.Default.RemoveCircle, null, tint = if (person.onLeave) Color(0xFF2E7D32) else Color(0xFFC62828)) }
-                                IconButton(onClick = { viewModel.deletePerson(person) }) { Icon(Icons.Default.Delete, null, tint = Color(0xFFC62828)) }
-                            }
-                        }
-                    )
-                    Divider(modifier = Modifier.padding(horizontal = 16.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth().height(36.dp).padding(horizontal = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(if (person.onLeave) Icons.Default.PersonOff else Icons.Default.Person, null, tint = if (person.onLeave) Color(0xFFC62828) else Color(0xFF2E7D32), modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(person.name, fontSize = 14.sp, modifier = Modifier.weight(1f))
+                        Text(if (person.onLeave) "请假中" else "在岗", fontSize = 12.sp, color = if (person.onLeave) Color(0xFFC62828) else Color(0xFF2E7D32))
+                        Spacer(Modifier.width(8.dp))
+                        IconButton(onClick = { viewModel.toggleLeave(person) }, modifier = Modifier.size(32.dp)) { Icon(if (person.onLeave) Icons.Default.CheckCircle else Icons.Default.RemoveCircle, null, tint = if (person.onLeave) Color(0xFF2E7D32) else Color(0xFFC62828), modifier = Modifier.size(20.dp)) }
+                        IconButton(onClick = { viewModel.deletePerson(person) }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Delete, null, tint = Color(0xFFC62828), modifier = Modifier.size(20.dp)) }
+                    }
+                    Divider(modifier = Modifier.padding(horizontal = 8.dp))
                 }
             }
         }
@@ -383,7 +384,7 @@ fun LeaveTab(viewModel: MainViewModel) {
     }
 }
 
-// ========== Tab 2: 工序评分（只固定首行，行高28dp） ==========
+// ========== Tab 2: 工序评分（固定左上角姓名单元格，行高28dp） ==========
 @Composable
 fun SkillScoreTab(viewModel: MainViewModel) {
     val persons by viewModel.allPersons.collectAsState()
@@ -412,26 +413,35 @@ fun SkillScoreTab(viewModel: MainViewModel) {
     var currentScore by remember { mutableStateOf("0") }
 
     val scrollState = rememberScrollState()
+    val coroutineScope = rememberCoroutineScope()
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        // 固定首行表头
-        Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState).background(MaterialTheme.colorScheme.primaryContainer)) {
-            Box(modifier = Modifier.width(72.dp).height(28.dp), contentAlignment = Alignment.Center) { Text("姓名", fontWeight = FontWeight.Bold, fontSize = 11.sp) }
-            processNames.forEach { process ->
-                Box(modifier = Modifier.width(64.dp).height(28.dp), contentAlignment = Alignment.Center) { Text(process, fontWeight = FontWeight.Bold, fontSize = 10.sp, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis) }
-            }
-        }
-        Divider()
-        // 数据行
-        LazyColumn(modifier = Modifier.fillMaxSize()) {
-            items(persons, key = { it.id }) { person ->
-                Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState)) {
-                    Box(modifier = Modifier.width(72.dp).height(28.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) { Text(person.name, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            // 固定左上角"姓名"单元格 + 可滚动的工序表头
+            Row(modifier = Modifier.fillMaxWidth()) {
+                Box(modifier = Modifier.width(72.dp).height(28.dp).background(MaterialTheme.colorScheme.primaryContainer), contentAlignment = Alignment.Center) {
+                    Text("姓名", fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                }
+                Row(modifier = Modifier.weight(1f).horizontalScroll(scrollState).background(MaterialTheme.colorScheme.primaryContainer)) {
                     processNames.forEach { process ->
-                        val score = scoreMap[Pair(person.id, process)] ?: 0
-                        val bgColor = when { score >= 7 -> Color(0xFFE8F5E9); score >= 4 -> Color(0xFFFFFFF3); score > 0 -> Color(0xFFFFF3E0); else -> Color(0xFFFAFAFA) }
-                        Box(modifier = Modifier.width(64.dp).height(28.dp).background(bgColor).border(0.5.dp, Color(0xFFE0E0E0)).clickable { editingPerson = person; editingProcess = process; currentScore = score.toString(); showEditDialog.value = true }, contentAlignment = Alignment.Center) {
-                            Text(if (score > 0) score.toString() else "", fontSize = 11.sp, fontWeight = FontWeight.Medium, color = if (score >= 7) Color(0xFF2E7D32) else if (score > 0) Color(0xFFF57F17) else Color(0xFFBDBDBD))
+                        Box(modifier = Modifier.width(64.dp).height(28.dp), contentAlignment = Alignment.Center) { Text(process, fontWeight = FontWeight.Bold, fontSize = 10.sp, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                    }
+                }
+            }
+            Divider()
+            // 数据行：姓名列固定，评分列随水平滚动
+            LazyColumn(modifier = Modifier.fillMaxSize()) {
+                items(persons, key = { it.id }) { person ->
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        Box(modifier = Modifier.width(72.dp).height(28.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) { Text(person.name, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                        Row(modifier = Modifier.weight(1f).horizontalScroll(scrollState)) {
+                            processNames.forEach { process ->
+                                val score = scoreMap[Pair(person.id, process)] ?: 0
+                                val bgColor = when { score >= 7 -> Color(0xFFE8F5E9); score >= 4 -> Color(0xFFFFFFF3); score > 0 -> Color(0xFFFFF3E0); else -> Color(0xFFFAFAFA) }
+                                Box(modifier = Modifier.width(64.dp).height(28.dp).background(bgColor).border(0.5.dp, Color(0xFFE0E0E0)).clickable { editingPerson = person; editingProcess = process; currentScore = score.toString(); showEditDialog.value = true }, contentAlignment = Alignment.Center) {
+                                    Text(if (score > 0) score.toString() else "", fontSize = 11.sp, fontWeight = FontWeight.Medium, color = if (score >= 7) Color(0xFF2E7D32) else if (score > 0) Color(0xFFF57F17) else Color(0xFFBDBDBD))
+                                }
+                            }
                         }
                     }
                 }
@@ -444,7 +454,7 @@ fun SkillScoreTab(viewModel: MainViewModel) {
     }
 }
 
-// ========== Tab 3: 工序流程（只固定首行，行高28dp） ==========
+// ========== Tab 3: 工序流程（固定左上角型号名称单元格，行高28dp） ==========
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProcessFlowTab(viewModel: MainViewModel) {
@@ -470,46 +480,50 @@ fun ProcessFlowTab(viewModel: MainViewModel) {
             }
         } else {
             Column(modifier = Modifier.fillMaxSize()) {
-                // 固定首行表头
-                Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState).background(MaterialTheme.colorScheme.primaryContainer)) {
-                    Box(modifier = Modifier.width(120.dp).height(28.dp), contentAlignment = Alignment.Center) { Text("型号名称", fontWeight = FontWeight.Bold, fontSize = 11.sp) }
-                    Box(modifier = Modifier.width(60.dp).height(28.dp), contentAlignment = Alignment.Center) { Text("产能", fontWeight = FontWeight.Bold, fontSize = 11.sp) }
-                    Box(modifier = Modifier.width(50.dp).height(28.dp), contentAlignment = Alignment.Center) { Text("人数", fontWeight = FontWeight.Bold, fontSize = 11.sp) }
-                    Box(modifier = Modifier.width(40.dp).height(28.dp), contentAlignment = Alignment.Center) { Text("固定", fontWeight = FontWeight.Bold, fontSize = 11.sp) }
-                    repeat(maxProcesses) { i ->
-                        Box(modifier = Modifier.width(72.dp).height(28.dp), contentAlignment = Alignment.Center) { Text("工序${i + 1}", fontWeight = FontWeight.Bold, fontSize = 10.sp) }
+                // 固定左上角"型号名称"单元格 + 可滚动的表头
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    Box(modifier = Modifier.width(120.dp).height(28.dp).background(MaterialTheme.colorScheme.primaryContainer), contentAlignment = Alignment.Center) { Text("型号名称", fontWeight = FontWeight.Bold, fontSize = 11.sp) }
+                    Row(modifier = Modifier.weight(1f).horizontalScroll(scrollState).background(MaterialTheme.colorScheme.primaryContainer)) {
+                        Box(modifier = Modifier.width(60.dp).height(28.dp), contentAlignment = Alignment.Center) { Text("产能", fontWeight = FontWeight.Bold, fontSize = 11.sp) }
+                        Box(modifier = Modifier.width(50.dp).height(28.dp), contentAlignment = Alignment.Center) { Text("人数", fontWeight = FontWeight.Bold, fontSize = 11.sp) }
+                        Box(modifier = Modifier.width(40.dp).height(28.dp), contentAlignment = Alignment.Center) { Text("固定", fontWeight = FontWeight.Bold, fontSize = 11.sp) }
+                        repeat(maxProcesses) { i ->
+                            Box(modifier = Modifier.width(72.dp).height(28.dp), contentAlignment = Alignment.Center) { Text("工序${i + 1}", fontWeight = FontWeight.Bold, fontSize = 10.sp) }
+                        }
+                        Box(modifier = Modifier.width(48.dp).height(28.dp)) {}
                     }
-                    Box(modifier = Modifier.width(48.dp).height(28.dp)) {}
                 }
                 Divider()
-                // 数据行
+                // 数据行：型号名称列固定，其余列随水平滚动
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     items(products, key = { it.id }) { product ->
                         val processes = processMap[product.id] ?: emptyList()
-                        val rowBg = if (product.isFixed) Color(0xFFFFF9C4) else Color.Transparent  // 黄色背景
-                        Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState).background(rowBg)) {
-                            Box(modifier = Modifier.width(120.dp).height(28.dp).border(0.5.dp, Color(0xFFE0E0E0)).padding(horizontal = 4.dp), contentAlignment = Alignment.CenterStart) { Text(product.name, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
-                            Box(modifier = Modifier.width(60.dp).height(28.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) { Text(product.capacity.toString(), fontSize = 11.sp) }
-                            Box(modifier = Modifier.width(50.dp).height(28.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) { Text(product.requiredPeople.toString(), fontSize = 11.sp) }
-                            // 固定状态开关
-                            Box(modifier = Modifier.width(40.dp).height(28.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
-                                IconButton(onClick = { viewModel.toggleProductFixed(product) }, modifier = Modifier.size(24.dp)) {
-                                    Icon(
-                                        if (product.isFixed) Icons.Default.Star else Icons.Default.StarBorder,
-                                        contentDescription = "固定",
-                                        tint = if (product.isFixed) Color(0xFFFBC02D) else Color(0xFFBDBDBD),
-                                        modifier = Modifier.size(18.dp)
-                                    )
+                        val rowBg = if (product.isFixed) Color(0xFFFFF9C4) else Color.Transparent
+                        Row(modifier = Modifier.fillMaxWidth()) {
+                            Box(modifier = Modifier.width(120.dp).height(28.dp).border(0.5.dp, Color(0xFFE0E0E0)).padding(horizontal = 4.dp).background(rowBg), contentAlignment = Alignment.CenterStart) { Text(product.name, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                            Row(modifier = Modifier.weight(1f).horizontalScroll(scrollState).background(rowBg)) {
+                                Box(modifier = Modifier.width(60.dp).height(28.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) { Text(product.capacity.toString(), fontSize = 11.sp) }
+                                Box(modifier = Modifier.width(50.dp).height(28.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) { Text(product.requiredPeople.toString(), fontSize = 11.sp) }
+                                // 固定状态开关
+                                Box(modifier = Modifier.width(40.dp).height(28.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
+                                    IconButton(onClick = { viewModel.toggleProductFixed(product) }, modifier = Modifier.size(24.dp)) {
+                                        Icon(
+                                            if (product.isFixed) Icons.Default.Star else Icons.Default.StarBorder,
+                                            contentDescription = "固定",
+                                            tint = if (product.isFixed) Color(0xFFFBC02D) else Color(0xFFBDBDBD),
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
                                 }
-                            }
-                            for (i in 0 until maxProcesses) {
-                                val pp = processes.getOrNull(i)
-                                Box(modifier = Modifier.width(72.dp).height(28.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
-                                    if (pp != null) { Text(pp.processName, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                                for (i in 0 until maxProcesses) {
+                                    val pp = processes.getOrNull(i)
+                                    Box(modifier = Modifier.width(72.dp).height(28.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
+                                        if (pp != null) { Text(pp.processName, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                                    }
                                 }
-                            }
-                            Box(modifier = Modifier.width(48.dp).height(28.dp), contentAlignment = Alignment.Center) {
-                                IconButton(onClick = { viewModel.deleteProduct(product) }, modifier = Modifier.size(24.dp)) { Icon(Icons.Default.Delete, null, tint = Color(0xFFC62828), modifier = Modifier.size(14.dp)) }
+                                Box(modifier = Modifier.width(48.dp).height(28.dp), contentAlignment = Alignment.Center) {
+                                    IconButton(onClick = { viewModel.deleteProduct(product) }, modifier = Modifier.size(24.dp)) { Icon(Icons.Default.Delete, null, tint = Color(0xFFC62828), modifier = Modifier.size(14.dp)) }
+                                }
                             }
                         }
                     }
