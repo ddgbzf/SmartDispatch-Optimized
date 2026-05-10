@@ -73,6 +73,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val logs: StateFlow<List<String>> = _logs.asStateFlow()
     private val _dispatchResult = MutableStateFlow<DispatchResult?>(null)
     val dispatchResult: StateFlow<DispatchResult?> = _dispatchResult.asStateFlow()
+    // 固定列人员缓存（上次排工中被分配到固定列产品的人员）
+    private val _fixedPeople = MutableStateFlow<Set<String>>(emptySet())
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
     private val _scoreVersion = MutableStateFlow(0)
@@ -242,11 +244,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             addLog("评分人数: ${scoreMap.size}, 工序优先级数: ${processNames.size}")
 
             engine.setSkillScoresData(scoreMap)
+            val fixedPeople = _fixedPeople.value
             val result = withContext(Dispatchers.IO) {
-                engine.runWithData(peopleNames, leaveNames, productMap, processNames)
+                engine.runWithData(peopleNames, leaveNames, productMap, processNames, fixedPeople)
             }
             _dispatchResult.value = result
-            addLog("✅ 排工完成！分配${result.assignedCount}人, ${result.statusMessage}")
+            // 更新固定列人员缓存（本次被分配到固定列产品的人员）
+            val newFixedPeople = result.assignments
+                .filter { productMap[it.productName]?.isFixed == true }
+                .mapNotNull { it.assignedPerson }
+                .toSet()
+            _fixedPeople.value = newFixedPeople
+            addLog("✅ 排工完成！分配${result.assignedCount}人, 固定列人员${newFixedPeople.size}人, ${result.statusMessage}")
             // 保存最近使用的产品
             selectedProductNames.forEach { name ->
                 userPrefs.addRecentProduct(name)
