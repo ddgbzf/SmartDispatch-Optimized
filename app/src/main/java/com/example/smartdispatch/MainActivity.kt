@@ -111,13 +111,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     
-    // 缩放级别（用于智能排工页）
-    private val _zoomScale = MutableStateFlow(1.0f)
-    val zoomScale: StateFlow<Float> = _zoomScale.asStateFlow()
-    fun setZoomScale(scale: Float) { _zoomScale.value = scale.coerceIn(0.5f, 2.0f) }
-    fun zoomIn() { _zoomScale.value = (_zoomScale.value + 0.1f).coerceIn(0.5f, 2.0f) }
-    fun zoomOut() { _zoomScale.value = (_zoomScale.value - 0.1f).coerceIn(0.5f, 2.0f) }
-
     fun selectProduct(index: Int, productName: String) {
         updateInputName(index, productName)
         _focusedInputIndex.value = -1 // 关闭下拉列表
@@ -555,7 +548,6 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
     val inputNames by viewModel.inputNames.collectAsState()
     val focusedIndex by viewModel.focusedInputIndex.collectAsState()
     val matchedProducts by viewModel.matchedProducts.collectAsState()
-    val zoomScale by viewModel.zoomScale.collectAsState()
     val repo = (LocalContext.current.applicationContext as DispatchApplication).repository
 
     var processMap by remember { mutableStateOf<Map<Int, List<ProductProcess>>>(emptyMap()) }
@@ -579,41 +571,21 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
         viewModel.autoDispatch()
     }
 
-    // 根据横竖屏和缩放级别调整尺寸
-    val baseRowHeight = if (isLandscape) 20 else 22
-    val baseColWidth = if (isLandscape) 45 else 50
-    val baseFontSize = if (isLandscape) 9 else 10
-    
-    val rowHeight = (baseRowHeight * zoomScale).dp
-    val colWidth = (baseColWidth * zoomScale).dp
+    // 根据横竖屏调整尺寸（固定值）
+    val rowHeight = if (isLandscape) 20.dp else 22.dp
+    val colWidth = if (isLandscape) 45.dp else 50.dp
     val productWidth = colWidth * 2
-    val fontSize = (baseFontSize * zoomScale).sp
-    val statFontSize = if (isLandscape) 11.sp else 14.sp
+    val fontSize = if (isLandscape) 9.sp else 10.sp
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // 缩放控制栏
-        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            // 竖屏时显示统计栏（横屏时在标题栏显示）
-            if (!isLandscape) {
-                result?.let { r ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        StatItem("总人数", r.totalPeople.toString())
-                        StatItem("请假", r.leaveCount.toString(), Color(0xFFC62828))
-                        StatItem("已分配", r.assignedCount.toString(), Color(0xFF1976D2))
-                        StatItem(if (r.remainingCount >= 0) "剩余" else "欠缺", kotlin.math.abs(r.remainingCount).toString(), if (r.remainingCount >= 0) Color(0xFF2E7D32) else Color(0xFFC62828))
-                    }
-                }
-            } else {
-                Spacer(Modifier.weight(1f))
-            }
-            // 缩放按钮
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = { viewModel.zoomOut() }, modifier = Modifier.size(28.dp)) {
-                    Icon(Icons.Default.Remove, "缩小", modifier = Modifier.size(16.dp))
-                }
-                Text("${(zoomScale * 100).toInt()}%", fontSize = 10.sp, modifier = Modifier.padding(horizontal = 4.dp))
-                IconButton(onClick = { viewModel.zoomIn() }, modifier = Modifier.size(28.dp)) {
-                    Icon(Icons.Default.Add, "放大", modifier = Modifier.size(16.dp))
+        // 竖屏时显示统计栏（横屏时在标题栏显示）
+        if (!isLandscape) {
+            result?.let { r ->
+                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
+                    StatItem("总人数", r.totalPeople.toString())
+                    StatItem("请假", r.leaveCount.toString(), Color(0xFFC62828))
+                    StatItem("已分配", r.assignedCount.toString(), Color(0xFF1976D2))
+                    StatItem(if (r.remainingCount >= 0) "剩余" else "欠缺", kotlin.math.abs(r.remainingCount).toString(), if (r.remainingCount >= 0) Color(0xFF2E7D32) else Color(0xFFC62828))
                 }
             }
         }
