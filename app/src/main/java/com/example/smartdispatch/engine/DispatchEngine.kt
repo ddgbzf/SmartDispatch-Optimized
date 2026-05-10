@@ -293,7 +293,8 @@ class DispatchEngine {
                 queue.add(ProcessQueueItem(priority, productCol, rowIndex, processName, productName))
             }
         }
-        return queue.sortedBy { it.priority }
+        // 排序规则：优先级 → 产品列号 → 行偏移（与py脚本一致）
+        return queue.sortedWith(compareBy({ it.priority }, { it.productCol }, { it.rowIndex }))
     }
 
     private fun assignPerson(processName: String, availablePeople: List<String>): String? {
