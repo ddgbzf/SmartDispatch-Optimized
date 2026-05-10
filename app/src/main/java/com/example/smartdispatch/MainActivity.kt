@@ -117,7 +117,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun addLog(msg: String) { _logs.update { it + msg } }
     fun clearLogs() { _logs.update { emptyList() } }
-    fun addPerson(name: String) = viewModelScope.launch { repo.addPerson(name) }
+    fun addPerson(name: String, employeeId: String = "") = viewModelScope.launch { repo.addPerson(name, employeeId) }
     fun toggleLeave(person: Person) = viewModelScope.launch { 
         repo.updatePerson(person.copy(onLeave = !person.onLeave))
         // 请假人员变化时自动执行排工
@@ -373,6 +373,12 @@ fun LeaveTab(viewModel: MainViewModel) {
                         Icon(if (person.onLeave) Icons.Default.PersonOff else Icons.Default.Person, null, tint = if (person.onLeave) Color(0xFFC62828) else Color(0xFF2E7D32), modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(8.dp))
                         Text(person.name, fontSize = 14.sp, modifier = Modifier.weight(1f))
+                        // 显示工号
+                        if (person.employeeId.isNotBlank()) {
+                            Text(person.employeeId, fontSize = 11.sp, color = Color(0xFF757575), modifier = Modifier.width(60.dp))
+                        } else {
+                            Spacer(Modifier.width(60.dp))
+                        }
                         Text(if (person.onLeave) "请假中" else "在岗", fontSize = 12.sp, color = if (person.onLeave) Color(0xFFC62828) else Color(0xFF2E7D32))
                         Spacer(Modifier.width(8.dp))
                         IconButton(onClick = { viewModel.toggleLeave(person) }, modifier = Modifier.size(32.dp)) { Icon(if (person.onLeave) Icons.Default.CheckCircle else Icons.Default.RemoveCircle, null, tint = if (person.onLeave) Color(0xFF2E7D32) else Color(0xFFC62828), modifier = Modifier.size(20.dp)) }
@@ -386,10 +392,22 @@ fun LeaveTab(viewModel: MainViewModel) {
     }
     if (showAddDialog.value) {
         var name by remember { mutableStateOf("") }
-        AlertDialog(onDismissRequest = { showAddDialog.value = false }, title = { Text("添加人员") }, text = { OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("姓名") }, singleLine = true, modifier = Modifier.fillMaxWidth()) }, confirmButton = { TextButton(onClick = { if (name.isNotBlank()) { viewModel.addPerson(name.trim()); showAddDialog.value = false } }, enabled = name.isNotBlank()) { Text("确定") } }, dismissButton = { TextButton(onClick = { showAddDialog.value = false }) { Text("取消") } })
-        if (showDeleteConfirm.value && deletingPerson != null) {
-            AlertDialog(onDismissRequest = { showDeleteConfirm.value = false }, title = { Text("确认删除") }, text = { Text("确定要删除「${deletingPerson!!.name}」吗？") }, confirmButton = { TextButton(onClick = { viewModel.deletePerson(deletingPerson!!); showDeleteConfirm.value = false }) { Text("删除", color = Color(0xFFC62828)) } }, dismissButton = { TextButton(onClick = { showDeleteConfirm.value = false }) { Text("取消") } })
-        }
+        var employeeId by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { showAddDialog.value = false },
+            title = { Text("添加人员") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("姓名") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = employeeId, onValueChange = { employeeId = it }, label = { Text("工号（可选）") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                }
+            },
+            confirmButton = { TextButton(onClick = { if (name.isNotBlank()) { viewModel.addPerson(name.trim(), employeeId.trim()); showAddDialog.value = false } }, enabled = name.isNotBlank()) { Text("确定") } },
+            dismissButton = { TextButton(onClick = { showAddDialog.value = false }) { Text("取消") } }
+        )
+    }
+    if (showDeleteConfirm.value && deletingPerson != null) {
+        AlertDialog(onDismissRequest = { showDeleteConfirm.value = false }, title = { Text("确认删除") }, text = { Text("确定要删除「${deletingPerson!!.name}」吗？") }, confirmButton = { TextButton(onClick = { viewModel.deletePerson(deletingPerson!!); showDeleteConfirm.value = false }) { Text("删除", color = Color(0xFFC62828)) } }, dismissButton = { TextButton(onClick = { showDeleteConfirm.value = false }) { Text("取消") } })
     }
 }
 

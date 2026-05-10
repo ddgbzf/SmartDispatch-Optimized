@@ -19,7 +19,7 @@ class DispatchRepository(
     val allProducts: Flow<List<Product>> = productDao.getAll()
     val allAssignments: Flow<List<Assignment>> = assignmentDao.getAll()
 
-    suspend fun addPerson(name: String) = personDao.insert(Person(name = name))
+    suspend fun addPerson(name: String, employeeId: String = "") = personDao.insert(Person(name = name, employeeId = employeeId))
     suspend fun setPersonLeave(personId: Int, onLeave: Boolean) {
         val person = personDao.findByName("") // need to get by id
     }
