@@ -136,6 +136,20 @@ class DispatchEngine {
         val assignments = mutableListOf<ProcessAssignment>()
 
         // ===== 第一步：处理固定列（留任 + 请假替补） =====
+        // 先收集所有固定列历史人员（不可动）
+        val allFixedHistoryPeople = mutableSetOf<String>()
+        for ((productName, product) in productInfo) {
+            if (!product.isFixed) continue
+            for (processName in product.processes) {
+                val key = productName to processName
+                val person = fixedHistoryMap[key]
+                if (person != null && person in allPeople) {
+                    allFixedHistoryPeople.add(person)
+                }
+            }
+        }
+        debugLogs.add("固定列历史人员: ${allFixedHistoryPeople.joinToString(", ") { it }}")
+
         for ((productName, product) in productInfo) {
             if (!product.isFixed) continue
             val productCol = productColumnMap[productName] ?: continue
@@ -161,7 +175,8 @@ class DispatchEngine {
                     if (historyPerson != null && historyPerson in leaveList) {
                         debugLogs.add("[固定列] $processName → $historyPerson 请假，寻找替补...")
                     }
-                    val available = allPeople.filter { it !in leaveList && it !in assignedPeople }
+                    // 替补只能从非固定列人员中选（固定列人员不可动）
+                    val available = allPeople.filter { it !in leaveList && it !in assignedPeople && it !in allFixedHistoryPeople }
                     val substitute = findBestCandidate(processName, available)
                     if (substitute != null) {
                         assignments.add(ProcessAssignment(
