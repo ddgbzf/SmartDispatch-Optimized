@@ -232,6 +232,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
             // 构建固定列历史人员数据：从数据库读取上次固定列的分配结果
             val fixedAssignmentsFromDb = repo.getFixedAssignments()
+            addLog("数据库固定列记录: ${fixedAssignmentsFromDb.size}条, 详情: ${fixedAssignmentsFromDb.map { "${it.productId}/${it.processName}/${it.personId}" }}")
             val productIdToName = mutableMapOf<Int, String>()
             for (product in allProductsList) { productIdToName[product.id] = product.name }
             val personIdToName = mutableMapOf<Int, String>()
@@ -241,11 +242,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             for ((uniqueKey, product) in productMap) {
                 originalNameToUniqueKey[product.name] = uniqueKey
             }
+            addLog("产品映射: ${originalNameToUniqueKey.entries.joinToString(", ") { "${it.key}=${it.value}" }}")
             val fixedHistoryList = fixedAssignmentsFromDb.mapNotNull { assignment ->
-                val originalName = productIdToName[assignment.productId] ?: return@mapNotNull null
-                val personName = assignment.personId?.let { personIdToName[it] } ?: return@mapNotNull null
+                val originalName = productIdToName[assignment.productId] ?: run {
+                    addLog("⚠️ 固定列记录productId=${assignment.productId}未找到对应产品")
+                    return@mapNotNull null
+                }
+                val personName = assignment.personId?.let { personIdToName[it] } ?: run {
+                    addLog("⚠️ 固定列记录personId=${assignment.personId}未找到对应人员")
+                    return@mapNotNull null
+                }
                 // 用排工时的唯一key匹配
                 val uniqueKey = originalNameToUniqueKey[originalName] ?: originalName
+                addLog("固定列历史: $uniqueKey/$assignment.processName → $personName")
                 FixedAssignment(productName = uniqueKey, processName = assignment.processName, personName = personName)
             }
             addLog("固定列历史分配: ${fixedHistoryList.size}条记录")
