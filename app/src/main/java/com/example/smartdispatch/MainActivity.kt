@@ -476,7 +476,36 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(4.dp))
+
+                    // 固定列产品快速视图（不需要搜索）
+                    val fixedProducts = remember(products) { products.filter { it.isFixed } }
+                    if (fixedProducts.isNotEmpty()) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                            Icon(Icons.Default.Star, null, tint = Color(0xFFFBC02D), modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("固定列产品 (${fixedProducts.size})", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFBC02D), modifier = Modifier.weight(1f))
+                        }
+                        LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 120.dp), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                            items(fixedProducts) { product ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().clickable { editingProduct = product }.padding(vertical = 4.dp, horizontal = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(product.name, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                        Text("产能:${product.capacity} 人数:${product.requiredPeople}", fontSize = 10.sp, color = Color(0xFF666666))
+                                    }
+                                    IconButton(onClick = { viewModel.toggleProductFixed(product) }, modifier = Modifier.size(28.dp)) {
+                                        Icon(Icons.Default.Star, contentDescription = "取消固定", tint = Color(0xFFFBC02D), modifier = Modifier.size(16.dp))
+                                    }
+                                }
+                            }
+                        }
+                        Divider(thickness = 1.dp, color = Color(0xFFE0E0E0))
+                        Spacer(Modifier.height(4.dp))
+                    }
+
                     Text("共${products.size}个产品，已过滤${filteredProducts.size}个", fontSize = 11.sp, color = Color(0xFF666666))
                     Spacer(Modifier.height(4.dp))
                     LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
