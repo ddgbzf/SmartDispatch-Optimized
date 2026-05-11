@@ -984,7 +984,7 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
     val focusedIndex by viewModel.focusedInputIndex.collectAsState()
     val matchedProducts by viewModel.matchedProducts.collectAsState()
     val repo = (LocalContext.current.applicationContext as DispatchApplication).repository
-
+    var showDebugLogs by remember { mutableStateOf(true) }
     var processMap by remember { mutableStateOf<Map<Int, List<ProductProcess>>>(emptyMap()) }
     LaunchedEffect(products) {
         val map = mutableMapOf<Int, List<ProductProcess>>()
