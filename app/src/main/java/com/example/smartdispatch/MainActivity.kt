@@ -316,13 +316,14 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
     }
 
     // 编辑产品时加载工序
+    val context = LocalContext.current
     LaunchedEffect(editingProduct) {
         if (editingProduct != null) {
             val processes = repo.getProcessesOnce(editingProduct!!.id)
             editingProcesses = processes
             // 调试：显示工序数量
             android.widget.Toast.makeText(
-                LocalContext.current,
+                context,
                 "加载工序: ${editingProduct!!.name}, ${processes.size}个",
                 android.widget.Toast.LENGTH_SHORT
             ).show()
