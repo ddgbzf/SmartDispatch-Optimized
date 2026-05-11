@@ -128,6 +128,8 @@ class DispatchEngine {
         fixedAssignedPeople.clear()
         debugLogs.clear()
         debugLogs.add("=== 排工开始 ===")
+        debugLogs.add("fixedHistoryMap(${fixedHistoryMap.size}): ${fixedHistoryMap.entries.joinToString(", ") { "${it.key.first}/${it.key.second}=${it.value}" }}")
+        debugLogs.add("productInfo: ${productInfo.entries.joinToString(", ") { "${it.key}(fixed=${it.value.isFixed}, processes=${it.value.processes.size})" }}")
 
         val assignments = mutableListOf<ProcessAssignment>()
 
