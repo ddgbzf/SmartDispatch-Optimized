@@ -236,10 +236,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             for (product in allProductsList) { productIdToName[product.id] = product.name }
             val personIdToName = mutableMapOf<Int, String>()
             for (person in persons) { personIdToName[person.id] = person.name }
+            // 构建 产品原始名 -> 排工唯一key 的映射（用于匹配 fixedHistoryMap）
+            val originalNameToUniqueKey = mutableMapOf<String, String>()
+            for ((uniqueKey, product) in productMap) {
+                originalNameToUniqueKey[product.name] = uniqueKey
+            }
             val fixedHistoryList = fixedAssignmentsFromDb.mapNotNull { assignment ->
-                val productName = productIdToName[assignment.productId] ?: return@mapNotNull null
+                val originalName = productIdToName[assignment.productId] ?: return@mapNotNull null
                 val personName = assignment.personId?.let { personIdToName[it] } ?: return@mapNotNull null
-                FixedAssignment(productName = productName, processName = assignment.processName, personName = personName)
+                // 用排工时的唯一key匹配
+                val uniqueKey = originalNameToUniqueKey[originalName] ?: originalName
+                FixedAssignment(productName = uniqueKey, processName = assignment.processName, personName = personName)
             }
             addLog("固定列历史分配: ${fixedHistoryList.size}条记录")
 
@@ -262,9 +269,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val nameToProductId = mutableMapOf<String, Int>()
                 for (product in allProductsList) { nameToProductId[product.name] = product.id }
                 val dbAssignments = result.assignments.mapIndexed { index, assignment ->
+                    // 去掉 @count 后缀，用原始产品名匹配数据库
+                    val originalName = assignment.productName.substringBefore("@")
                     val isFixed = productMap[assignment.productName]?.isFixed == true
                     Assignment(
-                        productId = nameToProductId[assignment.productName] ?: 0,
+                        productId = nameToProductId[originalName] ?: 0,
                         processName = assignment.processName,
                         personId = assignment.assignedPerson?.let { nameToPersonId[it] },
                         isFixed = isFixed,
