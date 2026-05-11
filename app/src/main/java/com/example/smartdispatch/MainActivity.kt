@@ -93,15 +93,29 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun toggleFixedSlot(index: Int) {
         val current = _fixedInputSlots.value.toMutableSet()
         if (index in current) {
+            // 取消固定
             current.remove(index)
-            // 取消固定时清除该槽位的人员缓存
             val newCache = _fixedAssignmentCache.value.toMutableMap()
             val prefix = "${index}_"
             newCache.keys.filter { it.startsWith(prefix) }.forEach { newCache.remove(it) }
             _fixedAssignmentCache.value = newCache
             saveFixedAssignmentCache(newCache)
         } else {
+            // 设为固定 → 立即从当前排工结果中记录该列的人员
             current.add(index)
+            val result = _dispatchResult.value
+            if (result != null) {
+                val productKeys = result.assignments.mapNotNull { it.productName }.distinct()
+                if (index < productKeys.size) {
+                    val productKey = productKeys[index]
+                    val newCache = _fixedAssignmentCache.value.toMutableMap()
+                    result.assignments
+                        .filter { it.productName == productKey && it.assignedPerson != null }
+                        .forEach { newCache["${index}_${it.rowIndex}"] = it.assignedPerson!! }
+                    _fixedAssignmentCache.value = newCache
+                    saveFixedAssignmentCache(newCache)
+                }
+            }
         }
         _fixedInputSlots.value = current
         saveFixedInputSlots(current)
