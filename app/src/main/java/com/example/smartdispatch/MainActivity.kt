@@ -264,7 +264,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     val r = (ctx as DispatchApplication).repository
                     withContext(Dispatchers.IO) {
                         r.clearAll()
-                        for ((index, name) in data.people.withIndex()) { r.addPerson(name) }
+                        for ((name, employeeId) in data.peopleWithIds) { r.addPerson(name, employeeId) }
                         val allP = r.allPersons.first()
                         for (person in allP) { if (person.name in data.leaveList) { r.updatePerson(person.copy(onLeave = true)) } }
                         val updatedP = r.allPersons.first()

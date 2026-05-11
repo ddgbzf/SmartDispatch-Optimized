@@ -10,6 +10,7 @@ import java.io.OutputStream
 
 data class ParsedData(
     val people: List<String>,
+    val peopleWithIds: List<Pair<String, String>>,  // (姓名, 工号)
     val leaveList: List<String>,
     val skillScores: Map<String, Map<String, Int>>,
     val processNames: List<String>,
@@ -28,6 +29,7 @@ private data class ProcessQueueItem(
 class DispatchEngine {
 
     private var allPeople: List<String> = emptyList()
+    private var peopleWithIds: List<Pair<String, String>> = emptyList()  // (姓名, 工号)
     private var skillScores: Map<String, Map<String, Int>> = emptyMap()
     private var processPriority: Map<String, Int> = emptyMap()
     private var productInfo: Map<String, Product> = emptyMap()
@@ -72,6 +74,7 @@ class DispatchEngine {
     fun getParsedData(): ParsedData {
         return ParsedData(
             people = allPeople,
+            peopleWithIds = peopleWithIds,
             leaveList = leaveList,
             skillScores = skillScores,
             processNames = parsedProcessNames,
@@ -199,13 +202,28 @@ class DispatchEngine {
         processPriority = parsedProcessNames.withIndex().associate { it.value to it.index }
 
         val people = mutableListOf<String>()
+        val pWithIds = mutableListOf<Pair<String, String>>()
         val scores = mutableMapOf<String, MutableMap<String, Int>>()
 
         for (rowIndex in 1..sheet.lastRowNum) {
             val row = sheet.getRow(rowIndex) ?: continue
-            val name = cleanName(row.getCell(0)?.stringCellValue)
+            // 兼容数字和文本格式
+            val nameCell = row.getCell(0)
+            val name = cleanName(when (nameCell?.cellType) {
+                CellType.STRING -> nameCell.stringCellValue
+                CellType.NUMERIC -> nameCell.numericCellValue.toLong().toString()
+                else -> null
+            })
             if (name != null) {
+                // 读取工号（B列），兼容数字和文本格式
+                val idCell = row.getCell(1)
+                val employeeId = when (idCell?.cellType) {
+                    CellType.STRING -> idCell.stringCellValue?.trim() ?: ""
+                    CellType.NUMERIC -> idCell.numericCellValue.toLong().toString()
+                    else -> ""
+                }
                 people.add(name)
+                pWithIds.add(Pair(name, employeeId))
                 scores[name] = mutableMapOf()
                 for ((i, processName) in parsedProcessNames.withIndex()) {
                     val col = processStartCol + i
@@ -217,6 +235,7 @@ class DispatchEngine {
 
         allPeople = people
         skillScores = scores
+        peopleWithIds = pWithIds
     }
 
     private fun loadProductInfo(workbook: Workbook) {
