@@ -76,6 +76,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val dispatchResult: StateFlow<DispatchResult?> = _dispatchResult.asStateFlow()
     // 固定列人员缓存（上次排工中被分配到固定列产品的人员）
     private val _fixedPeople = MutableStateFlow<Set<String>>(emptySet())
+    // 固定列工序→人员映射缓存（key=产品名@工序名, value=人员名）
+    private val _fixedAssignmentCache = MutableStateFlow<Map<String, String>>(emptyMap())
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
     private val _scoreVersion = MutableStateFlow(0)
@@ -230,34 +232,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             engine.setSkillScoresData(scoreMap)
             val fixedPeople = _fixedPeople.value
 
-            // 构建固定列历史人员数据：从数据库读取上次固定列的分配结果
-            val fixedAssignmentsFromDb = repo.getFixedAssignments()
-            addLog("数据库固定列记录: ${fixedAssignmentsFromDb.size}条, 详情: ${fixedAssignmentsFromDb.map { "${it.productId}/${it.processName}/${it.personId}" }}")
-            val productIdToName = mutableMapOf<Int, String>()
-            for (product in allProductsList) { productIdToName[product.id] = product.name }
-            val personIdToName = mutableMapOf<Int, String>()
-            for (person in persons) { personIdToName[person.id] = person.name }
-            // 构建 产品原始名 -> 排工唯一key 的映射（用于匹配 fixedHistoryMap）
-            val originalNameToUniqueKey = mutableMapOf<String, String>()
-            for ((uniqueKey, product) in productMap) {
-                originalNameToUniqueKey[product.name] = uniqueKey
+            // 从内存缓存构建固定列历史人员数据
+            val cachedAssignments = _fixedAssignmentCache.value
+            val fixedHistoryList = cachedAssignments.map { (key, personName) ->
+                val parts = key.split("@", limit = 2)
+                FixedAssignment(productName = parts[0], processName = parts[1], personName = personName)
             }
-            addLog("产品映射: ${originalNameToUniqueKey.entries.joinToString(", ") { "${it.key}=${it.value}" }}")
-            val fixedHistoryList = fixedAssignmentsFromDb.mapNotNull { assignment ->
-                val originalName = productIdToName[assignment.productId] ?: run {
-                    addLog("⚠️ 固定列记录productId=${assignment.productId}未找到对应产品")
-                    return@mapNotNull null
-                }
-                val personName = assignment.personId?.let { personIdToName[it] } ?: run {
-                    addLog("⚠️ 固定列记录personId=${assignment.personId}未找到对应人员")
-                    return@mapNotNull null
-                }
-                // 用排工时的唯一key匹配
-                val uniqueKey = originalNameToUniqueKey[originalName] ?: originalName
-                addLog("固定列历史: $uniqueKey/$assignment.processName → $personName")
-                FixedAssignment(productName = uniqueKey, processName = assignment.processName, personName = personName)
-            }
-            addLog("固定列历史分配: ${fixedHistoryList.size}条记录")
+            addLog("固定列缓存: ${fixedHistoryList.size}条记录")
 
             val result = withContext(Dispatchers.IO) {
                 engine.runWithData(peopleNames, leaveNames, productMap, processNames, fixedPeople, fixedHistoryList)
@@ -269,30 +250,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 .mapNotNull { it.assignedPerson }
                 .toSet()
             _fixedPeople.value = newFixedPeople
-
-            // 保存分配结果到数据库（用于下次排工读取固定列历史人员）
-            withContext(Dispatchers.IO) {
-                repo.clearAllAssignments()
-                val nameToPersonId = mutableMapOf<String, Int>()
-                for (person in persons) { nameToPersonId[person.name] = person.id }
-                val nameToProductId = mutableMapOf<String, Int>()
-                for (product in allProductsList) { nameToProductId[product.name] = product.id }
-                val dbAssignments = result.assignments.mapIndexed { index, assignment ->
-                    // 去掉 @count 后缀，用原始产品名匹配数据库
-                    val originalName = assignment.productName.substringBefore("@")
-                    val isFixed = productMap[assignment.productName]?.isFixed == true
-                    Assignment(
-                        productId = nameToProductId[originalName] ?: 0,
-                        processName = assignment.processName,
-                        personId = assignment.assignedPerson?.let { nameToPersonId[it] },
-                        isFixed = isFixed,
-                        sortOrder = index
-                    )
-                }
-                repo.insertAssignments(dbAssignments)
-            }
-
-            addLog("✅ 排工完成！分配${result.assignedCount}人, 固定列人员${newFixedPeople.size}人, ${result.statusMessage}")
+            // 更新固定列工序→人员映射缓存
+            val newFixedCache = result.assignments
+                .filter { productMap[it.productName]?.isFixed == true && it.assignedPerson != null }
+                .associate { "${it.productName}@${it.processName}" to it.assignedPerson!! }
+            _fixedAssignmentCache.value = newFixedCache
+            addLog("✅ 排工完成！分配${result.assignedCount}人, 固定列${newFixedPeople.size}人, ${result.statusMessage}")
             // 保存最近使用的产品
             selectedProductNames.forEach { name ->
                 userPrefs.addRecentProduct(name)
