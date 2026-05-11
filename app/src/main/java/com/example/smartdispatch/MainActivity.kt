@@ -251,8 +251,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             // 从内存缓存构建固定列历史人员数据
             val cachedAssignments = _fixedAssignmentCache.value
             val fixedHistoryList = cachedAssignments.map { (key, personName) ->
-                val parts = key.split("@", limit = 2)
-                FixedAssignment(productName = parts[0], processName = parts[1], personName = personName)
+                val idx = key.indexOf("||")
+                FixedAssignment(productName = key.substring(0, idx), processName = key.substring(idx + 2), personName = personName)
             }
             addLog("固定列缓存: ${fixedHistoryList.size}条记录")
 
@@ -269,7 +269,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             // 更新固定列工序→人员映射缓存
             val newFixedCache = result.assignments
                 .filter { productMap[it.productName]?.isFixed == true && it.assignedPerson != null }
-                .associate { "${it.productName}@${it.processName}" to it.assignedPerson!! }
+                .associate { "${it.productName}||${it.processName}" to it.assignedPerson!! }
             _fixedAssignmentCache.value = newFixedCache
             saveFixedAssignmentCache(newFixedCache)
             addLog("✅ 排工完成！分配${result.assignedCount}人, 固定列${newFixedPeople.size}人, ${result.statusMessage}")
