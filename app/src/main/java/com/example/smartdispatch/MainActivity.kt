@@ -93,29 +93,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun toggleFixedSlot(index: Int) {
         val current = _fixedInputSlots.value.toMutableSet()
         if (index in current) {
-            // 取消固定
             current.remove(index)
+            // 取消固定时清除该槽位的人员缓存
             val newCache = _fixedAssignmentCache.value.toMutableMap()
             val prefix = "${index}_"
             newCache.keys.filter { it.startsWith(prefix) }.forEach { newCache.remove(it) }
             _fixedAssignmentCache.value = newCache
             saveFixedAssignmentCache(newCache)
         } else {
-            // 设为固定 → 立即从当前排工结果中记录该列的人员
             current.add(index)
-            val result = _dispatchResult.value
-            if (result != null) {
-                val productKeys = result.assignments.mapNotNull { it.productName }.distinct()
-                if (index < productKeys.size) {
-                    val productKey = productKeys[index]
-                    val newCache = _fixedAssignmentCache.value.toMutableMap()
-                    result.assignments
-                        .filter { it.productName == productKey && it.assignedPerson != null }
-                        .forEach { newCache["${index}_${it.rowIndex}"] = it.assignedPerson!! }
-                    _fixedAssignmentCache.value = newCache
-                    saveFixedAssignmentCache(newCache)
-                }
-            }
         }
         _fixedInputSlots.value = current
         saveFixedInputSlots(current)
@@ -261,6 +247,29 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val processNames = allProcessNames.first()
             val peopleNames = persons.map { it.name }
             val leaveNames = persons.filter { it.onLeave }.map { it.name }
+
+            // ===== 第一步：检测固定列，从上次排工结果中记录人员 =====
+            val fixedSlotSet = _fixedInputSlots.value
+            val lastResult = _dispatchResult.value
+            if (lastResult != null && fixedSlotSet.isNotEmpty()) {
+                val lastProductKeys = lastResult.assignments.mapNotNull { it.productName }.distinct()
+                val newCache = _fixedAssignmentCache.value.toMutableMap()
+                var recorded = 0
+                for (slotIndex in fixedSlotSet) {
+                    if (slotIndex < lastProductKeys.size) {
+                        val productKey = lastProductKeys[slotIndex]
+                        lastResult.assignments
+                            .filter { it.productName == productKey && it.assignedPerson != null }
+                            .forEach { newCache["${slotIndex}_${it.rowIndex}"] = it.assignedPerson!! }
+                        recorded++
+                    }
+                }
+                if (recorded > 0) {
+                    _fixedAssignmentCache.value = newCache
+                    saveFixedAssignmentCache(newCache)
+                    addLog("固定列记录: $recorded 个槽位的人员已缓存")
+                }
+            }
 
             // 用带索引的key区分相同名称的产品实例（如 "G32705@0", "G32705@1"）
             val productMap = mutableMapOf<String, com.example.smartdispatch.model.Product>()
