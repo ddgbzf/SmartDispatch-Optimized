@@ -76,8 +76,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val dispatchResult: StateFlow<DispatchResult?> = _dispatchResult.asStateFlow()
     // 固定列人员缓存（上次排工中被分配到固定列产品的人员）
     private val _fixedPeople = MutableStateFlow<Set<String>>(emptySet())
-    // 固定列工序→人员映射缓存（key=产品名@工序名, value=人员名）
-    private val _fixedAssignmentCache = MutableStateFlow<Map<String, String>>(emptyMap())
+    // 固定列工序→人员映射缓存（key=产品名@工序名, value=人员名），持久化到 SharedPreferences
+    private val _fixedAssignmentCache = MutableStateFlow(loadFixedAssignmentCache())
+    
+    private fun loadFixedAssignmentCache(): Map<String, String> {
+        val all = prefs.all
+        return all.entries
+            .filter { it.key.startsWith("fixed_") }
+            .associate { it.key.removePrefix("fixed_") to it.value as String }
+    }
+    
+    private fun saveFixedAssignmentCache(cache: Map<String, String>) {
+        val editor = prefs.edit()
+        // 先清除旧的固定列缓存
+        prefs.all.keys.filter { it.startsWith("fixed_") }.forEach { editor.remove(it) }
+        // 写入新的
+        cache.forEach { (key, value) -> editor.putString("fixed_$key", value) }
+        editor.apply()
+    }
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
     private val _scoreVersion = MutableStateFlow(0)
@@ -255,6 +271,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 .filter { productMap[it.productName]?.isFixed == true && it.assignedPerson != null }
                 .associate { "${it.productName}@${it.processName}" to it.assignedPerson!! }
             _fixedAssignmentCache.value = newFixedCache
+            saveFixedAssignmentCache(newFixedCache)
             addLog("✅ 排工完成！分配${result.assignedCount}人, 固定列${newFixedPeople.size}人, ${result.statusMessage}")
             // 保存最近使用的产品
             selectedProductNames.forEach { name ->
