@@ -54,6 +54,8 @@ class DispatchRepository(
     suspend fun updateAssignment(assignment: Assignment) = assignmentDao.update(assignment)
     suspend fun deleteDynamicAssignments() = assignmentDao.deleteDynamic()
     suspend fun clearAllAssignments() = assignmentDao.deleteAll()
+    suspend fun getFixedAssignments(): List<Assignment> = assignmentDao.getFixedOnce()
+    suspend fun insertAssignments(assignments: List<Assignment>) = assignmentDao.insertAll(assignments)
 
     suspend fun clearAll() {
         assignmentDao.deleteAll()

@@ -38,6 +38,7 @@ import com.example.smartdispatch.data.DispatchRepository
 import com.example.smartdispatch.data.UserPreferences
 import com.example.smartdispatch.data.entity.*
 import com.example.smartdispatch.engine.DispatchEngine
+import com.example.smartdispatch.engine.FixedAssignment
 import com.example.smartdispatch.model.DispatchResult
 import com.example.smartdispatch.model.ProcessAssignment
 import com.example.smartdispatch.ui.theme.智能排工Theme
@@ -228,8 +229,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
             engine.setSkillScoresData(scoreMap)
             val fixedPeople = _fixedPeople.value
+
+            // 构建固定列历史人员数据：从数据库读取上次固定列的分配结果
+            val fixedAssignmentsFromDb = repo.getFixedAssignments()
+            val productIdToName = mutableMapOf<Int, String>()
+            for (product in allProductsList) { productIdToName[product.id] = product.name }
+            val personIdToName = mutableMapOf<Int, String>()
+            for (person in persons) { personIdToName[person.id] = person.name }
+            val fixedHistoryList = fixedAssignmentsFromDb.mapNotNull { assignment ->
+                val productName = productIdToName[assignment.productId] ?: return@mapNotNull null
+                val personName = assignment.personId?.let { personIdToName[it] } ?: return@mapNotNull null
+                FixedAssignment(productName = productName, processName = assignment.processName, personName = personName)
+            }
+            addLog("固定列历史分配: ${fixedHistoryList.size}条记录")
+
             val result = withContext(Dispatchers.IO) {
-                engine.runWithData(peopleNames, leaveNames, productMap, processNames, fixedPeople)
+                engine.runWithData(peopleNames, leaveNames, productMap, processNames, fixedPeople, fixedHistoryList)
             }
             _dispatchResult.value = result
             // 更新固定列人员缓存（本次被分配到固定列产品的人员）
@@ -238,6 +253,27 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 .mapNotNull { it.assignedPerson }
                 .toSet()
             _fixedPeople.value = newFixedPeople
+
+            // 保存分配结果到数据库（用于下次排工读取固定列历史人员）
+            withContext(Dispatchers.IO) {
+                repo.clearAllAssignments()
+                val nameToPersonId = mutableMapOf<String, Int>()
+                for (person in persons) { nameToPersonId[person.name] = person.id }
+                val nameToProductId = mutableMapOf<String, Int>()
+                for (product in allProductsList) { nameToProductId[product.name] = product.id }
+                val dbAssignments = result.assignments.mapIndexed { index, assignment ->
+                    val isFixed = productMap[assignment.productName]?.isFixed == true
+                    Assignment(
+                        productId = nameToProductId[assignment.productName] ?: 0,
+                        processName = assignment.processName,
+                        personId = assignment.assignedPerson?.let { nameToPersonId[it] },
+                        isFixed = isFixed,
+                        sortOrder = index
+                    )
+                }
+                repo.insertAssignments(dbAssignments)
+            }
+
             addLog("✅ 排工完成！分配${result.assignedCount}人, 固定列人员${newFixedPeople.size}人, ${result.statusMessage}")
             // 保存最近使用的产品
             selectedProductNames.forEach { name ->

@@ -17,7 +17,14 @@ data class ParsedData(
     val products: Map<String, Product>
 )
 
-// 用于工序队列的数据类，避免复杂的泛型嵌套
+// 固定列历史人员：(产品名, 工序名) -> 人员姓名
+data class FixedAssignment(
+    val productName: String,
+    val processName: String,
+    val personName: String
+)
+
+// 工序队列数据类
 private data class ProcessQueueItem(
     val priority: Int,
     val productCol: Int,
@@ -87,13 +94,16 @@ class DispatchEngine {
      */
     private var fixedPeopleSet: Set<String> = emptySet()  // 固定列人员集合（被固定列产品分配的人员）
     private val fixedAssignedPeople = mutableSetOf<String>()  // 本次排工中被固定列产品分配的人员
+    // 固定列历史人员映射：(产品名, 工序名) -> 人员姓名
+    private var fixedHistoryMap: Map<Pair<String, String>, String> = emptyMap()
 
     fun runWithData(
         people: List<String>,
         leaveNames: List<String>,
         products: Map<String, Product>,
         processNames: List<String>,
-        fixedPeople: Set<String> = emptySet()
+        fixedPeople: Set<String> = emptySet(),
+        fixedAssignments: List<FixedAssignment> = emptyList()
     ): DispatchResult {
         allPeople = people
         leaveList = leaveNames
@@ -101,6 +111,8 @@ class DispatchEngine {
         parsedProcessNames = processNames
         processPriority = processNames.withIndex().associate { it.value to it.index }
         fixedPeopleSet = fixedPeople
+        // 构建固定列历史人员映射
+        fixedHistoryMap = fixedAssignments.associate { (it.productName to it.processName) to it.personName }
         // 为数据库来源的数据自动构建 productColumnMap
         productColumnMap = products.keys.withIndex().associate { (index, name) -> name to (index * 2 + 1) }
         // skillScores 从数据库加载时需要通过 setSkillScores 设置
@@ -116,18 +128,74 @@ class DispatchEngine {
         fixedAssignedPeople.clear()
         debugLogs.clear()  // 清空历史日志
         debugLogs.add("=== 排工开始 ===")
-        val processQueue = buildProcessQueue()
-        debugLogs.add("队列: ${processQueue.size}工序, ${productInfo.size}产品, ${skillScores.size}评分")
-        Log.d("DispatchEngine", "工序队列大小: ${processQueue.size}, 产品数: ${productInfo.size}, 评分人数: ${skillScores.size}")
 
         // 收集固定列产品名称集合
         val fixedProductNames = productInfo.filter { it.value.isFixed }.keys
+        debugLogs.add("固定列产品: ${fixedProductNames.joinToString(", ") { it }}")
 
         val assignments = mutableListOf<ProcessAssignment>()
+
+        // ===== 第一步：处理固定列（留任 + 请假替补） =====
+        for ((productName, product) in productInfo) {
+            if (!product.isFixed) continue
+            val productCol = productColumnMap[productName] ?: continue
+            for ((offset, processName) in product.processes.withIndex()) {
+                val rowIndex = 3 + offset
+                val key = productName to processName
+                val historyPerson = fixedHistoryMap[key]
+
+                if (historyPerson != null && historyPerson !in leaveList && historyPerson in allPeople) {
+                    // 历史人员在岗 → 直接留任
+                    assignments.add(ProcessAssignment(
+                        productName = productName,
+                        processName = processName,
+                        assignedPerson = historyPerson,
+                        rowIndex = rowIndex,
+                        columnIndex = productCol + 1
+                    ))
+                    assignedPeople.add(historyPerson)
+                    fixedAssignedPeople.add(historyPerson)
+                    debugLogs.add("[固定列] $processName → 留任: $historyPerson")
+                } else {
+                    // 历史人员请假或不存在 → 找替补
+                    if (historyPerson != null && historyPerson in leaveList) {
+                        debugLogs.add("[固定列] $processName → $historyPerson 请假，寻找替补...")
+                    }
+                    val available = allPeople.filter { it !in leaveList && it !in assignedPeople }
+                    val substitute = findBestCandidate(processName, available)
+                    if (substitute != null) {
+                        assignments.add(ProcessAssignment(
+                            productName = productName,
+                            processName = processName,
+                            assignedPerson = substitute,
+                            rowIndex = rowIndex,
+                            columnIndex = productCol + 1
+                        ))
+                        assignedPeople.add(substitute)
+                        fixedAssignedPeople.add(substitute)
+                        val score = skillScores[substitute]?.get(processName) ?: 0
+                        debugLogs.add("[固定列] $processName → 替补: $substitute (评分:$score)")
+                    } else {
+                        debugLogs.add("[固定列] $processName → 未找到替补，留空")
+                        assignments.add(ProcessAssignment(
+                            productName = productName,
+                            processName = processName,
+                            assignedPerson = null,
+                            rowIndex = rowIndex,
+                            columnIndex = productCol + 1
+                        ))
+                    }
+                }
+            }
+        }
+
+        // ===== 第二步：全局动态分配（非固定列） =====
+        val processQueue = buildNonFixedProcessQueue()
+        debugLogs.add("动态分配队列: ${processQueue.size}工序")
+
         for (item in processQueue) {
             val currentAvailable = allPeople.filter { it !in leaveList && it !in assignedPeople }
-            val isFixedProduct = item.productName in fixedProductNames
-            val person = assignPerson(item.processName, currentAvailable, isFixedProduct)
+            val person = assignPerson(item.processName, currentAvailable)
             if (person != null) {
                 assignments.add(ProcessAssignment(
                     productName = item.productName,
@@ -321,42 +389,53 @@ class DispatchEngine {
         fixedPositions = fixed
     }
 
-    private fun buildProcessQueue(): List<ProcessQueueItem> {
+    /**
+     * 构建非固定列产品的工序队列
+     * 排序优先级：工序评分页靠左 > 零件靠左 > 行号小
+     */
+    private fun buildNonFixedProcessQueue(): List<ProcessQueueItem> {
         val queue = mutableListOf<ProcessQueueItem>()
         for ((productName, product) in productInfo) {
+            if (product.isFixed) continue  // 跳过固定列产品
             val productCol = productColumnMap[productName] ?: continue
-            // 固定产品优先级为负数，确保排在前面
-            val fixedBonus = if (product.isFixed) -10000 else 0
             for ((offset, processName) in product.processes.withIndex()) {
-                // 使用评分表的优先级（工序重要性），不在评分表中的工序排最后
-                val priority = (processPriority[processName] ?: Int.MAX_VALUE) + fixedBonus
+                // 优先级1：工序评分页中的位置（靠左=重要）
+                val processPriorityVal = processPriority[processName] ?: Int.MAX_VALUE
+                // 优先级2：零件在排工页的位置（靠左=优先）
+                // 优先级3：行号（小=优先）
                 val rowIndex = 3 + offset
-                queue.add(ProcessQueueItem(priority, productCol, rowIndex, processName, productName))
+                queue.add(ProcessQueueItem(processPriorityVal, productCol, rowIndex, processName, productName))
             }
         }
-        // 排序规则：优先级（工序重要性） → 产品列号 → 行偏移
+        // 排序：工序评分位置 → 零件位置 → 行号
         return queue.sortedWith(compareBy({ it.priority }, { it.productCol }, { it.rowIndex }))
     }
 
     /**
-     * 为工序分配人员
-     * @param isFixedProduct 是否为固定列产品
-     *   - 固定列产品：只能从非固定列人员中选人（固定列人员不可动，除非请假）
-     *   - 非固定列产品：不能抽固定列已分配的人员（保护固定列团队）
+     * 从候选池中找到某工序评分最高的人员
      */
-    private fun assignPerson(processName: String, availablePeople: List<String>, isFixedProduct: Boolean = false): String? {
-        val pool = when {
-            // 固定列产品：排除固定列人员（固定列人员不可动）
-            isFixedProduct -> availablePeople.filter { it !in fixedPeopleSet }
-            // 非固定列产品：排除已被固定列分配的人员（保护固定列团队）
-            else -> availablePeople.filter { it !in fixedAssignedPeople }
-        }
+    private fun findBestCandidate(processName: String, candidates: List<String>): String? {
+        return candidates
+            .mapNotNull { person ->
+                val score = skillScores[person]?.get(processName) ?: 0
+                if (score > 0) person to score else null
+            }
+            .sortedByDescending { it.second }
+            .firstOrNull()?.first
+    }
+
+    /**
+     * 为非固定列工序分配人员
+     * 排除已被固定列分配的人员（保护固定列团队）
+     */
+    private fun assignPerson(processName: String, availablePeople: List<String>): String? {
+        // 排除已被固定列分配的人员
+        val pool = availablePeople.filter { it !in fixedAssignedPeople }
 
         val candidates = pool
             .filter { it !in assignedPeople }
             .mapNotNull { person ->
                 val score = skillScores[person]?.get(processName) ?: 0
-                // 记录到调试日志（限制数量避免过多）
                 if (debugLogs.size < 200) {
                     debugLogs.add("$person / $processName = $score")
                 }
@@ -365,15 +444,11 @@ class DispatchEngine {
             .sortedByDescending { it.second }
 
         val bestPerson = candidates.firstOrNull()?.first
-        // 记录选中结果
         if (debugLogs.size < 200) {
-            val fixedTag = if (isFixedProduct) "[固定列]" else ""
-            debugLogs.add("→ $fixedTag[$processName] 候选${candidates.size}人, 选中:${bestPerson ?: "无"}")
+            debugLogs.add("→ [$processName] 候选${candidates.size}人, 选中:${bestPerson ?: "无"}")
         }
         if (bestPerson != null) {
             assignedPeople.add(bestPerson)
-            // 固定列产品分配的人员，标记为固定列已分配
-            if (isFixedProduct) fixedAssignedPeople.add(bestPerson)
         }
         return bestPerson
     }

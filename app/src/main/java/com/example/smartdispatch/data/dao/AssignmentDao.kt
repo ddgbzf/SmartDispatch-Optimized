@@ -15,6 +15,9 @@ interface AssignmentDao {
     @Query("SELECT * FROM assignments WHERE isFixed = 1")
     fun getFixed(): Flow<List<Assignment>>
 
+    @Query("SELECT * FROM assignments WHERE isFixed = 1")
+    suspend fun getFixedOnce(): List<Assignment>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(assignment: Assignment)
 
