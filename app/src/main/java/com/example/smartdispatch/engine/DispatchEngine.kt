@@ -17,13 +17,6 @@ data class ParsedData(
     val products: Map<String, Product>
 )
 
-// 固定列历史人员：(产品名, 工序名) -> 人员姓名
-data class FixedAssignment(
-    val productName: String,
-    val processName: String,
-    val personName: String
-)
-
 // 工序队列数据类
 private data class ProcessQueueItem(
     val priority: Int,
@@ -92,10 +85,10 @@ class DispatchEngine {
     /**
      * 使用数据库传入的数据执行排工
      */
-    private var fixedPeopleSet: Set<String> = emptySet()  // 固定列人员集合（被固定列产品分配的人员）
-    private val fixedAssignedPeople = mutableSetOf<String>()  // 本次排工中被固定列产品分配的人员
-    // 固定列历史人员映射：(产品名, 工序名) -> 人员姓名
-    private var fixedHistoryMap: Map<Pair<String, String>, String> = emptyMap()
+    private var fixedPeopleSet: Set<String> = emptySet()
+    private val fixedAssignedPeople = mutableSetOf<String>()
+    // 固定列位置→人员映射：key="列号_行号", value=人员名
+    private var fixedPositionMap: Map<String, String> = emptyMap()
 
     fun runWithData(
         people: List<String>,
@@ -103,7 +96,7 @@ class DispatchEngine {
         products: Map<String, Product>,
         processNames: List<String>,
         fixedPeople: Set<String> = emptySet(),
-        fixedAssignments: List<FixedAssignment> = emptyList()
+        fixedPositionAssignments: Map<String, String> = emptyMap()
     ): DispatchResult {
         allPeople = people
         leaveList = leaveNames
@@ -111,8 +104,7 @@ class DispatchEngine {
         parsedProcessNames = processNames
         processPriority = processNames.withIndex().associate { it.value to it.index }
         fixedPeopleSet = fixedPeople
-        // 构建固定列历史人员映射
-        fixedHistoryMap = fixedAssignments.associate { (it.productName to it.processName) to it.personName }
+        fixedPositionMap = fixedPositionAssignments
         // 为数据库来源的数据自动构建 productColumnMap
         productColumnMap = products.keys.withIndex().associate { (index, name) -> name to (index * 2 + 1) }
         // skillScores 从数据库加载时需要通过 setSkillScores 设置
@@ -128,18 +120,20 @@ class DispatchEngine {
         fixedAssignedPeople.clear()
         debugLogs.clear()
         debugLogs.add("=== 排工开始 ===")
-        debugLogs.add("fixedHistoryMap(${fixedHistoryMap.size}): ${fixedHistoryMap.entries.joinToString(", ") { "${it.key.first}/${it.key.second}=${it.value}" }}")
-        debugLogs.add("productInfo: ${productInfo.entries.joinToString(", ") { "${it.key}(fixed=${it.value.isFixed}, processes=${it.value.processes.size})" }}")
+        debugLogs.add("固定列位置缓存: ${fixedPositionMap.size}条")
 
         val assignments = mutableListOf<ProcessAssignment>()
 
-        // ===== 第一步：收集固定列历史人员（在岗的，不可动） =====
+        // ===== 第一步：收集固定列在岗人员（按位置匹配，不可动） =====
         val fixedOnDutyPeople = mutableSetOf<String>()
         for ((productName, product) in productInfo) {
             if (!product.isFixed) continue
-            for (processName in product.processes) {
-                val key = productName to processName
-                val person = fixedHistoryMap[key]
+            val productCol = productColumnMap[productName] ?: continue
+            val personCol = productCol + 1
+            for ((offset, processName) in product.processes.withIndex()) {
+                val rowIndex = 3 + offset
+                val positionKey = "${personCol}_${rowIndex}"
+                val person = fixedPositionMap[positionKey]
                 if (person != null && person in allPeople && person !in leaveList) {
                     fixedOnDutyPeople.add(person)
                 }
@@ -147,48 +141,44 @@ class DispatchEngine {
         }
         debugLogs.add("固定列在岗人员(${fixedOnDutyPeople.size}): ${fixedOnDutyPeople.joinToString(", ")}")
 
-        // ===== 第二步：构建排工池（待分配的工序） =====
+        // ===== 第二步：构建排工池 =====
         val processQueue = mutableListOf<ProcessQueueItem>()
         for ((productName, product) in productInfo) {
             val productCol = productColumnMap[productName] ?: continue
             for ((offset, processName) in product.processes.withIndex()) {
                 val rowIndex = 3 + offset
                 if (product.isFixed) {
-                    // 固定列工序：人员在岗 → 原地保持，不进排工池
-                    // 固定列工序：人员请假或不存在 → 放入排工池
-                    val key = productName to processName
-                    val historyPerson = fixedHistoryMap[key]
+                    val personCol = productCol + 1
+                    val positionKey = "${personCol}_${rowIndex}"
+                    val historyPerson = fixedPositionMap[positionKey]
                     if (historyPerson != null && historyPerson in allPeople && historyPerson !in leaveList) {
                         // 原地保持
-                        assignments.add(ProcessAssignment(productName, processName, historyPerson, rowIndex, productCol + 1))
+                        assignments.add(ProcessAssignment(productName, processName, historyPerson, rowIndex, personCol))
                         assignedPeople.add(historyPerson)
                         fixedAssignedPeople.add(historyPerson)
-                        debugLogs.add("[固定列留任] $productName/$processName → $historyPerson")
+                        debugLogs.add("[固定列留任] ${personCol}列${rowIndex}行 → $historyPerson")
                     } else {
-                        // 人员请假或无历史记录 → 放入排工池
+                        // 请假或无记录 → 放入排工池
                         if (historyPerson != null && historyPerson in leaveList) {
-                            debugLogs.add("[固定列请假] $productName/$processName → $historyPerson 请假，放入排工池")
+                            debugLogs.add("[固定列请假] ${personCol}列${rowIndex}行 → $historyPerson 请假，放入排工池")
                         } else {
-                            debugLogs.add("[固定列新工序] $productName/$processName → 无历史人员，放入排工池")
+                            debugLogs.add("[固定列新] ${personCol}列${rowIndex}行 → 无历史人员，放入排工池")
                         }
                         val processPriorityVal = processPriority[processName] ?: Int.MAX_VALUE
                         processQueue.add(ProcessQueueItem(processPriorityVal, productCol, rowIndex, processName, productName))
                     }
                 } else {
-                    // 非固定列工序 → 全部放入排工池
                     val processPriorityVal = processPriority[processName] ?: Int.MAX_VALUE
                     processQueue.add(ProcessQueueItem(processPriorityVal, productCol, rowIndex, processName, productName))
                 }
             }
         }
-        // 排序：工序评分位置 → 零件位置 → 行号
         processQueue.sortWith(compareBy({ it.priority }, { it.productCol }, { it.rowIndex }))
         debugLogs.add("排工池: ${processQueue.size}个工序待分配")
 
-        // ===== 第三步：构建可分配人员池 =====
-        // 排除：请假人员 + 固定列在岗人员
+        // ===== 第三步：可分配人员池（排除请假+固定列在岗） =====
         val assignablePool = allPeople.filter { it !in leaveList && it !in fixedOnDutyPeople }
-        debugLogs.add("可分配人员(${assignablePool.size}): 排除请假${leaveList.size}人 + 固定列在岗${fixedOnDutyPeople.size}人")
+        debugLogs.add("可分配人员(${assignablePool.size})")
 
         // ===== 第四步：统一排工 =====
         for (item in processQueue) {
@@ -204,7 +194,7 @@ class DispatchEngine {
                 ))
                 assignedPeople.add(person)
                 val score = skillScores[person]?.get(item.processName) ?: 0
-                debugLogs.add("[排工] ${item.productName}/${item.processName} → $person (评分:$score)")
+                debugLogs.add("[排工] ${item.productCol + 1}列${item.rowIndex}行 ${item.processName} → $person (评分:$score)")
             } else {
                 assignments.add(ProcessAssignment(
                     productName = item.productName,
@@ -213,7 +203,7 @@ class DispatchEngine {
                     rowIndex = item.rowIndex,
                     columnIndex = item.productCol + 1
                 ))
-                debugLogs.add("[排工] ${item.productName}/${item.processName} → 未找到合适人员，留空")
+                debugLogs.add("[排工] ${item.productCol + 1}列${item.rowIndex}行 ${item.processName} → 留空")
             }
         }
 
@@ -222,8 +212,6 @@ class DispatchEngine {
         val totalDemand = productInfo.values.sumOf { it.requiredPeople }
         val remaining = finalAvailable.size - totalDemand
         val unassigned = finalAvailable.filter { it !in assignedPeople }
-
-        Log.d("DispatchEngine", "分配结果: 总${allPeople.size}, 请假${leaveList.size}, 固定列${fixedOnDutyPeople.size}, 可分配${assignablePool.size}, 已分${assignedCount}, 差值${remaining}")
 
         return DispatchResult(
             assignments = assignments,

@@ -38,7 +38,6 @@ import com.example.smartdispatch.data.DispatchRepository
 import com.example.smartdispatch.data.UserPreferences
 import com.example.smartdispatch.data.entity.*
 import com.example.smartdispatch.engine.DispatchEngine
-import com.example.smartdispatch.engine.FixedAssignment
 import com.example.smartdispatch.model.DispatchResult
 import com.example.smartdispatch.model.ProcessAssignment
 import com.example.smartdispatch.ui.theme.智能排工Theme
@@ -76,7 +75,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val dispatchResult: StateFlow<DispatchResult?> = _dispatchResult.asStateFlow()
     // 固定列人员缓存（上次排工中被分配到固定列产品的人员）
     private val _fixedPeople = MutableStateFlow<Set<String>>(emptySet())
-    // 固定列工序→人员映射缓存（key=产品名@工序名, value=人员名），持久化到 SharedPreferences
+    // 固定列位置→人员映射缓存（key=列号_行号, value=人员名），持久化到 SharedPreferences
     private val _fixedAssignmentCache = MutableStateFlow(loadFixedAssignmentCache())
     
     private fun loadFixedAssignmentCache(): Map<String, String> {
@@ -88,9 +87,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     
     private fun saveFixedAssignmentCache(cache: Map<String, String>) {
         val editor = prefs.edit()
-        // 先清除旧的固定列缓存
         prefs.all.keys.filter { it.startsWith("fixed_") }.forEach { editor.remove(it) }
-        // 写入新的
         cache.forEach { (key, value) -> editor.putString("fixed_$key", value) }
         editor.apply()
     }
@@ -248,18 +245,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             engine.setSkillScoresData(scoreMap)
             val fixedPeople = _fixedPeople.value
 
-            // 从内存缓存构建固定列历史人员数据
+            // 固定列缓存：key=列号_行号, value=人员名
             val cachedAssignments = _fixedAssignmentCache.value
-            addLog("缓存原始数据: ${cachedAssignments.entries.joinToString(", ") { "${it.key}=${it.value}" }}")
-            val fixedHistoryList = cachedAssignments.map { (key, personName) ->
-                val idx = key.indexOf("||")
-                FixedAssignment(productName = key.substring(0, idx), processName = key.substring(idx + 2), personName = personName)
-            }
-            addLog("固定列缓存解析: ${fixedHistoryList.size}条, ${fixedHistoryList.joinToString(", ") { "${it.productName}/${it.processName}=${it.personName}" }}")
-            addLog("当前productMap keys: ${productMap.keys.joinToString(", ")}")
+            addLog("固定列缓存: ${cachedAssignments.size}条")
 
             val result = withContext(Dispatchers.IO) {
-                engine.runWithData(peopleNames, leaveNames, productMap, processNames, fixedPeople, fixedHistoryList)
+                engine.runWithData(peopleNames, leaveNames, productMap, processNames, fixedPeople, cachedAssignments)
             }
             _dispatchResult.value = result
             // 更新固定列人员缓存（本次被分配到固定列产品的人员）
@@ -268,10 +259,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 .mapNotNull { it.assignedPerson }
                 .toSet()
             _fixedPeople.value = newFixedPeople
-            // 更新固定列工序→人员映射缓存
+            // 更新固定列工序→人员映射缓存（key=列号_行号）
             val newFixedCache = result.assignments
                 .filter { productMap[it.productName]?.isFixed == true && it.assignedPerson != null }
-                .associate { "${it.productName}||${it.processName}" to it.assignedPerson!! }
+                .associate { "${it.columnIndex}_${it.rowIndex}" to it.assignedPerson!! }
             _fixedAssignmentCache.value = newFixedCache
             saveFixedAssignmentCache(newFixedCache)
             addLog("✅ 排工完成！分配${result.assignedCount}人, 固定列${newFixedPeople.size}人, ${result.statusMessage}")
