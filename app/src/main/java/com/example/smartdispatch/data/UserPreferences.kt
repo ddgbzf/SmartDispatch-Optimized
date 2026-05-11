@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.stringSetPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -14,19 +14,25 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 class UserPreferences(private val context: Context) {
 
     companion object {
-        private val RECENT_PRODUCTS_KEY = stringSetPreferencesKey("recent_products")
+        private val RECENT_PRODUCTS_KEY = stringPreferencesKey("recent_products")
         private const val MAX_RECENT_PRODUCTS = 20  // 最多保存20个最近使用的产品
+        private const val SEPARATOR = "|||"  // 分隔符
     }
 
     // 获取最近使用的产品列表
     val recentProducts: Flow<List<String>> = context.dataStore.data.map { preferences ->
-        (preferences[RECENT_PRODUCTS_KEY] ?: emptySet()).toList()
+        val data = preferences[RECENT_PRODUCTS_KEY] ?: ""
+        if (data.isBlank()) emptyList()
+        else data.split(SEPARATOR).filter { it.isNotBlank() }
     }
 
     // 添加产品到最近使用列表
     suspend fun addRecentProduct(productName: String) {
         context.dataStore.edit { preferences ->
-            val current = (preferences[RECENT_PRODUCTS_KEY] ?: emptySet()).toMutableList()
+            val current = (preferences[RECENT_PRODUCTS_KEY] ?: "")
+                .split(SEPARATOR)
+                .filter { it.isNotBlank() }
+                .toMutableList()
             // 如果已存在，先移除
             current.remove(productName)
             // 添加到头部
@@ -35,7 +41,7 @@ class UserPreferences(private val context: Context) {
             while (current.size > MAX_RECENT_PRODUCTS) {
                 current.removeAt(current.size - 1)
             }
-            preferences[RECENT_PRODUCTS_KEY] = current.toSet()
+            preferences[RECENT_PRODUCTS_KEY] = current.joinToString(SEPARATOR)
         }
     }
 

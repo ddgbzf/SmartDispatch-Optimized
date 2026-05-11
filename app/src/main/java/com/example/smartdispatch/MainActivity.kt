@@ -97,27 +97,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     
     fun updateInputName(index: Int, value: String) {
         val oldList = _inputNames.value
-        val oldValue = oldList.getOrNull(index) ?: ""
         val newList = oldList.toMutableList().apply { set(index, value) }
         saveInputNames(newList)
         _inputNames.value = newList
-        
-        // 检查是否需要自动排工
-        viewModelScope.launch {
-            if (value.isBlank()) {
-                // 清空时重新排工（移除该产品）
-                autoDispatch()
-            } else {
-                // 检查是否匹配到唯一产品
-                val products = allProducts.first()
-                val matches = products.filter { it.name.contains(value.trim(), ignoreCase = true) }
-                if (matches.size == 1) {
-                    // 匹配到唯一产品，自动排工
-                    autoDispatch()
-                }
-                // 多个匹配时不操作（保留之前结果）
-            }
-        }
+        // 不在这里自动排工，改为在 DispatchTab 中用 LaunchedEffect 防抖处理
     }
     
     // 当前正在编辑的输入框索引
@@ -351,6 +334,38 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                         Text(editingProduct!!.name, fontWeight = FontWeight.Bold, fontSize = 14.sp, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     Spacer(Modifier.height(8.dp))
+                    // 产能和人数编辑
+                    var editCapacity by remember { mutableStateOf(editingProduct!!.capacity.toString()) }
+                    var editPeople by remember { mutableStateOf(editingProduct!!.requiredPeople.toString()) }
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                        Text("产能:", fontSize = 12.sp, modifier = Modifier.width(40.dp))
+                        OutlinedTextField(
+                            value = editCapacity,
+                            onValueChange = { if (it.all { c -> c.isDigit() }) editCapacity = it },
+                            singleLine = true,
+                            textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp),
+                            modifier = Modifier.width(80.dp).height(36.dp)
+                        )
+                        Spacer(Modifier.width(16.dp))
+                        Text("人数:", fontSize = 12.sp, modifier = Modifier.width(40.dp))
+                        OutlinedTextField(
+                            value = editPeople,
+                            onValueChange = { if (it.all { c -> c.isDigit() }) editPeople = it },
+                            singleLine = true,
+                            textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp),
+                            modifier = Modifier.width(80.dp).height(36.dp)
+                        )
+                        IconButton(onClick = {
+                            viewModel.updateProduct(editingProduct!!.copy(
+                                capacity = editCapacity.toIntOrNull() ?: 0,
+                                requiredPeople = editPeople.toIntOrNull() ?: 0
+                            ))
+                        }, enabled = editCapacity.isNotBlank() && editPeople.isNotBlank()) {
+                            Icon(Icons.Default.Check, null, tint = Color(0xFF2E7D32), modifier = Modifier.size(20.dp))
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Text("工序列表:", fontSize = 12.sp, color = Color(0xFF666666))
                     // 工序列表
                     LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         items(editingProcesses.size) { index ->
@@ -845,8 +860,26 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
     val scrollState = rememberScrollState()
     val leavePeople = persons.filter { it.onLeave }
 
-    // 输入变化时自动执行排工（由 updateInputName 中的唯一匹配逻辑触发，这里不再重复触发）
-    // LaunchedEffect(inputNames) { viewModel.autoDispatch() }
+    // 防抖自动排工：输入停止500ms后，检查是否匹配唯一产品
+    LaunchedEffect(inputNames) {
+        kotlinx.coroutines.delay(500)  // 防抖500ms
+        // 检查每个输入框是否匹配唯一产品
+        var shouldDispatch = false
+        for (name in inputNames) {
+            if (name.isBlank()) {
+                shouldDispatch = true  // 清空时需要重新排工
+                break
+            }
+            val matches = products.filter { it.name.contains(name.trim(), ignoreCase = true) }
+            if (matches.size == 1) {
+                shouldDispatch = true  // 匹配到唯一产品
+                break
+            }
+        }
+        if (shouldDispatch) {
+            viewModel.autoDispatch()
+        }
+    }
 
     // 根据横竖屏调整尺寸
     val rowHeight = if (isLandscape) 20.dp else 22.dp
@@ -936,9 +969,9 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
                 Divider()
                 // 第二行：请假人名 + 产能/人数
                 Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState)) {
-                    Box(modifier = Modifier.width(60.dp).height(rowHeight).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier.width(60.dp).height(rowHeight).border(0.5.dp, Color(0xFFE0E0E0)).background(Color(0xFFFFCDD2)), contentAlignment = Alignment.Center) {
                         val p = leavePeople.getOrNull(0)
-                        if (p != null) Text(p.name, fontSize = fontSize) else Text("")
+                        if (p != null) Text(p.name, fontSize = fontSize, fontWeight = FontWeight.Medium, color = Color(0xFFC62828)) else Text("")
                     }
                     inputNames.forEachIndexed { index, name ->
                         val product = if (name.isNotBlank()) products.find { it.name.contains(name.trim(), ignoreCase = true) } else null
