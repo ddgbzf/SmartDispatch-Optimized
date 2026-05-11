@@ -333,7 +333,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-// ========== 设置页面（搜索编辑工序流程） ==========
+// ========== 设置页面（固定列管理 + 搜索编辑工序流程） ==========
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
@@ -344,6 +344,8 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
     var editingProcesses by remember { mutableStateOf<List<ProductProcess>>(emptyList()) }
     var showDeleteProcessConfirm by remember { mutableStateOf(false) }
     var deletingProcess by remember { mutableStateOf<ProductProcess?>(null) }
+    // 当前显示模式：固定列管理 or 工序流程编辑
+    var activeTab by remember { mutableStateOf(0) } // 0=固定列, 1=工序流程
 
     // 搜索过滤（输入2字符以上才过滤）
     val filteredProducts = remember(searchText, products) {
@@ -351,13 +353,15 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
         else products.filter { it.name.contains(searchText.trim(), ignoreCase = true) }.take(30)
     }
 
+    // 固定列产品列表
+    val fixedProducts = remember(products) { products.filter { it.isFixed } }
+
     // 编辑产品时加载工序
     val context = LocalContext.current
     LaunchedEffect(editingProduct) {
         if (editingProduct != null) {
             val processes = repo.getProcessesOnce(editingProduct!!.id)
             editingProcesses = processes
-            // 调试：显示工序数量
             android.widget.Toast.makeText(
                 context,
                 "加载工序: ${editingProduct!!.name}, ${processes.size}个",
@@ -467,29 +471,29 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                             }
                         }
                     }
-                } else {
-                    // 搜索模式
+                } else if (activeTab == 0) {
+                    // ===== 固定列管理 =====
+                    Text("固定列产品", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    Text("标记为固定列的产品，排工时人员将留任原岗位", fontSize = 11.sp, color = Color(0xFF666666))
+                    Spacer(Modifier.height(8.dp))
+                    // 固定列搜索
+                    var fixedSearchText by remember { mutableStateOf("") }
                     OutlinedTextField(
-                        value = searchText,
-                        onValueChange = { searchText = it },
-                        placeholder = { Text("输入型号名称搜索（至少2个字符）") },
+                        value = fixedSearchText,
+                        onValueChange = { fixedSearchText = it },
+                        placeholder = { Text("搜索产品设置固定列（至少2个字符）") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(Modifier.height(4.dp))
-
-                    // 固定列产品快速视图（不需要搜索）
-                    val fixedProducts = remember(products) { products.filter { it.isFixed } }
+                    // 已设为固定列的产品
                     if (fixedProducts.isNotEmpty()) {
-                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                            Icon(Icons.Default.Star, null, tint = Color(0xFFFBC02D), modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text("固定列产品 (${fixedProducts.size})", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFBC02D), modifier = Modifier.weight(1f))
-                        }
-                        LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 120.dp), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                        Text("已设为固定列 (${fixedProducts.size}个)", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFBC02D))
+                        Spacer(Modifier.height(4.dp))
+                        LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 150.dp), verticalArrangement = Arrangement.spacedBy(1.dp)) {
                             items(fixedProducts) { product ->
                                 Row(
-                                    modifier = Modifier.fillMaxWidth().clickable { editingProduct = product }.padding(vertical = 4.dp, horizontal = 4.dp),
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp, horizontal = 4.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Column(modifier = Modifier.weight(1f)) {
@@ -504,8 +508,63 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                         }
                         Divider(thickness = 1.dp, color = Color(0xFFE0E0E0))
                         Spacer(Modifier.height(4.dp))
+                    } else {
+                        Text("暂无固定列产品", fontSize = 11.sp, color = Color(0xFF999999))
+                        Spacer(Modifier.height(8.dp))
                     }
-
+                    // 搜索结果（带星标按钮）
+                    val fixedFiltered = remember(fixedSearchText, products) {
+                        if (fixedSearchText.length < 2) emptyList()
+                        else products.filter { it.name.contains(fixedSearchText.trim(), ignoreCase = true) }.take(30)
+                    }
+                    if (fixedSearchText.length >= 2) {
+                        Text("搜索结果 (${fixedFiltered.size}个)", fontSize = 11.sp, color = Color(0xFF666666))
+                        Spacer(Modifier.height(4.dp))
+                        LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                            if (fixedFiltered.isEmpty()) {
+                                item {
+                                    Box(modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp), contentAlignment = Alignment.Center) {
+                                        Text("未找到匹配的产品", color = Color(0xFF999999), fontSize = 12.sp)
+                                    }
+                                }
+                            } else {
+                                items(fixedFiltered) { product ->
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp, horizontal = 4.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(product.name, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                            Text("产能:${product.capacity} 人数:${product.requiredPeople}", fontSize = 10.sp, color = Color(0xFF666666))
+                                        }
+                                        IconButton(onClick = { viewModel.toggleProductFixed(product) }, modifier = Modifier.size(28.dp)) {
+                                            Icon(
+                                                if (product.isFixed) Icons.Default.Star else Icons.Default.StarBorder,
+                                                contentDescription = if (product.isFixed) "取消固定" else "设为固定",
+                                                tint = if (product.isFixed) Color(0xFFFBC02D) else Color(0xFFBDBDBD),
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        Spacer(Modifier.weight(1f))
+                        Box(modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp), contentAlignment = Alignment.Center) {
+                            Text("输入关键词搜索产品并设置固定列", color = Color(0xFF999999), fontSize = 12.sp)
+                        }
+                    }
+                } else {
+                    // ===== 工序流程编辑 =====
+                    OutlinedTextField(
+                        value = searchText,
+                        onValueChange = { searchText = it },
+                        placeholder = { Text("输入型号名称搜索（至少2个字符）") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(Modifier.height(4.dp))
                     Text("共${products.size}个产品，已过滤${filteredProducts.size}个", fontSize = 11.sp, color = Color(0xFF666666))
                     Spacer(Modifier.height(4.dp))
                     LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -529,16 +588,7 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                                 ) {
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(product.name, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                        Text("产能:${product.capacity} 人数:${product.requiredPeople}${if (product.isFixed) " 🔒固定" else ""}", fontSize = 11.sp, color = Color(0xFF666666))
-                                    }
-                                    // 固定列开关
-                                    IconButton(onClick = { viewModel.toggleProductFixed(product) }, modifier = Modifier.size(32.dp)) {
-                                        Icon(
-                                            if (product.isFixed) Icons.Default.Star else Icons.Default.StarBorder,
-                                            contentDescription = "固定",
-                                            tint = if (product.isFixed) Color(0xFFFBC02D) else Color(0xFFBDBDBD),
-                                            modifier = Modifier.size(18.dp)
-                                        )
+                                        Text("产能:${product.capacity} 人数:${product.requiredPeople}", fontSize = 11.sp, color = Color(0xFF666666))
                                     }
                                     Icon(Icons.Default.Edit, null, tint = Color(0xFF1976D2), modifier = Modifier.size(18.dp))
                                 }
@@ -549,7 +599,20 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("关闭") } }
+        confirmButton = {
+            // Tab 切换按钮 + 关闭
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (editingProduct == null) {
+                    TextButton(onClick = { activeTab = 0 }) {
+                        Text("固定列", color = if (activeTab == 0) Color(0xFFFBC02D) else Color(0xFF999999), fontWeight = if (activeTab == 0) FontWeight.Bold else FontWeight.Normal)
+                    }
+                    TextButton(onClick = { activeTab = 1 }) {
+                        Text("工序流程", color = if (activeTab == 1) Color(0xFF1976D2) else Color(0xFF999999), fontWeight = if (activeTab == 1) FontWeight.Bold else FontWeight.Normal)
+                    }
+                }
+                TextButton(onClick = onDismiss) { Text("关闭") }
+            }
+        }
     )
     // 删除工序确认对话框
     if (showDeleteProcessConfirm && deletingProcess != null) {
