@@ -250,11 +250,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
             // 从内存缓存构建固定列历史人员数据
             val cachedAssignments = _fixedAssignmentCache.value
+            addLog("缓存原始数据: ${cachedAssignments.entries.joinToString(", ") { "${it.key}=${it.value}" }}")
             val fixedHistoryList = cachedAssignments.map { (key, personName) ->
                 val idx = key.indexOf("||")
                 FixedAssignment(productName = key.substring(0, idx), processName = key.substring(idx + 2), personName = personName)
             }
-            addLog("固定列缓存: ${fixedHistoryList.size}条记录")
+            addLog("固定列缓存解析: ${fixedHistoryList.size}条, ${fixedHistoryList.joinToString(", ") { "${it.productName}/${it.processName}=${it.personName}" }}")
+            addLog("当前productMap keys: ${productMap.keys.joinToString(", ")}")
 
             val result = withContext(Dispatchers.IO) {
                 engine.runWithData(peopleNames, leaveNames, productMap, processNames, fixedPeople, fixedHistoryList)
@@ -1069,13 +1071,26 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
         // 调试日志区域（表格上方，不会被输入法遮挡）
         val debugLogs = result?.debugLogs ?: emptyList()
         if (debugLogs.isNotEmpty()) {
-            Column(modifier = Modifier.fillMaxWidth().height(if (isLandscape) 40.dp else 60.dp).background(Color(0xFFF5F5F5)).padding(2.dp)) {
-                Text("📋 调试日志（共${debugLogs.size}条）", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFF666666))
-                LazyRow(modifier = Modifier.fillMaxSize()) {
-                    items(debugLogs.size) { index ->
-                        val log = debugLogs[index]
-                        val logColor = if (log.startsWith("→")) Color(0xFF1565C0) else Color(0xFF666666)
-                        Text(log, fontSize = 8.sp, color = logColor, modifier = Modifier.padding(horizontal = 4.dp), maxLines = 1)
+            Column(modifier = Modifier.fillMaxWidth().height(if (isLandscape) 60.dp else 80.dp).background(Color(0xFFFFF8E1)).padding(2.dp).clickable { showDebugLogs = !showDebugLogs }) {
+                Text("📋 调试日志（共${debugLogs.size}条）点击${if (showDebugLogs) "收起" else "展开"}", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFFE65100))
+                if (showDebugLogs) {
+                    LazyColumn(modifier = Modifier.fillMaxSize()) {
+                        items(debugLogs.size) { index ->
+                            val log = debugLogs[index]
+                            val logColor = when {
+                                log.startsWith("[固定列") -> Color(0xFFE65100)
+                                log.startsWith("→") -> Color(0xFF1565C0)
+                                log.contains("缓存") || log.contains("productMap") -> Color(0xFFC62828)
+                                else -> Color(0xFF333333)
+                            }
+                            Text(log, fontSize = 9.sp, color = logColor, modifier = Modifier.padding(horizontal = 2.dp, vertical = 1.dp))
+                        }
+                    }
+                } else {
+                    LazyRow(modifier = Modifier.fillMaxSize()) {
+                        items(debugLogs.size) { index ->
+                            Text(debugLogs[index], fontSize = 8.sp, color = Color(0xFF666666), modifier = Modifier.padding(horizontal = 4.dp), maxLines = 1)
+                        }
                     }
                 }
             }
