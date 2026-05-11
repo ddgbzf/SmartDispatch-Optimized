@@ -87,8 +87,10 @@ class DispatchEngine {
      */
     private var fixedPeopleSet: Set<String> = emptySet()
     private val fixedAssignedPeople = mutableSetOf<String>()
-    // 固定列位置→人员映射：key="列号_行号", value=人员名
+    // 固定列位置→人员映射：key="槽位索引_行号", value=人员名
     private var fixedPositionMap: Map<String, String> = emptyMap()
+    // 固定列输入槽位索引集合
+    private var fixedSlotSet: Set<Int> = emptySet()
 
     fun runWithData(
         people: List<String>,
@@ -96,7 +98,8 @@ class DispatchEngine {
         products: Map<String, Product>,
         processNames: List<String>,
         fixedPeople: Set<String> = emptySet(),
-        fixedPositionAssignments: Map<String, String> = emptyMap()
+        fixedPositionAssignments: Map<String, String> = emptyMap(),
+        fixedSlots: Set<Int> = emptySet()
     ): DispatchResult {
         allPeople = people
         leaveList = leaveNames
@@ -105,6 +108,7 @@ class DispatchEngine {
         processPriority = processNames.withIndex().associate { it.value to it.index }
         fixedPeopleSet = fixedPeople
         fixedPositionMap = fixedPositionAssignments
+        fixedSlotSet = fixedSlots
         // 为数据库来源的数据自动构建 productColumnMap
         productColumnMap = products.keys.withIndex().associate { (index, name) -> name to (index * 2 + 1) }
         // skillScores 从数据库加载时需要通过 setSkillScores 设置
@@ -124,15 +128,16 @@ class DispatchEngine {
 
         val assignments = mutableListOf<ProcessAssignment>()
 
-        // ===== 第一步：收集固定列在岗人员（按位置匹配，不可动） =====
+        // ===== 第一步：收集固定列在岗人员（按槽位索引+行号匹配） =====
         val fixedOnDutyPeople = mutableSetOf<String>()
-        for ((productName, product) in productInfo) {
-            if (!product.isFixed) continue
-            val productCol = productColumnMap[productName] ?: continue
-            val personCol = productCol + 1
+        val productKeys = productInfo.keys.toList()
+        for (slotIndex in fixedSlotSet) {
+            if (slotIndex >= productKeys.size) continue
+            val productName = productKeys[slotIndex]
+            val product = productInfo[productName] ?: continue
             for ((offset, processName) in product.processes.withIndex()) {
                 val rowIndex = 3 + offset
-                val positionKey = "${personCol}_${rowIndex}"
+                val positionKey = "${slotIndex}_${rowIndex}"
                 val person = fixedPositionMap[positionKey]
                 if (person != null && person in allPeople && person !in leaveList) {
                     fixedOnDutyPeople.add(person)
@@ -145,24 +150,23 @@ class DispatchEngine {
         val processQueue = mutableListOf<ProcessQueueItem>()
         for ((productName, product) in productInfo) {
             val productCol = productColumnMap[productName] ?: continue
+            val slotIndex = productKeys.indexOf(productName)
             for ((offset, processName) in product.processes.withIndex()) {
                 val rowIndex = 3 + offset
                 if (product.isFixed) {
-                    val personCol = productCol + 1
-                    val positionKey = "${personCol}_${rowIndex}"
+                    val positionKey = "${slotIndex}_${rowIndex}"
                     val historyPerson = fixedPositionMap[positionKey]
                     if (historyPerson != null && historyPerson in allPeople && historyPerson !in leaveList) {
                         // 原地保持
-                        assignments.add(ProcessAssignment(productName, processName, historyPerson, rowIndex, personCol))
+                        assignments.add(ProcessAssignment(productName, processName, historyPerson, rowIndex, productCol + 1))
                         assignedPeople.add(historyPerson)
                         fixedAssignedPeople.add(historyPerson)
-                        debugLogs.add("[固定列留任] ${personCol}列${rowIndex}行 → $historyPerson")
+                        debugLogs.add("[固定列留任] 槽${slotIndex} ${rowIndex}行 → $historyPerson")
                     } else {
-                        // 请假或无记录 → 放入排工池
                         if (historyPerson != null && historyPerson in leaveList) {
-                            debugLogs.add("[固定列请假] ${personCol}列${rowIndex}行 → $historyPerson 请假，放入排工池")
+                            debugLogs.add("[固定列请假] 槽${slotIndex} ${rowIndex}行 → $historyPerson 请假")
                         } else {
-                            debugLogs.add("[固定列新] ${personCol}列${rowIndex}行 → 无历史人员，放入排工池")
+                            debugLogs.add("[固定列新] 槽${slotIndex} ${rowIndex}行 → 无历史人员")
                         }
                         val processPriorityVal = processPriority[processName] ?: Int.MAX_VALUE
                         processQueue.add(ProcessQueueItem(processPriorityVal, productCol, rowIndex, processName, productName))

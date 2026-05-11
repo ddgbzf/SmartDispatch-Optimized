@@ -75,8 +75,37 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val dispatchResult: StateFlow<DispatchResult?> = _dispatchResult.asStateFlow()
     // 固定列人员缓存（上次排工中被分配到固定列产品的人员）
     private val _fixedPeople = MutableStateFlow<Set<String>>(emptySet())
-    // 固定列位置→人员映射缓存（key=列号_行号, value=人员名），持久化到 SharedPreferences
+    // 固定列输入槽位索引集合（哪些输入框被标记为固定列）
+    private val _fixedInputSlots = MutableStateFlow(loadFixedInputSlots())
+    val fixedInputSlots: StateFlow<Set<Int>> = _fixedInputSlots.asStateFlow()
+    // 固定列位置→人员映射缓存（key=槽位索引_行号, value=人员名）
     private val _fixedAssignmentCache = MutableStateFlow(loadFixedAssignmentCache())
+    
+    private fun loadFixedInputSlots(): Set<Int> {
+        val str = prefs.getString("fixed_slots", "") ?: ""
+        return if (str.isBlank()) emptySet() else str.split(",").mapNotNull { it.toIntOrNull() }.toSet()
+    }
+    
+    private fun saveFixedInputSlots(slots: Set<Int>) {
+        prefs.edit().putString("fixed_slots", slots.joinToString(",")).apply()
+    }
+    
+    fun toggleFixedSlot(index: Int) {
+        val current = _fixedInputSlots.value.toMutableSet()
+        if (index in current) {
+            current.remove(index)
+            // 取消固定时清除该槽位的人员缓存
+            val newCache = _fixedAssignmentCache.value.toMutableMap()
+            val prefix = "${index}_"
+            newCache.keys.filter { it.startsWith(prefix) }.forEach { newCache.remove(it) }
+            _fixedAssignmentCache.value = newCache
+            saveFixedAssignmentCache(newCache)
+        } else {
+            current.add(index)
+        }
+        _fixedInputSlots.value = current
+        saveFixedInputSlots(current)
+    }
     
     private fun loadFixedAssignmentCache(): Map<String, String> {
         val all = prefs.all
@@ -113,10 +142,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     
     fun updateInputName(index: Int, value: String) {
         val oldList = _inputNames.value
+        val oldName = oldList[index]
         val newList = oldList.toMutableList().apply { set(index, value) }
         saveInputNames(newList)
         _inputNames.value = newList
-        // 不在这里自动排工，改为在 DispatchTab 中用 LaunchedEffect 防抖处理
+        // 名称变更时自动取消该槽位的固定列
+        if (oldName != value && index in _fixedInputSlots.value) {
+            toggleFixedSlot(index)
+        }
     }
     
     // 当前正在编辑的输入框索引
@@ -245,12 +278,27 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             engine.setSkillScoresData(scoreMap)
             val fixedPeople = _fixedPeople.value
 
-            // 固定列缓存：key=列号_行号, value=人员名
+            // 固定列槽位索引 → 产品key的映射
+            val fixedSlotSet = _fixedInputSlots.value
+            val productKeys = productMap.keys.toList()
+            val fixedProductKeys = mutableSetOf<String>()
+            for (slotIndex in fixedSlotSet) {
+                if (slotIndex < productKeys.size) {
+                    fixedProductKeys.add(productKeys[slotIndex])
+                }
+            }
+            // 标记固定列产品的 isFixed
+            for (key in fixedProductKeys) {
+                productMap[key] = productMap[key]!!.copy(isFixed = true)
+            }
+            addLog("固定列槽位: $fixedSlotSet, 固定产品: ${fixedProductKeys.joinToString(", ")}")
+
+            // 固定列缓存：key=槽位索引_行号, value=人员名
             val cachedAssignments = _fixedAssignmentCache.value
             addLog("固定列缓存: ${cachedAssignments.size}条")
 
             val result = withContext(Dispatchers.IO) {
-                engine.runWithData(peopleNames, leaveNames, productMap, processNames, fixedPeople, cachedAssignments)
+                engine.runWithData(peopleNames, leaveNames, productMap, processNames, fixedPeople, cachedAssignments, fixedSlotSet)
             }
             _dispatchResult.value = result
             // 更新固定列人员缓存（本次被分配到固定列产品的人员）
@@ -259,10 +307,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 .mapNotNull { it.assignedPerson }
                 .toSet()
             _fixedPeople.value = newFixedPeople
-            // 更新固定列工序→人员映射缓存（key=列号_行号）
-            val newFixedCache = result.assignments
-                .filter { productMap[it.productName]?.isFixed == true && it.assignedPerson != null }
-                .associate { "${it.columnIndex}_${it.rowIndex}" to it.assignedPerson!! }
+            // 更新固定列位置→人员映射缓存（key=槽位索引_行号）
+            val newFixedCache = mutableMapOf<String, String>()
+            result.assignments.forEach { assignment ->
+                val productKey = assignment.productName
+                val slotIndex = productKeys.indexOf(productKey)
+                if (slotIndex in fixedSlotSet && assignment.assignedPerson != null) {
+                    newFixedCache["${slotIndex}_${assignment.rowIndex}"] = assignment.assignedPerson!!
+                }
+            }
             _fixedAssignmentCache.value = newFixedCache
             saveFixedAssignmentCache(newFixedCache)
             addLog("✅ 排工完成！分配${result.assignedCount}人, 固定列${newFixedPeople.size}人, ${result.statusMessage}")
@@ -554,97 +607,50 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FixedColumnScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
-    val products by viewModel.allProducts.collectAsState()
-    val fixedProducts = remember(products) { products.filter { it.isFixed } }
-    var fixedSearchText by remember { mutableStateOf("") }
-
-    val fixedFiltered = remember(fixedSearchText, products) {
-        if (fixedSearchText.length < 2) emptyList()
-        else products.filter { it.name.contains(fixedSearchText.trim(), ignoreCase = true) }.take(30)
-    }
+    val inputNames by viewModel.inputNames.collectAsState()
+    val fixedSlots by viewModel.fixedInputSlots.collectAsState()
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("固定列", fontWeight = FontWeight.Bold) },
         text = {
-            Column(modifier = Modifier.fillMaxWidth().height(500.dp)) {
-                // 已设为固定列的产品
-                if (fixedProducts.isNotEmpty()) {
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                        Icon(Icons.Default.Star, null, tint = Color(0xFFFBC02D), modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text("已设为固定列 (${fixedProducts.size}个)", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFBC02D))
-                    }
-                    Spacer(Modifier.height(4.dp))
-                    LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 180.dp), verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                        items(fixedProducts) { product ->
+            Column(modifier = Modifier.fillMaxWidth().height(400.dp)) {
+                Text("点击 ⭐ 标记固定列，固定列人员排工时留任原岗位", fontSize = 11.sp, color = Color(0xFF666666))
+                Spacer(Modifier.height(12.dp))
+                LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    items(inputNames.size) { index ->
+                        val name = inputNames[index]
+                        val isFixed = index in fixedSlots
+                        if (name.isBlank()) {
+                            // 空槽位
                             Row(
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp, horizontal = 4.dp),
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp, horizontal = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("第${index + 1}列", fontSize = 13.sp, color = Color(0xFF999999))
+                                Spacer(Modifier.weight(1f))
+                                Text("(空)", fontSize = 12.sp, color = Color(0xFFCCCCCC))
+                            }
+                        } else {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp, horizontal = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text(product.name, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                    Text("产能:${product.capacity} 人数:${product.requiredPeople}", fontSize = 10.sp, color = Color(0xFF666666))
+                                    Text("第${index + 1}列", fontSize = 11.sp, color = Color(0xFF999999))
+                                    Text(name, fontSize = 14.sp, fontWeight = if (isFixed) FontWeight.Bold else FontWeight.Normal, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 }
-                                IconButton(onClick = { viewModel.toggleProductFixed(product) }, modifier = Modifier.size(28.dp)) {
-                                    Icon(Icons.Default.Star, contentDescription = "取消固定", tint = Color(0xFFFBC02D), modifier = Modifier.size(16.dp))
+                                IconButton(onClick = { viewModel.toggleFixedSlot(index) }, modifier = Modifier.size(36.dp)) {
+                                    Icon(
+                                        if (isFixed) Icons.Default.Star else Icons.Default.StarBorder,
+                                        contentDescription = if (isFixed) "取消固定" else "设为固定",
+                                        tint = if (isFixed) Color(0xFFFBC02D) else Color(0xFFBDBDBD),
+                                        modifier = Modifier.size(24.dp)
+                                    )
                                 }
                             }
+                            if (index < inputNames.size - 1) Divider()
                         }
-                    }
-                    Divider(thickness = 1.dp, color = Color(0xFFE0E0E0))
-                    Spacer(Modifier.height(8.dp))
-                } else {
-                    Text("暂无固定列产品", fontSize = 11.sp, color = Color(0xFF999999))
-                    Spacer(Modifier.height(8.dp))
-                }
-
-                // 搜索添加固定列
-                Text("搜索产品设置固定列：", fontSize = 12.sp, color = Color(0xFF666666))
-                Spacer(Modifier.height(4.dp))
-                OutlinedTextField(
-                    value = fixedSearchText, onValueChange = { fixedSearchText = it },
-                    placeholder = { Text("输入型号名称（至少2个字符）") },
-                    singleLine = true, modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(Modifier.height(4.dp))
-
-                if (fixedSearchText.length >= 2) {
-                    Text("搜索结果 (${fixedFiltered.size}个)", fontSize = 11.sp, color = Color(0xFF666666))
-                    Spacer(Modifier.height(4.dp))
-                    LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                        if (fixedFiltered.isEmpty()) {
-                            item {
-                                Box(modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp), contentAlignment = Alignment.Center) {
-                                    Text("未找到匹配的产品", color = Color(0xFF999999), fontSize = 12.sp)
-                                }
-                            }
-                        } else {
-                            items(fixedFiltered) { product ->
-                                Row(
-                                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp, horizontal = 4.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(product.name, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                        Text("产能:${product.capacity} 人数:${product.requiredPeople}", fontSize = 10.sp, color = Color(0xFF666666))
-                                    }
-                                    IconButton(onClick = { viewModel.toggleProductFixed(product) }, modifier = Modifier.size(28.dp)) {
-                                        Icon(
-                                            if (product.isFixed) Icons.Default.Star else Icons.Default.StarBorder,
-                                            contentDescription = if (product.isFixed) "取消固定" else "设为固定",
-                                            tint = if (product.isFixed) Color(0xFFFBC02D) else Color(0xFFBDBDBD),
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    Spacer(Modifier.weight(1f))
-                    Box(modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp), contentAlignment = Alignment.Center) {
-                        Text("输入关键词搜索产品并设置固定列", color = Color(0xFF999999), fontSize = 12.sp)
                     }
                 }
             }
