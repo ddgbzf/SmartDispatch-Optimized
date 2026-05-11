@@ -261,7 +261,13 @@ class DispatchEngine {
             val capacity = getCellIntValue(row, capacityCol)
             val requiredPeople = getCellIntValue(row, peopleCol)
             val processes = processCols.mapNotNull { col ->
-                row.getCell(col)?.stringCellValue?.trim()?.takeIf { it.isNotEmpty() }
+                val cell = row.getCell(col)
+                val value = when (cell?.cellType) {
+                    CellType.STRING -> cell.stringCellValue?.trim()
+                    CellType.NUMERIC -> cell.numericCellValue.toInt().toString()
+                    else -> null
+                }
+                value?.takeIf { it.isNotEmpty() }
             }
 
             products[productName] = Product(productName, capacity, requiredPeople, processes)

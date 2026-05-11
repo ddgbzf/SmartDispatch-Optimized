@@ -318,7 +318,9 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
     // 编辑产品时加载工序
     LaunchedEffect(editingProduct) {
         if (editingProduct != null) {
-            editingProcesses = repo.getProcessesOnce(editingProduct!!.id)
+            val processes = repo.getProcessesOnce(editingProduct!!.id)
+            android.util.Log.d("SettingsScreen", "加载工序: productId=${editingProduct!!.id}, 工序数=${processes.size}")
+            editingProcesses = processes
         }
     }
 
