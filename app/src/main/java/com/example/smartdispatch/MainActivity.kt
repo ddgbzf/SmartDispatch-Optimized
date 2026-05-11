@@ -319,8 +319,13 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
     LaunchedEffect(editingProduct) {
         if (editingProduct != null) {
             val processes = repo.getProcessesOnce(editingProduct!!.id)
-            android.util.Log.d("SettingsScreen", "加载工序: productId=${editingProduct!!.id}, 工序数=${processes.size}")
             editingProcesses = processes
+            // 调试：显示工序数量
+            android.widget.Toast.makeText(
+                LocalContext.current,
+                "加载工序: ${editingProduct!!.name}, ${processes.size}个",
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
         }
     }
 
@@ -459,6 +464,15 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(product.name, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                         Text("产能:${product.capacity} 人数:${product.requiredPeople}${if (product.isFixed) " 🔒固定" else ""}", fontSize = 11.sp, color = Color(0xFF666666))
+                                    }
+                                    // 固定列开关
+                                    IconButton(onClick = { viewModel.toggleProductFixed(product) }, modifier = Modifier.size(32.dp)) {
+                                        Icon(
+                                            if (product.isFixed) Icons.Default.Star else Icons.Default.StarBorder,
+                                            contentDescription = "固定",
+                                            tint = if (product.isFixed) Color(0xFFFBC02D) else Color(0xFFBDBDBD),
+                                            modifier = Modifier.size(18.dp)
+                                        )
                                     }
                                     Icon(Icons.Default.Edit, null, tint = Color(0xFF1976D2), modifier = Modifier.size(18.dp))
                                 }
@@ -609,13 +623,13 @@ fun LeaveTab(viewModel: MainViewModel) {
                     ) {
                         Icon(if (person.onLeave) Icons.Default.PersonOff else Icons.Default.Person, null, tint = if (person.onLeave) Color(0xFFC62828) else Color(0xFF2E7D32), modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(8.dp))
-                        Text(person.name, fontSize = 14.sp, modifier = Modifier.weight(1f))
                         // 显示工号
                         if (person.employeeId.isNotBlank()) {
-                            Text(person.employeeId, fontSize = 11.sp, color = Color(0xFF757575), modifier = Modifier.width(60.dp))
+                            Text(person.employeeId, fontSize = 12.sp, color = Color(0xFF666666), modifier = Modifier.width(70.dp))
                         } else {
-                            Spacer(Modifier.width(60.dp))
+                            Spacer(Modifier.width(70.dp))
                         }
+                        Text(person.name, fontSize = 14.sp, modifier = Modifier.weight(1f))
                         Text(if (person.onLeave) "请假中" else "在岗", fontSize = 12.sp, color = if (person.onLeave) Color(0xFFC62828) else Color(0xFF2E7D32))
                         Spacer(Modifier.width(8.dp))
                         IconButton(onClick = { viewModel.toggleLeave(person) }, modifier = Modifier.size(32.dp)) { Icon(if (person.onLeave) Icons.Default.CheckCircle else Icons.Default.RemoveCircle, null, tint = if (person.onLeave) Color(0xFF2E7D32) else Color(0xFFC62828), modifier = Modifier.size(20.dp)) }
@@ -770,17 +784,7 @@ fun ProcessFlowTab(viewModel: MainViewModel) {
                             Row(modifier = Modifier.weight(1f).horizontalScroll(scrollState).background(rowBg)) {
                                 Box(modifier = Modifier.width(60.dp).height(28.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) { Text(product.capacity.toString(), fontSize = 13.sp) }
                                 Box(modifier = Modifier.width(50.dp).height(28.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) { Text(product.requiredPeople.toString(), fontSize = 13.sp) }
-                                // 固定状态开关
-                                Box(modifier = Modifier.width(40.dp).height(28.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
-                                    IconButton(onClick = { viewModel.toggleProductFixed(product) }, modifier = Modifier.size(24.dp)) {
-                                        Icon(
-                                            if (product.isFixed) Icons.Default.Star else Icons.Default.StarBorder,
-                                            contentDescription = "固定",
-                                            tint = if (product.isFixed) Color(0xFFFBC02D) else Color(0xFFBDBDBD),
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                    }
-                                }
+                                // 工序列表（固定产品黄色背景）
                                 for (i in 0 until maxProcesses) {
                                     val pp = processes.getOrNull(i)
                                     Box(modifier = Modifier.width(72.dp).height(28.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
