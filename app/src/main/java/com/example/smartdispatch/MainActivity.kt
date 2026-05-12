@@ -143,14 +143,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     
     fun updateInputName(index: Int, value: String) {
         val oldList = _inputNames.value
-        val oldName = oldList[index]
         val newList = oldList.toMutableList().apply { set(index, value) }
         saveInputNames(newList)
         _inputNames.value = newList
-        // 名称变更时自动取消该槽位的固定列
-        if (oldName != value && index in _fixedInputSlots.value) {
-            toggleFixedSlot(index)
-        }
+        // 名称变更时的固定列取消在排工前检测
     }
     
     // 当前正在编辑的输入框索引
@@ -177,8 +173,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     
     fun selectProduct(index: Int, productName: String) {
-        updateInputName(index, productName)
+        val oldList = _inputNames.value
+        val newList = oldList.toMutableList().apply { set(index, productName) }
+        saveInputNames(newList)
+        _inputNames.value = newList
         _focusedInputIndex.value = -1 // 关闭下拉列表
+        // 点击搜索结果时直接排工
+        autoDispatch()
     }
 
     fun addLog(msg: String) { _logs.update { it + msg } }
@@ -1096,23 +1097,11 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
     val scrollState = rememberScrollState()
     val leavePeople = persons.filter { it.onLeave }
 
-    // 防抖自动排工：输入停止500ms后，检查是否匹配唯一产品
+    // 防抖自动排工：全部清空时触发排工
     LaunchedEffect(inputNames) {
         kotlinx.coroutines.delay(500)  // 防抖500ms
-        // 检查每个输入框是否匹配唯一产品
-        var shouldDispatch = false
-        for (name in inputNames) {
-            if (name.isBlank()) {
-                shouldDispatch = true  // 清空时需要重新排工
-                break
-            }
-            val matches = products.filter { it.name.contains(name.trim(), ignoreCase = true) }
-            if (matches.size == 1) {
-                shouldDispatch = true  // 匹配到唯一产品
-                break
-            }
-        }
-        if (shouldDispatch) {
+        // 只有全部清空时才自动排工
+        if (inputNames.all { it.isBlank() }) {
             viewModel.autoDispatch()
         }
     }
