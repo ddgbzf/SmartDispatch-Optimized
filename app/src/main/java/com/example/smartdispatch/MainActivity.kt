@@ -1281,7 +1281,7 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
                 }
                 Divider()
                 // 数据行
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                LazyColumn(modifier = Modifier.weight(1f)) {
                     val maxProductRows = inputNames.indices.maxOfOrNull { index ->
                         val name = inputNames[index]
                         val product = if (name.isNotBlank()) products.find { it.name.contains(name.trim(), ignoreCase = true) } else null
@@ -1323,21 +1323,52 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
                     // 未分配人员紧跟数据行之后
                     val unassigned = result?.unassignedPeople ?: emptyList()
                     if (unassigned.isNotEmpty()) {
-                        item {
-                            Divider()
-                            Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState)) {
-                                Box(modifier = Modifier.width(60.dp).height(rowHeight).border(0.5.dp, Color(0xFFE0E0E0)).background(Color(0xFFFFE0B2)), contentAlignment = Alignment.Center) {
-                                    Text("未分", fontSize = fontSize, fontWeight = FontWeight.Bold, color = Color(0xFFE65100))
-                                }
-                                unassigned.forEach { person ->
-                                    Box(modifier = Modifier.width(60.dp).height(rowHeight).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
-                                        Text(person, fontSize = fontSize, color = Color(0xFF757575), fontStyle = FontStyle.Italic)
-                                    }
+                        Divider()
+                        Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState)) {
+                            Box(modifier = Modifier.width(60.dp).height(rowHeight).border(0.5.dp, Color(0xFFE0E0E0)).background(Color(0xFFFFE0B2)), contentAlignment = Alignment.Center) {
+                                Text("未分", fontSize = fontSize, fontWeight = FontWeight.Bold, color = Color(0xFFE65100))
+                            }
+                            unassigned.forEach { person ->
+                                Box(modifier = Modifier.width(60.dp).height(rowHeight).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
+                                    Text(person, fontSize = fontSize, color = Color(0xFF757575), fontStyle = FontStyle.Italic)
                                 }
                             }
                         }
                     }
                 }
+            }
+            // 右下角全屏按钮
+            val context = LocalContext.current
+            FloatingActionButton(
+                onClick = {
+                    val activity = context as? android.app.Activity
+                    activity?.let {
+                        val window = it.window
+                        // 切换全屏
+                        if (it.window.decorView.systemUiVisibility and android.view.View.SYSTEM_UI_FLAG_FULLSCREEN != 0) {
+                            // 退出全屏
+                            window.decorView.systemUiVisibility = android.view.View.SYSTEM_UI_FLAG_VISIBLE
+                            it.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                        } else {
+                            // 进入全屏
+                            @Suppress("DEPRECATION")
+                            window.decorView.systemUiVisibility = (
+                                android.view.View.SYSTEM_UI_FLAG_FULLSCREEN
+                                    or android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                                    or android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                                    or android.view.View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                                    or android.view.View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                                    or android.view.View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                                )
+                            it.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                        }
+                    }
+                },
+                modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp),
+                containerColor = Color(0xFF1976D2),
+                contentColor = Color.White
+            ) {
+                Icon(Icons.Default.Fullscreen, "全屏", modifier = Modifier.size(24.dp))
             }
         }
     }
