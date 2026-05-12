@@ -589,12 +589,18 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                             val process = editingProcesses[index]
                             var editName by remember { mutableStateOf(process.processName) }
                             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                                Text("${index + 1}.", fontSize = 12.sp, color = Color(0xFF666666), modifier = Modifier.width(24.dp))
-                                OutlinedTextField(
+                                Text("${index + 1}.", fontSize = 14.sp, color = Color(0xFF666666), modifier = Modifier.width(28.dp))
+                                BasicTextField(
                                     value = editName, onValueChange = { editName = it },
-                                    singleLine = true, 
+                                    singleLine = true,
                                     textStyle = androidx.compose.ui.text.TextStyle(fontSize = 14.sp, color = Color.Black),
-                                    modifier = Modifier.weight(1f).height(44.dp)
+                                    modifier = Modifier.weight(1f).height(40.dp).border(1.dp, Color(0xFFBDBDBD), RoundedCornerShape(4.dp)).padding(horizontal = 8.dp, vertical = 6.dp),
+                                    cursorBrush = androidx.compose.ui.graphics.SolidColor(Color.Black),
+                                    decorationBox = { innerTextField ->
+                                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.CenterStart) {
+                                            innerTextField()
+                                        }
+                                    }
                                 )
                                 IconButton(onClick = {
                                     viewModel.updateProcessName(editingProduct!!.id, process.id, editName.trim())
@@ -612,12 +618,21 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                         item {
                             var newProcessName by remember { mutableStateOf("") }
                             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                                Text("${editingProcesses.size + 1}.", fontSize = 12.sp, color = Color(0xFF666666), modifier = Modifier.width(24.dp))
-                                OutlinedTextField(
+                                Text("${editingProcesses.size + 1}.", fontSize = 14.sp, color = Color(0xFF666666), modifier = Modifier.width(28.dp))
+                                BasicTextField(
                                     value = newProcessName, onValueChange = { newProcessName = it },
-                                    singleLine = true, placeholder = { Text("新工序名称", fontSize = 12.sp) },
-                                    textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp),
-                                    modifier = Modifier.weight(1f).height(36.dp)
+                                    singleLine = true,
+                                    textStyle = androidx.compose.ui.text.TextStyle(fontSize = 14.sp, color = Color.Black),
+                                    modifier = Modifier.weight(1f).height(40.dp).border(1.dp, Color(0xFFBDBDBD), RoundedCornerShape(4.dp)).padding(horizontal = 8.dp, vertical = 6.dp),
+                                    cursorBrush = androidx.compose.ui.graphics.SolidColor(Color.Black),
+                                    decorationBox = { innerTextField ->
+                                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.CenterStart) {
+                                            if (newProcessName.isEmpty()) {
+                                                Text("新工序名称", fontSize = 14.sp, color = Color(0xFFAAAAAA))
+                                            }
+                                            innerTextField()
+                                        }
+                                    }
                                 )
                                 IconButton(onClick = {
                                     if (newProcessName.isNotBlank()) {
