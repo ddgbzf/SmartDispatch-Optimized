@@ -7,6 +7,9 @@ plugins {
 android {
     namespace = "com.example.smartdispatch"
     compileSdk = 35
+    buildFeatures {
+        buildConfig = true
+    }
 
     signingConfigs {
         create("release") {
