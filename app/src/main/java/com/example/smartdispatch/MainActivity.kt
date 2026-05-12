@@ -1319,9 +1319,9 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
                             }
                         }
                     }
-
-                    // 未分配人员紧跟数据行之后
-                    val unassigned = result?.unassignedPeople ?: emptyList()
+                }
+                // 未分配人员紧跟数据行之后
+                val unassigned = result?.unassignedPeople ?: emptyList()
                     if (unassigned.isNotEmpty()) {
                         Divider()
                         Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState)) {
