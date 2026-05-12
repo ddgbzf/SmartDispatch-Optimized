@@ -1345,34 +1345,36 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false, onFullsc
             }
             // 右下角全屏按钮
             val context = LocalContext.current
-            FloatingActionButton(
-                onClick = {
-                    isTableFullscreen = !isTableFullscreen
-                    onFullscreenChange?.invoke(isTableFullscreen)
-                    val activity = context as? android.app.Activity
-                    activity?.let {
-                        if (isTableFullscreen) {
-                            @Suppress("DEPRECATION")
-                            it.window.decorView.systemUiVisibility = (
-                                android.view.View.SYSTEM_UI_FLAG_FULLSCREEN
-                                    or android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                                    or android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                                    or android.view.View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                                    or android.view.View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                                    or android.view.View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                                )
-                            it.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-                        } else {
-                            it.window.decorView.systemUiVisibility = android.view.View.SYSTEM_UI_FLAG_VISIBLE
-                            it.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.BottomEnd) {
+                FloatingActionButton(
+                    onClick = {
+                        isTableFullscreen = !isTableFullscreen
+                        onFullscreenChange?.invoke(isTableFullscreen)
+                        val activity = context as? android.app.Activity
+                        activity?.let {
+                            if (isTableFullscreen) {
+                                @Suppress("DEPRECATION")
+                                it.window.decorView.systemUiVisibility = (
+                                    android.view.View.SYSTEM_UI_FLAG_FULLSCREEN
+                                        or android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                                        or android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                                        or android.view.View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                                        or android.view.View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                                        or android.view.View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                                    )
+                                it.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                            } else {
+                                it.window.decorView.systemUiVisibility = android.view.View.SYSTEM_UI_FLAG_VISIBLE
+                                it.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                            }
                         }
-                    }
-                },
-                modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp),
-                containerColor = Color(0xFF1976D2),
-                contentColor = Color.White
-            ) {
-                Icon(Icons.Default.Fullscreen, "全屏", modifier = Modifier.size(24.dp))
+                    },
+                    modifier = Modifier.padding(12.dp),
+                    containerColor = Color(0xFF1976D2),
+                    contentColor = Color.White
+                ) {
+                    Icon(Icons.Default.Fullscreen, "全屏", modifier = Modifier.size(24.dp))
+                }
             }
         }
     }
