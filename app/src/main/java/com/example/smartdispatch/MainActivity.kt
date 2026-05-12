@@ -160,7 +160,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (focusIndex < 0 || focusIndex >= names.size) emptyList()
         else {
             val text = names[focusIndex].trim()
-            if (text.length < 2) emptyList()
+            if (text.isEmpty()) emptyList()
             else {
                 val matched = products.filter { it.name.contains(text, ignoreCase = true) }.map { it.name }
                 // 按最近使用排序：最近使用的排在前面
@@ -170,7 +170,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }.take(10)
             }
         }
-    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(1000), emptyList())
     
     fun selectProduct(index: Int, productName: String) {
         val oldList = _inputNames.value
