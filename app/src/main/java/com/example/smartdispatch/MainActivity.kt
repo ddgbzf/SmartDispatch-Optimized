@@ -560,18 +560,20 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                     var editCapacity by remember { mutableStateOf(editingProduct!!.capacity.toString()) }
                     var editPeople by remember { mutableStateOf(editingProduct!!.requiredPeople.toString()) }
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                        Text("产能:", fontSize = 12.sp, modifier = Modifier.width(40.dp))
-                        OutlinedTextField(
+                        Text("产能:", fontSize = 14.sp, modifier = Modifier.width(40.dp))
+                        BasicTextField(
                             value = editCapacity, onValueChange = { if (it.all { c -> c.isDigit() }) editCapacity = it },
-                            singleLine = true, textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp),
-                            modifier = Modifier.width(80.dp).height(36.dp)
+                            singleLine = true, textStyle = androidx.compose.ui.text.TextStyle(fontSize = 14.sp, color = Color.Black),
+                            modifier = Modifier.width(80.dp).height(40.dp).border(1.dp, Color(0xFFBDBDBD), RoundedCornerShape(4.dp)).padding(horizontal = 8.dp, vertical = 6.dp),
+                            cursorBrush = androidx.compose.ui.graphics.SolidColor(Color.Black)
                         )
                         Spacer(Modifier.width(16.dp))
-                        Text("人数:", fontSize = 12.sp, modifier = Modifier.width(40.dp))
-                        OutlinedTextField(
+                        Text("人数:", fontSize = 14.sp, modifier = Modifier.width(40.dp))
+                        BasicTextField(
                             value = editPeople, onValueChange = { if (it.all { c -> c.isDigit() }) editPeople = it },
-                            singleLine = true, textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp),
-                            modifier = Modifier.width(80.dp).height(36.dp)
+                            singleLine = true, textStyle = androidx.compose.ui.text.TextStyle(fontSize = 14.sp, color = Color.Black),
+                            modifier = Modifier.width(80.dp).height(40.dp).border(1.dp, Color(0xFFBDBDBD), RoundedCornerShape(4.dp)).padding(horizontal = 8.dp, vertical = 6.dp),
+                            cursorBrush = androidx.compose.ui.graphics.SolidColor(Color.Black)
                         )
                         IconButton(onClick = {
                             viewModel.updateProduct(editingProduct!!.copy(
