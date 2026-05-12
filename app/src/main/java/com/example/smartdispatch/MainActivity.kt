@@ -774,11 +774,13 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    var isTableFullscreen by remember { mutableStateOf(false) }
     val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let { viewModel.importFromExcel(it) } }
     val exportPicker = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")) { uri -> uri?.let { Toast.makeText(context, "导出功能开发中...", Toast.LENGTH_SHORT).show() } }
 
     Scaffold(
         topBar = {
+            if (!isTableFullscreen) {
             // 横屏时极限压缩顶部
             if (isLandscape) {
                 TopAppBar(
@@ -830,8 +832,10 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                     }
                 )
             }
+            }
         },
         bottomBar = {
+            if (!isTableFullscreen) {
             val tabTitles = if (isLandscape) listOf("请假", "评分", "流程", "排工") else listOf("人员名单", "工序评分", "工序流程", "智能排工")
             TabRow(
                 selectedTabIndex = selectedTab,
@@ -849,6 +853,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                     )
                 }
             }
+            }
         }
     ) { padding ->
         Box(modifier = Modifier.padding(padding)) {
@@ -856,7 +861,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                 0 -> LeaveTab(viewModel)
                 1 -> SkillScoreTab(viewModel)
                 2 -> ProcessFlowTab(viewModel)
-                3 -> DispatchTab(viewModel, isLandscape)
+                3 -> DispatchTab(viewModel, isLandscape, onFullscreenChange = { isTableFullscreen = it })
             }
         }
 
@@ -1098,7 +1103,7 @@ fun ProcessFlowTab(viewModel: MainViewModel) {
 
 // ========== Tab 4: 智能排工（自动排工，横屏优化，缩放功能） ==========
 @Composable
-fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
+fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false, onFullscreenChange: ((Boolean) -> Unit)? = null) {
     val isLoading by viewModel.isLoading.collectAsState()
     val result by viewModel.dispatchResult.collectAsState()
     val persons by viewModel.allPersons.collectAsState()
@@ -1108,6 +1113,7 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
     val matchedProducts by viewModel.matchedProducts.collectAsState()
     val repo = (LocalContext.current.applicationContext as DispatchApplication).repository
     var showDebugLogs by remember { mutableStateOf(true) }
+    var isTableFullscreen by remember { mutableStateOf(false) }
     var processMap by remember { mutableStateOf<Map<Int, List<ProductProcess>>>(emptyMap()) }
     LaunchedEffect(products) {
         val map = mutableMapOf<Int, List<ProductProcess>>()
@@ -1341,18 +1347,13 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
             val context = LocalContext.current
             FloatingActionButton(
                 onClick = {
+                    isTableFullscreen = !isTableFullscreen
+                    onFullscreenChange?.invoke(isTableFullscreen)
                     val activity = context as? android.app.Activity
                     activity?.let {
-                        val window = it.window
-                        // 切换全屏
-                        if (it.window.decorView.systemUiVisibility and android.view.View.SYSTEM_UI_FLAG_FULLSCREEN != 0) {
-                            // 退出全屏
-                            window.decorView.systemUiVisibility = android.view.View.SYSTEM_UI_FLAG_VISIBLE
-                            it.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-                        } else {
-                            // 进入全屏
+                        if (isTableFullscreen) {
                             @Suppress("DEPRECATION")
-                            window.decorView.systemUiVisibility = (
+                            it.window.decorView.systemUiVisibility = (
                                 android.view.View.SYSTEM_UI_FLAG_FULLSCREEN
                                     or android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
                                     or android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
@@ -1361,6 +1362,9 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
                                     or android.view.View.SYSTEM_UI_FLAG_LAYOUT_STABLE
                                 )
                             it.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                        } else {
+                            it.window.decorView.systemUiVisibility = android.view.View.SYSTEM_UI_FLAG_VISIBLE
+                            it.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
                         }
                     }
                 },
@@ -1372,7 +1376,6 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
             }
         }
     }
-}
 
 @Composable
 fun StatItem(label: String, value: String, valueColor: Color = MaterialTheme.colorScheme.primary) {
