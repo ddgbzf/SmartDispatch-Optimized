@@ -27,10 +27,6 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
-    - name: Generate release keystore
-      run: |
-        keytool -genkeypair -v -keystore app/release-key.jks -keyalg RSA -keysize 2048 -validity 10000 -alias release -storepass smart123 -keypass smart123 -dname "CN=SmartDispatch, OU=Dev, O=SmartDispatch, L=Unknown, ST=Unknown, C=CN"
-
     - name: Build Debug APK
       run: ./gradlew assembleDebug
 
