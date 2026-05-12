@@ -78,6 +78,29 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // 固定列输入槽位索引集合（哪些输入框被标记为固定列）
     private val _fixedInputSlots = MutableStateFlow(loadFixedInputSlots())
     val fixedInputSlots: StateFlow<Set<Int>> = _fixedInputSlots.asStateFlow()
+    // 显示设置：字体大小、行高、列宽
+    private val _fontSize = MutableStateFlow(prefs.getFloat("display_fontSize", 11f))
+    val fontSize: StateFlow<Float> = _fontSize.asStateFlow()
+    private val _rowHeight = MutableStateFlow(prefs.getFloat("display_rowHeight", 36f))
+    val rowHeight: StateFlow<Float> = _rowHeight.asStateFlow()
+    private val _colWidth = MutableStateFlow(prefs.getFloat("display_colWidth", 80f))
+    val colWidth: StateFlow<Float> = _colWidth.asStateFlow()
+
+    fun adjustFontSize(delta: Float) {
+        val newVal = (_fontSize.value + delta).coerceIn(8f, 20f)
+        _fontSize.value = newVal
+        prefs.edit().putFloat("display_fontSize", newVal).apply()
+    }
+    fun adjustRowHeight(delta: Float) {
+        val newVal = (_rowHeight.value + delta).coerceIn(20f, 80f)
+        _rowHeight.value = newVal
+        prefs.edit().putFloat("display_rowHeight", newVal).apply()
+    }
+    fun adjustColWidth(delta: Float) {
+        val newVal = (_colWidth.value + delta).coerceIn(40f, 200f)
+        _colWidth.value = newVal
+        prefs.edit().putFloat("display_colWidth", newVal).apply()
+    }
     // 固定列位置→人员映射缓存（key=槽位索引_行号, value=人员名）
     private val _fixedAssignmentCache = MutableStateFlow(loadFixedAssignmentCache())
     
@@ -302,7 +325,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val fixedPeople = _fixedPeople.value
 
             // 固定列槽位索引 → 产品key的映射
-            val fixedSlotSet = _fixedInputSlots.value
             val productKeys = productMap.keys.toList()
             val fixedProductKeys = mutableSetOf<String>()
             for (slotIndex in fixedSlotSet) {
@@ -443,6 +465,60 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                             Text("设置固定列产品，排工时人员留任原岗位", fontSize = 11.sp, color = Color(0xFF999999))
                         }
                         Icon(Icons.Default.KeyboardArrowRight, null, tint = Color(0xFFBDBDBD), modifier = Modifier.size(20.dp))
+                    }
+                    Divider()
+                    // 菜单项：字体大小
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp, horizontal = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.TextFields, null, tint = Color(0xFF388E3C), modifier = Modifier.size(24.dp))
+                        Spacer(Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("字体大小: ${viewModel.fontSize.value.toInt()}sp", fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                            Text("调整排工表格的字体大小", fontSize = 11.sp, color = Color(0xFF999999))
+                        }
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 8.dp)) {
+                        IconButton(onClick = { viewModel.adjustFontSize(-1f) }) { Icon(Icons.Default.Remove, null) }
+                        Text("${viewModel.fontSize.value.toInt()}", fontSize = 14.sp, modifier = Modifier.width(30.dp), textAlign = TextAlign.Center)
+                        IconButton(onClick = { viewModel.adjustFontSize(1f) }) { Icon(Icons.Default.Add, null) }
+                    }
+                    Divider()
+                    // 菜单项：行高
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp, horizontal = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.VerticalAlignBottom, null, tint = Color(0xFF7B1FA2), modifier = Modifier.size(24.dp))
+                        Spacer(Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("行高: ${viewModel.rowHeight.value.toInt()}dp", fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                            Text("调整排工表格的行高", fontSize = 11.sp, color = Color(0xFF999999))
+                        }
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 8.dp)) {
+                        IconButton(onClick = { viewModel.adjustRowHeight(-2f) }) { Icon(Icons.Default.Remove, null) }
+                        Text("${viewModel.rowHeight.value.toInt()}", fontSize = 14.sp, modifier = Modifier.width(30.dp), textAlign = TextAlign.Center)
+                        IconButton(onClick = { viewModel.adjustRowHeight(2f) }) { Icon(Icons.Default.Add, null) }
+                    }
+                    Divider()
+                    // 菜单项：列宽
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp, horizontal = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.ViewColumn, null, tint = Color(0xFFE65100), modifier = Modifier.size(24.dp))
+                        Spacer(Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("列宽: ${viewModel.colWidth.value.toInt()}dp", fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                            Text("调整排工表格的列宽", fontSize = 11.sp, color = Color(0xFF999999))
+                        }
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 8.dp)) {
+                        IconButton(onClick = { viewModel.adjustColWidth(-5f) }) { Icon(Icons.Default.Remove, null) }
+                        Text("${viewModel.colWidth.value.toInt()}", fontSize = 14.sp, modifier = Modifier.width(30.dp), textAlign = TextAlign.Center)
+                        IconButton(onClick = { viewModel.adjustColWidth(5f) }) { Icon(Icons.Default.Add, null) }
                     }
                 }
             },
@@ -737,28 +813,21 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
             }
         },
         bottomBar = {
-            // 横屏时压缩底部导航
-            if (isLandscape) {
-                NavigationBar(modifier = Modifier.height(48.dp)) {
-                    listOf("请假", "评分", "流程", "排工").forEachIndexed { index, title ->
-                        NavigationBarItem(
-                            icon = { when (index) { 0 -> Icon(Icons.Default.PersonOff, null, modifier = Modifier.size(18.dp)); 1 -> Icon(Icons.Default.Star, null, modifier = Modifier.size(18.dp)); 2 -> Icon(Icons.Default.AccountTree, null, modifier = Modifier.size(18.dp)); else -> Icon(Icons.Default.PlayArrow, null, modifier = Modifier.size(18.dp)) } },
-                            label = { Text(title, fontSize = 9.sp) },
-                            selected = selectedTab == index,
-                            onClick = { selectedTab = index }
-                        )
-                    }
-                }
-            } else {
-                NavigationBar(modifier = Modifier.height(48.dp)) {
-                    listOf("请假人员", "工序评分", "工序流程", "智能排工").forEachIndexed { index, title ->
-                        NavigationBarItem(
-                            icon = { when (index) { 0 -> Icon(Icons.Default.PersonOff, null); 1 -> Icon(Icons.Default.Star, null); 2 -> Icon(Icons.Default.AccountTree, null); else -> Icon(Icons.Default.PlayArrow, null) } },
-                            label = { Text(title, fontSize = 11.sp) },
-                            selected = selectedTab == index,
-                            onClick = { selectedTab = index }
-                        )
-                    }
+            val tabTitles = if (isLandscape) listOf("请假", "评分", "流程", "排工") else listOf("人员名单", "工序评分", "工序流程", "智能排工")
+            TabRow(
+                selectedTabIndex = selectedTab,
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.height(40.dp)
+            ) {
+                tabTitles.forEachIndexed { index, title ->
+                    Tab(
+                        selected = selectedTab == index,
+                        onClick = { selectedTab = index },
+                        text = { Text(title, fontSize = if (isLandscape) 11.sp else 13.sp) },
+                        selectedContentColor = MaterialTheme.colorScheme.primary,
+                        unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
         }
