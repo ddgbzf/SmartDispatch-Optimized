@@ -271,13 +271,40 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val peopleNames = persons.map { it.name }
             val leaveNames = persons.filter { it.onLeave }.map { it.name }
 
-            // ===== 第一步：检测固定列，从上次排工结果中记录人员（只记录缓存中不存在的） =====
+            // ===== 第一步：检测固定列，从上次排工结果中记录人员 =====
             val fixedSlotSet = _fixedInputSlots.value
             val lastResult = _dispatchResult.value
             val currentCache = _fixedAssignmentCache.value
+            val newCache = currentCache.toMutableMap()
+            
+            // 检测产品变更：清除已变更槽位的旧缓存
+            if (lastResult != null) {
+                val lastProductKeys = lastResult.assignments.mapNotNull { it.productName }.distinct()
+                val currentProductKeys = selectedProductNames
+                var cleared = 0
+                for (slotIndex in fixedSlotSet) {
+                    if (slotIndex < lastProductKeys.size && slotIndex < currentProductKeys.size) {
+                        val lastProduct = lastProductKeys[slotIndex]
+                        val currentProduct = currentProductKeys[slotIndex]
+                        if (lastProduct != currentProduct) {
+                            // 产品变更，清除该槽位的旧缓存
+                            val prefix = "${slotIndex}_"
+                            val keysToRemove = newCache.keys.filter { it.startsWith(prefix) }
+                            keysToRemove.forEach { newCache.remove(it) }
+                            cleared++
+                        }
+                    }
+                }
+                if (cleared > 0) {
+                    _fixedAssignmentCache.value = newCache
+                    saveFixedAssignmentCache(newCache)
+                    addLog("固定列: $cleared 个槽位产品变更，清除旧缓存")
+                }
+            }
+            
+            // 记录新位置的人员到缓存（只记录缓存中不存在的）
             if (lastResult != null && fixedSlotSet.isNotEmpty()) {
                 val lastProductKeys = lastResult.assignments.mapNotNull { it.productName }.distinct()
-                val newCache = currentCache.toMutableMap()
                 var recorded = 0
                 for (slotIndex in fixedSlotSet) {
                     if (slotIndex < lastProductKeys.size) {
@@ -286,7 +313,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             .filter { it.productName == productKey && it.assignedPerson != null }
                             .forEach { 
                                 val key = "${slotIndex}_${it.rowIndex}"
-                                // 只记录缓存中不存在的位置（避免覆盖已有记录）
                                 if (key !in currentCache) {
                                     newCache[key] = it.assignedPerson!!
                                     recorded++
