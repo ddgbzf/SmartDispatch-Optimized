@@ -101,9 +101,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _colWidth.value = newVal
         prefs.edit().putFloat("display_colWidth", newVal).apply()
     }
-    // 固定列位置→人员映射缓存（key=槽位索引_行号, value=人员名）
-    private val _fixedAssignmentCache = MutableStateFlow(loadFixedAssignmentCache())
-    
+
     private fun loadFixedInputSlots(): Set<Int> {
         val str = prefs.getString("fixed_slots", "") ?: ""
         return if (str.isBlank()) emptySet() else str.split(",").mapNotNull { it.toIntOrNull() }.toSet()
@@ -117,31 +115,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val current = _fixedInputSlots.value.toMutableSet()
         if (index in current) {
             current.remove(index)
-            // 取消固定时清除该槽位的人员缓存
-            val newCache = _fixedAssignmentCache.value.toMutableMap()
-            val prefix = "${index}_"
-            newCache.keys.filter { it.startsWith(prefix) }.forEach { newCache.remove(it) }
-            _fixedAssignmentCache.value = newCache
-            saveFixedAssignmentCache(newCache)
         } else {
             current.add(index)
         }
         _fixedInputSlots.value = current
         saveFixedInputSlots(current)
-    }
-    
-    private fun loadFixedAssignmentCache(): Map<String, String> {
-        val all = prefs.all
-        return all.entries
-            .filter { it.key.startsWith("fixed_") }
-            .associate { it.key.removePrefix("fixed_") to it.value as String }
-    }
-    
-    private fun saveFixedAssignmentCache(cache: Map<String, String>) {
-        val editor = prefs.edit()
-        prefs.all.keys.filter { it.startsWith("fixed_") }.forEach { editor.remove(it) }
-        cache.forEach { (key, value) -> editor.putString("fixed_$key", value) }
-        editor.apply()
     }
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -271,35 +249,42 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val peopleNames = persons.map { it.name }
             val leaveNames = persons.filter { it.onLeave }.map { it.name }
 
-            // ===== 第一步：检测固定列，清除产品变更槽位的旧缓存 =====
-            val fixedSlotSet = _fixedInputSlots.value
+            // ===== 第一步：检测固定列，从上次排工结果中读取人员 =====
+            val fixedSlotSet = _fixedInputSlots.value.toMutableSet()
             val lastResult = _dispatchResult.value
-            val currentCache = _fixedAssignmentCache.value
-            val newCache = currentCache.toMutableMap()
+            val lastProductKeys = lastResult?.assignments?.mapNotNull { it.productName }?.distinct() ?: emptyList()
             
-            // 检测产品变更：清除已变更槽位的旧缓存
+            // 检测产品变更：产品变了就取消固定列
             if (lastResult != null && fixedSlotSet.isNotEmpty()) {
-                val lastProductKeys = lastResult.assignments.mapNotNull { it.productName }.distinct()
-                val currentProductKeys = selectedProductNames
-                var cleared = 0
-                for (slotIndex in fixedSlotSet) {
-                    if (slotIndex < lastProductKeys.size && slotIndex < currentProductKeys.size) {
+                var cancelled = 0
+                for (slotIndex in fixedSlotSet.toList()) {
+                    if (slotIndex < lastProductKeys.size && slotIndex < selectedProductNames.size) {
                         val lastProduct = lastProductKeys[slotIndex].substringBefore("@")
-                        val currentProduct = currentProductKeys[slotIndex]
+                        val currentProduct = selectedProductNames[slotIndex]
                         if (lastProduct != currentProduct) {
-                            // 产品变更，清除该槽位的旧缓存
-                            val prefix = "${slotIndex}_"
-                            val keysToRemove = newCache.keys.filter { it.startsWith(prefix) }
-                            keysToRemove.forEach { newCache.remove(it) }
-                            cleared++
+                            // 产品变了，取消固定
+                            fixedSlotSet.remove(slotIndex)
+                            cancelled++
                         }
                     }
                 }
-                if (cleared > 0) {
-                    _fixedAssignmentCache.value = newCache
-                    saveFixedAssignmentCache(newCache)
-                    addLog("固定列: $cleared 个槽位产品变更，清除旧缓存")
+                if (cancelled > 0) {
+                    addLog("固定列: $cancelled 个槽位产品变更，自动取消固定")
                 }
+            }
+            
+            // 从上次排工结果中读取固定列的人员
+            val fixedColumnPersons = mutableMapOf<String, String>() // key=槽位索引_行号, value=人员名
+            if (lastResult != null && fixedSlotSet.isNotEmpty()) {
+                for (slotIndex in fixedSlotSet) {
+                    if (slotIndex < lastProductKeys.size) {
+                        val productKey = lastProductKeys[slotIndex]
+                        lastResult.assignments
+                            .filter { it.productName == productKey && it.assignedPerson != null }
+                            .forEach { fixedColumnPersons["${slotIndex}_${it.rowIndex}"] = it.assignedPerson!! }
+                    }
+                }
+                addLog("固定列人员: ${fixedColumnPersons.size}个已读取")
             }
 
             // 用带索引的key区分相同名称的产品实例（如 "G32705@0", "G32705@1"）
@@ -330,7 +315,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             addLog("评分人数: ${scoreMap.size}, 工序优先级数: ${processNames.size}")
 
             engine.setSkillScoresData(scoreMap)
-            val fixedPeople = _fixedPeople.value
+            // 从固定列人员映射构建固定人员集合（用于从可分配池中排除）
+            val fixedPeople = fixedColumnPersons.values.toSet()
 
             // 固定列槽位索引 → 产品key的映射
             val productKeys = productMap.keys.toList()
@@ -344,34 +330,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             for (key in fixedProductKeys) {
                 productMap[key] = productMap[key]!!.copy(isFixed = true)
             }
-            addLog("固定列槽位: $fixedSlotSet, 固定产品: ${fixedProductKeys.joinToString(", ")}")
-
-            // 固定列缓存：key=槽位索引_行号, value=人员名
-            val cachedAssignments = _fixedAssignmentCache.value
-            addLog("固定列缓存: ${cachedAssignments.size}条")
+            addLog("固定列槽位: ${fixedSlotSet.joinToString(", ")}, 固定产品: ${fixedProductKeys.joinToString(", ")}")
 
             val result = withContext(Dispatchers.IO) {
-                engine.runWithData(peopleNames, leaveNames, productMap, processNames, fixedPeople, cachedAssignments, fixedSlotSet)
+                engine.runWithData(peopleNames, leaveNames, productMap, processNames, fixedPeople, fixedColumnPersons, fixedSlotSet)
             }
             _dispatchResult.value = result
-            // 更新固定列人员缓存（本次被分配到固定列产品的人员）
+            // 更新固定列人员集合（用于显示）
             val newFixedPeople = result.assignments
                 .filter { productMap[it.productName]?.isFixed == true }
                 .mapNotNull { it.assignedPerson }
                 .toSet()
             _fixedPeople.value = newFixedPeople
-            // 更新固定列位置→人员映射缓存（key=槽位索引_行号）
-            // 保留已有缓存，只更新本次固定列的分配结果
-            val updatedCache = _fixedAssignmentCache.value.toMutableMap()
-            result.assignments.forEach { assignment ->
-                val productKey = assignment.productName
-                val slotIndex = productKeys.indexOf(productKey)
-                if (slotIndex in fixedSlotSet && assignment.assignedPerson != null) {
-                    updatedCache["${slotIndex}_${assignment.rowIndex}"] = assignment.assignedPerson!!
-                }
-            }
-            _fixedAssignmentCache.value = updatedCache
-            saveFixedAssignmentCache(updatedCache)
             addLog("✅ 排工完成！分配${result.assignedCount}人, 固定列${newFixedPeople.size}人, ${result.statusMessage}")
             // 保存最近使用的产品
             selectedProductNames.forEach { name ->
