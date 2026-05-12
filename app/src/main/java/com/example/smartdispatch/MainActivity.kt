@@ -1117,11 +1117,14 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
         }
     }
 
-    // 根据横竖屏调整尺寸
-    val rowHeight = if (isLandscape) 20.dp else 22.dp
-    val colWidth = if (isLandscape) 45.dp else 50.dp
+    // 从设置读取尺寸
+    val settingsFontSize by viewModel.fontSize.collectAsState()
+    val settingsRowHeight by viewModel.rowHeight.collectAsState()
+    val settingsColWidth by viewModel.colWidth.collectAsState()
+    val rowHeight = settingsRowHeight.dp
+    val colWidth = settingsColWidth.dp
     val productWidth = colWidth * 2
-    val fontSize = if (isLandscape) 11.sp else 12.sp
+    val fontSize = settingsFontSize.sp
 
     Column(modifier = Modifier.fillMaxSize()) {
         // 竖屏时显示统计栏（横屏时在标题栏显示）
