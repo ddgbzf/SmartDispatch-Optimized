@@ -6,7 +6,16 @@ plugins {
 
 android {
     namespace = "com.example.smartdispatch"
-    compileSdk = 34
+    compileSdk = 35
+
+    signingConfigs {
+        create("release") {
+            storeFile = file("release-key.jks")
+            storePassword = "smart123"
+            keyAlias = "release"
+            keyPassword = "smart123"
+        }
+    }
 
     defaultConfig {
         applicationId = "com.example.smartdispatch"
@@ -24,6 +33,7 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
