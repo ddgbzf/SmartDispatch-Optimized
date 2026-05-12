@@ -1,5 +1,6 @@
 package com.example.smartdispatch
 
+import com.example.smartdispatch.BuildConfig
 import android.app.Application
 import android.content.Context
 import android.net.Uri
@@ -178,7 +179,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         saveInputNames(newList)
         _inputNames.value = newList
         _focusedInputIndex.value = -1 // 关闭下拉列表
-        // 点击搜索结果时直接排工
+    }
+    
+    fun selectProductAndDispatch(index: Int, productName: String) {
+        selectProduct(index, productName)
         autoDispatch()
     }
 
@@ -187,7 +191,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun addPerson(name: String, employeeId: String = "") = viewModelScope.launch { repo.addPerson(name, employeeId) }
     fun toggleLeave(person: Person) = viewModelScope.launch { 
         repo.updatePerson(person.copy(onLeave = !person.onLeave))
-        // 请假人员变化时自动执行排工
+    }
+    fun toggleLeaveAndDispatch(person: Person) = viewModelScope.launch { 
+        repo.updatePerson(person.copy(onLeave = !person.onLeave))
         autoDispatch()
     }
     fun deletePerson(person: Person) = viewModelScope.launch { repo.deletePerson(person) }
@@ -586,8 +592,9 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                                 Text("${index + 1}.", fontSize = 12.sp, color = Color(0xFF666666), modifier = Modifier.width(24.dp))
                                 OutlinedTextField(
                                     value = editName, onValueChange = { editName = it },
-                                    singleLine = true, textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp),
-                                    modifier = Modifier.weight(1f).height(36.dp)
+                                    singleLine = true, 
+                                    textStyle = androidx.compose.ui.text.TextStyle(fontSize = 14.sp, color = Color.Black),
+                                    modifier = Modifier.weight(1f).height(44.dp)
                                 )
                                 IconButton(onClick = {
                                     viewModel.updateProcessName(editingProduct!!.id, process.id, editName.trim())
@@ -777,6 +784,12 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                     },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primaryContainer, titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer),
                     actions = {
+                        // 发布版显示排工按钮
+                        if (!BuildConfig.DEBUG) {
+                            IconButton(onClick = { viewModel.autoDispatch() }) { 
+                                Icon(Icons.Default.PlayArrow, "排工", modifier = Modifier.size(20.dp), tint = Color(0xFF1976D2))
+                            }
+                        }
                         IconButton(onClick = { filePicker.launch(arrayOf("*/*")) }) { Icon(Icons.Default.FileUpload, "导入", modifier = Modifier.size(20.dp)) }
                         IconButton(onClick = { exportPicker.launch("排工结果_${System.currentTimeMillis()}.xlsx") }) { Icon(Icons.Default.FileDownload, "导出", modifier = Modifier.size(20.dp)) }
                         IconButton(onClick = { showSettings = true }) { Icon(Icons.Default.Settings, "设置", modifier = Modifier.size(20.dp)) }
@@ -788,6 +801,12 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                     title = { Text("智能排工系统", fontWeight = FontWeight.Bold) },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primaryContainer, titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer),
                     actions = {
+                        // 发布版显示排工按钮
+                        if (!BuildConfig.DEBUG) {
+                            IconButton(onClick = { viewModel.autoDispatch() }) { 
+                                Icon(Icons.Default.PlayArrow, "排工", tint = Color(0xFF1976D2))
+                            }
+                        }
                         IconButton(onClick = { filePicker.launch(arrayOf("*/*")) }) { Icon(Icons.Default.FileUpload, "导入") }
                         IconButton(onClick = { exportPicker.launch("排工结果_${System.currentTimeMillis()}.xlsx") }) { Icon(Icons.Default.FileDownload, "导出") }
                         IconButton(onClick = { showSettings = true }) { Icon(Icons.Default.Settings, "设置") }
@@ -863,7 +882,13 @@ fun LeaveTab(viewModel: MainViewModel) {
                         Text(person.name, fontSize = 14.sp, modifier = Modifier.weight(1f))
                         Text(if (person.onLeave) "请假中" else "在岗", fontSize = 12.sp, color = if (person.onLeave) Color(0xFFC62828) else Color(0xFF2E7D32))
                         Spacer(Modifier.width(8.dp))
-                        IconButton(onClick = { viewModel.toggleLeave(person) }, modifier = Modifier.size(32.dp)) { Icon(if (person.onLeave) Icons.Default.CheckCircle else Icons.Default.RemoveCircle, null, tint = if (person.onLeave) Color(0xFF2E7D32) else Color(0xFFC62828), modifier = Modifier.size(20.dp)) }
+                        IconButton(onClick = { 
+                            if (BuildConfig.DEBUG) {
+                                viewModel.toggleLeaveAndDispatch(person)
+                            } else {
+                                viewModel.toggleLeave(person)
+                            }
+                        }, modifier = Modifier.size(32.dp)) { Icon(if (person.onLeave) Icons.Default.CheckCircle else Icons.Default.RemoveCircle, null, tint = if (person.onLeave) Color(0xFF2E7D32) else Color(0xFFC62828), modifier = Modifier.size(20.dp)) }
                         IconButton(onClick = { deletingPerson = person; showDeleteConfirm.value = true }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Delete, null, tint = Color(0xFFC62828), modifier = Modifier.size(20.dp)) }
                     }
                     Divider(modifier = Modifier.padding(horizontal = 8.dp))
@@ -1097,12 +1122,13 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
     val scrollState = rememberScrollState()
     val leavePeople = persons.filter { it.onLeave }
 
-    // 防抖自动排工：全部清空时触发排工
-    LaunchedEffect(inputNames) {
-        kotlinx.coroutines.delay(500)  // 防抖500ms
-        // 只有全部清空时才自动排工
-        if (inputNames.all { it.isBlank() }) {
-            viewModel.autoDispatch()
+    // 自动排工（仅调试版）
+    if (BuildConfig.DEBUG) {
+        LaunchedEffect(inputNames) {
+            kotlinx.coroutines.delay(500)
+            if (inputNames.all { it.isBlank() }) {
+                viewModel.autoDispatch()
+            }
         }
     }
 
@@ -1131,28 +1157,30 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
             LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
         }
 
-        // 调试日志区域（表格上方，不会被输入法遮挡）
-        val debugLogs = result?.debugLogs ?: emptyList()
-        if (debugLogs.isNotEmpty()) {
-            Column(modifier = Modifier.fillMaxWidth().height(if (isLandscape) 60.dp else 80.dp).background(Color(0xFFFFF8E1)).padding(2.dp).clickable { showDebugLogs = !showDebugLogs }) {
-                Text("📋 调试日志（共${debugLogs.size}条）点击${if (showDebugLogs) "收起" else "展开"}", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFFE65100))
-                if (showDebugLogs) {
-                    LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        items(debugLogs.size) { index ->
-                            val log = debugLogs[index]
-                            val logColor = when {
-                                log.startsWith("[固定列") -> Color(0xFFE65100)
-                                log.startsWith("→") -> Color(0xFF1565C0)
-                                log.contains("缓存") || log.contains("productMap") -> Color(0xFFC62828)
-                                else -> Color(0xFF333333)
+        // 调试日志区域（仅调试版显示）
+        if (BuildConfig.DEBUG) {
+            val debugLogs = result?.debugLogs ?: emptyList()
+            if (debugLogs.isNotEmpty()) {
+                Column(modifier = Modifier.fillMaxWidth().height(if (isLandscape) 60.dp else 80.dp).background(Color(0xFFFFF8E1)).padding(2.dp).clickable { showDebugLogs = !showDebugLogs }) {
+                    Text("📋 调试日志（共${debugLogs.size}条）点击${if (showDebugLogs) "收起" else "展开"}", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFFE65100))
+                    if (showDebugLogs) {
+                        LazyColumn(modifier = Modifier.fillMaxSize()) {
+                            items(debugLogs.size) { index ->
+                                val log = debugLogs[index]
+                                val logColor = when {
+                                    log.startsWith("[固定列") -> Color(0xFFE65100)
+                                    log.startsWith("→") -> Color(0xFF1565C0)
+                                    log.contains("缓存") || log.contains("productMap") -> Color(0xFFC62828)
+                                    else -> Color(0xFF333333)
+                                }
+                                Text(log, fontSize = 9.sp, color = logColor, modifier = Modifier.padding(horizontal = 2.dp, vertical = 1.dp))
                             }
-                            Text(log, fontSize = 9.sp, color = logColor, modifier = Modifier.padding(horizontal = 2.dp, vertical = 1.dp))
                         }
-                    }
-                } else {
-                    LazyRow(modifier = Modifier.fillMaxSize()) {
-                        items(debugLogs.size) { index ->
-                            Text(debugLogs[index], fontSize = 8.sp, color = Color(0xFF666666), modifier = Modifier.padding(horizontal = 4.dp), maxLines = 1)
+                    } else {
+                        LazyRow(modifier = Modifier.fillMaxSize()) {
+                            items(debugLogs.size) { index ->
+                                Text(debugLogs[index], fontSize = 8.sp, color = Color(0xFF666666), modifier = Modifier.padding(horizontal = 4.dp), maxLines = 1)
+                            }
                         }
                     }
                 }
@@ -1199,7 +1227,13 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .background(Color.White, RoundedCornerShape(4.dp))
-                                    .clickable { viewModel.selectProduct(focusedIndex, productName) }
+                                    .clickable { 
+                                        if (BuildConfig.DEBUG) {
+                                            viewModel.selectProductAndDispatch(focusedIndex, productName)
+                                        } else {
+                                            viewModel.selectProduct(focusedIndex, productName)
+                                        }
+                                    }
                                     .padding(horizontal = 8.dp, vertical = 4.dp),
                                 color = Color(0xFF1565C0),
                                 maxLines = 1
