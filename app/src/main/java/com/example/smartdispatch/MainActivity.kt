@@ -1342,7 +1342,6 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false, onFullsc
                         }
                     }
                 }
-            }
             // 右下角全屏按钮
             val context = LocalContext.current
             FloatingActionButton(
@@ -1373,6 +1372,7 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false, onFullsc
                 contentColor = Color.White
             ) {
                 Icon(Icons.Default.Fullscreen, "全屏", modifier = Modifier.size(24.dp))
+            }
             }
         }
     }
