@@ -1368,7 +1368,7 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false, onFullsc
                         }
                     }
                 },
-                modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp),
+                modifier = Modifier.fillMaxWidth().wrapContentSize(Alignment.BottomEnd).padding(12.dp),
                 containerColor = Color(0xFF1976D2),
                 contentColor = Color.White
             ) {
