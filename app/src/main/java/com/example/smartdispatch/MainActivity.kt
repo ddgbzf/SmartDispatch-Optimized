@@ -271,26 +271,33 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val peopleNames = persons.map { it.name }
             val leaveNames = persons.filter { it.onLeave }.map { it.name }
 
-            // ===== 第一步：检测固定列，从上次排工结果中记录人员 =====
+            // ===== 第一步：检测固定列，从上次排工结果中记录人员（只记录缓存中不存在的） =====
             val fixedSlotSet = _fixedInputSlots.value
             val lastResult = _dispatchResult.value
+            val currentCache = _fixedAssignmentCache.value
             if (lastResult != null && fixedSlotSet.isNotEmpty()) {
                 val lastProductKeys = lastResult.assignments.mapNotNull { it.productName }.distinct()
-                val newCache = _fixedAssignmentCache.value.toMutableMap()
+                val newCache = currentCache.toMutableMap()
                 var recorded = 0
                 for (slotIndex in fixedSlotSet) {
                     if (slotIndex < lastProductKeys.size) {
                         val productKey = lastProductKeys[slotIndex]
                         lastResult.assignments
                             .filter { it.productName == productKey && it.assignedPerson != null }
-                            .forEach { newCache["${slotIndex}_${it.rowIndex}"] = it.assignedPerson!! }
-                        recorded++
+                            .forEach { 
+                                val key = "${slotIndex}_${it.rowIndex}"
+                                // 只记录缓存中不存在的位置（避免覆盖已有记录）
+                                if (key !in currentCache) {
+                                    newCache[key] = it.assignedPerson!!
+                                    recorded++
+                                }
+                            }
                     }
                 }
                 if (recorded > 0) {
                     _fixedAssignmentCache.value = newCache
                     saveFixedAssignmentCache(newCache)
-                    addLog("固定列记录: $recorded 个槽位的人员已缓存")
+                    addLog("固定列记录: $recorded 个新位置已缓存")
                 }
             }
 
@@ -428,6 +435,9 @@ class MainActivity : ComponentActivity() {
 fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
     var showProcessEdit by remember { mutableStateOf(false) }
     var showFixedColumn by remember { mutableStateOf(false) }
+    val fontSize by viewModel.fontSize.collectAsState()
+    val rowHeight by viewModel.rowHeight.collectAsState()
+    val colWidth by viewModel.colWidth.collectAsState()
 
     if (showProcessEdit) {
         ProcessEditScreen(viewModel = viewModel, onDismiss = { showProcessEdit = false })
@@ -475,13 +485,13 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                         Icon(Icons.Default.TextFields, null, tint = Color(0xFF388E3C), modifier = Modifier.size(24.dp))
                         Spacer(Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("字体大小: ${viewModel.fontSize.value.toInt()}sp", fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                            Text("字体大小: ${fontSize.toInt()}sp", fontSize = 15.sp, fontWeight = FontWeight.Medium)
                             Text("调整排工表格的字体大小", fontSize = 11.sp, color = Color(0xFF999999))
                         }
                     }
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 8.dp)) {
                         IconButton(onClick = { viewModel.adjustFontSize(-1f) }) { Icon(Icons.Default.Remove, null) }
-                        Text("${viewModel.fontSize.value.toInt()}", fontSize = 14.sp, modifier = Modifier.width(30.dp), textAlign = TextAlign.Center)
+                        Text("${fontSize.toInt()}", fontSize = 14.sp, modifier = Modifier.width(30.dp), textAlign = TextAlign.Center)
                         IconButton(onClick = { viewModel.adjustFontSize(1f) }) { Icon(Icons.Default.Add, null) }
                     }
                     Divider()
@@ -493,13 +503,13 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                         Icon(Icons.Default.VerticalAlignBottom, null, tint = Color(0xFF7B1FA2), modifier = Modifier.size(24.dp))
                         Spacer(Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("行高: ${viewModel.rowHeight.value.toInt()}dp", fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                            Text("行高: ${rowHeight.toInt()}dp", fontSize = 15.sp, fontWeight = FontWeight.Medium)
                             Text("调整排工表格的行高", fontSize = 11.sp, color = Color(0xFF999999))
                         }
                     }
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 8.dp)) {
                         IconButton(onClick = { viewModel.adjustRowHeight(-2f) }) { Icon(Icons.Default.Remove, null) }
-                        Text("${viewModel.rowHeight.value.toInt()}", fontSize = 14.sp, modifier = Modifier.width(30.dp), textAlign = TextAlign.Center)
+                        Text("${rowHeight.toInt()}", fontSize = 14.sp, modifier = Modifier.width(30.dp), textAlign = TextAlign.Center)
                         IconButton(onClick = { viewModel.adjustRowHeight(2f) }) { Icon(Icons.Default.Add, null) }
                     }
                     Divider()
@@ -511,13 +521,13 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                         Icon(Icons.Default.ViewColumn, null, tint = Color(0xFFE65100), modifier = Modifier.size(24.dp))
                         Spacer(Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("列宽: ${viewModel.colWidth.value.toInt()}dp", fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                            Text("列宽: ${colWidth.toInt()}dp", fontSize = 15.sp, fontWeight = FontWeight.Medium)
                             Text("调整排工表格的列宽", fontSize = 11.sp, color = Color(0xFF999999))
                         }
                     }
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 8.dp)) {
                         IconButton(onClick = { viewModel.adjustColWidth(-5f) }) { Icon(Icons.Default.Remove, null) }
-                        Text("${viewModel.colWidth.value.toInt()}", fontSize = 14.sp, modifier = Modifier.width(30.dp), textAlign = TextAlign.Center)
+                        Text("${colWidth.toInt()}", fontSize = 14.sp, modifier = Modifier.width(30.dp), textAlign = TextAlign.Center)
                         IconButton(onClick = { viewModel.adjustColWidth(5f) }) { Icon(Icons.Default.Add, null) }
                     }
                 }
