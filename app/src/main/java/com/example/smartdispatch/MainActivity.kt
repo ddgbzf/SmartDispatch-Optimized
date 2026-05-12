@@ -271,20 +271,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val peopleNames = persons.map { it.name }
             val leaveNames = persons.filter { it.onLeave }.map { it.name }
 
-            // ===== 第一步：检测固定列，从上次排工结果中记录人员 =====
+            // ===== 第一步：检测固定列，清除产品变更槽位的旧缓存 =====
             val fixedSlotSet = _fixedInputSlots.value
             val lastResult = _dispatchResult.value
             val currentCache = _fixedAssignmentCache.value
             val newCache = currentCache.toMutableMap()
             
             // 检测产品变更：清除已变更槽位的旧缓存
-            if (lastResult != null) {
+            if (lastResult != null && fixedSlotSet.isNotEmpty()) {
                 val lastProductKeys = lastResult.assignments.mapNotNull { it.productName }.distinct()
                 val currentProductKeys = selectedProductNames
                 var cleared = 0
                 for (slotIndex in fixedSlotSet) {
                     if (slotIndex < lastProductKeys.size && slotIndex < currentProductKeys.size) {
-                        val lastProduct = lastProductKeys[slotIndex]
+                        val lastProduct = lastProductKeys[slotIndex].substringBefore("@")
                         val currentProduct = currentProductKeys[slotIndex]
                         if (lastProduct != currentProduct) {
                             // 产品变更，清除该槽位的旧缓存
@@ -299,31 +299,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     _fixedAssignmentCache.value = newCache
                     saveFixedAssignmentCache(newCache)
                     addLog("固定列: $cleared 个槽位产品变更，清除旧缓存")
-                }
-            }
-            
-            // 记录新位置的人员到缓存（只记录缓存中不存在的）
-            if (lastResult != null && fixedSlotSet.isNotEmpty()) {
-                val lastProductKeys = lastResult.assignments.mapNotNull { it.productName }.distinct()
-                var recorded = 0
-                for (slotIndex in fixedSlotSet) {
-                    if (slotIndex < lastProductKeys.size) {
-                        val productKey = lastProductKeys[slotIndex]
-                        lastResult.assignments
-                            .filter { it.productName == productKey && it.assignedPerson != null }
-                            .forEach { 
-                                val key = "${slotIndex}_${it.rowIndex}"
-                                if (key !in currentCache) {
-                                    newCache[key] = it.assignedPerson!!
-                                    recorded++
-                                }
-                            }
-                    }
-                }
-                if (recorded > 0) {
-                    _fixedAssignmentCache.value = newCache
-                    saveFixedAssignmentCache(newCache)
-                    addLog("固定列记录: $recorded 个新位置已缓存")
                 }
             }
 
@@ -386,16 +361,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 .toSet()
             _fixedPeople.value = newFixedPeople
             // 更新固定列位置→人员映射缓存（key=槽位索引_行号）
-            val newFixedCache = mutableMapOf<String, String>()
+            // 保留已有缓存，只更新本次固定列的分配结果
+            val updatedCache = _fixedAssignmentCache.value.toMutableMap()
             result.assignments.forEach { assignment ->
                 val productKey = assignment.productName
                 val slotIndex = productKeys.indexOf(productKey)
                 if (slotIndex in fixedSlotSet && assignment.assignedPerson != null) {
-                    newFixedCache["${slotIndex}_${assignment.rowIndex}"] = assignment.assignedPerson!!
+                    updatedCache["${slotIndex}_${assignment.rowIndex}"] = assignment.assignedPerson!!
                 }
             }
-            _fixedAssignmentCache.value = newFixedCache
-            saveFixedAssignmentCache(newFixedCache)
+            _fixedAssignmentCache.value = updatedCache
+            saveFixedAssignmentCache(updatedCache)
             addLog("✅ 排工完成！分配${result.assignedCount}人, 固定列${newFixedPeople.size}人, ${result.statusMessage}")
             // 保存最近使用的产品
             selectedProductNames.forEach { name ->
