@@ -687,7 +687,7 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                     Spacer(Modifier.height(8.dp))
                     Text("工序列表:", fontSize = 12.sp, color = Color(0xFF666666))
                     LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        items(editingProcesses.size) { index ->
+                        items(editingProcesses.size, key = { editingProcesses[it].id }) { index ->
                             val process = editingProcesses[index]
                             var editName by remember { mutableStateOf(process.processName) }
                             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
