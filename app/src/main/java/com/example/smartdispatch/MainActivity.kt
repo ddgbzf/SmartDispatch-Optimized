@@ -1298,9 +1298,9 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
                     }
                 }
                 Divider()
-                // 第二行：请假人名 + 产能/人数（两行高度）
+                // 第二行：请假人名 + 产能/人数
                 Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState)) {
-                    Box(modifier = Modifier.width(60.dp).height(rowHeight * 2).border(0.5.dp, Color(0xFFE0E0E0)).background(Color(0xFFFFCDD2)), contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier.width(60.dp).height(rowHeight).border(0.5.dp, Color(0xFFE0E0E0)).background(Color(0xFFFFCDD2)), contentAlignment = Alignment.Center) {
                         val p = leavePeople.getOrNull(0)
                         if (p != null) Text(p.name, fontSize = fontSize, fontWeight = FontWeight.Medium, color = Color(0xFFC62828)) else Text("")
                     }
@@ -1308,7 +1308,7 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
                         val product = if (name.isNotBlank()) products.find { it.name.contains(name.trim(), ignoreCase = true) } else null
                         // 固定产品显示黄色背景
                         val cellBg = if (product?.isFixed == true) Color(0xFFFFF9C4) else Color.Transparent
-                        Row(modifier = Modifier.width(productWidth).height(rowHeight * 2).background(cellBg)) {
+                        Row(modifier = Modifier.width(productWidth).height(rowHeight).background(cellBg)) {
                             Box(modifier = Modifier.weight(1f).fillMaxHeight().border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
                                 Text(product?.capacity?.toString() ?: "", fontSize = fontSize, color = Color(0xFF666666))
                             }
