@@ -156,7 +156,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun setFocusedInput(index: Int) { _focusedInputIndex.value = index }
     fun clearFocus() { _focusedInputIndex.value = -1 }
     
-    // 匹配的型号名称列表（用于自动完成，输入2字符以上才显示，按最近使用排序）
+    // 匹配的型号名称列表（用于自动完成，精确匹配优先，然后按匹配位置排序）
     val matchedProducts: StateFlow<List<String>> = combine(_inputNames, _focusedInputIndex, allProducts, recentProducts) { names, focusIndex, products, recent ->
         if (focusIndex < 0 || focusIndex >= names.size) emptyList()
         else {
@@ -166,11 +166,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 recent.take(10)
             } else {
                 val matched = products.filter { it.name.contains(text, ignoreCase = true) }.map { it.name }
-                // 按最近使用排序：最近使用的排在前面
-                matched.sortedBy { productName ->
+                // 排序：精确匹配最前 → 以输入开头 → 包含输入 → 最近使用
+                matched.sortedWith(compareBy<String> { productName ->
+                    when {
+                        productName.equals(text, ignoreCase = true) -> 0  // 精确匹配
+                        productName.startsWith(text, ignoreCase = true) -> 1  // 以输入开头
+                        else -> 2  // 包含输入
+                    }
+                }.thenBy { productName ->
                     val recentIndex = recent.indexOf(productName)
                     if (recentIndex >= 0) recentIndex else Int.MAX_VALUE
-                }.take(10)
+                }).take(10)
             }
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(1000), emptyList())
