@@ -635,17 +635,18 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
     var editCapacity by remember { mutableStateOf("") }
     var editPeople by remember { mutableStateOf("") }
     var editingProcesses by remember { mutableStateOf<List<ProductProcess>>(emptyList()) }
+    var originalProcesses by remember { mutableStateOf<List<ProductProcess>>(emptyList()) }
     var newProcessName by remember { mutableStateOf("") }
     
     // 历史记录（用于撤销）
     var history by remember { mutableStateOf<List<Triple<String, String, List<ProductProcess>>>>(emptyList()) }
     
     // 是否有修改
-    val hasChanges = remember(editCapacity, editPeople, editingProcesses, editingProduct) {
+    val hasChanges = remember(editCapacity, editPeople, editingProcesses, originalProcesses, editingProduct) {
         editingProduct != null && (
             editCapacity != editingProduct!!.capacity.toString() ||
             editPeople != editingProduct!!.requiredPeople.toString() ||
-            editingProcesses.map { it.processName } != repo.getProcessesOnce(editingProduct!!.id).sortedBy { it.sortOrder }.map { it.processName }
+            editingProcesses.map { it.processName } != originalProcesses.map { it.processName }
         )
     }
 
@@ -659,6 +660,7 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
         if (editingProduct != null) {
             val processes = repo.getProcessesOnce(editingProduct!!.id).sortedBy { it.sortOrder }
             editingProcesses = processes
+            originalProcesses = processes.map { it.copy() }
             editCapacity = editingProduct!!.capacity.toString()
             editPeople = editingProduct!!.requiredPeople.toString()
             history = emptyList()  // 清空历史
