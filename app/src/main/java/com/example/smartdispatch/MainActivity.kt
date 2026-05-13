@@ -395,6 +395,94 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         } catch (e: Exception) { addLog("❌ ${e.message}") }
         _isLoading.value = false
     }
+
+    fun exportToExcel(uri: Uri) = viewModelScope.launch {
+        _isLoading.value = true
+        addLog("开始导出Excel...")
+        try {
+            val ctx = getApplication<Application>()
+            val r = (ctx as DispatchApplication).repository
+            ctx.contentResolver.openOutputStream(uri)?.use { output ->
+                withContext(Dispatchers.IO) {
+                    val workbook = org.apache.poi.xssf.usermodel.XSSFWorkbook()
+                    
+                    // 1. 工序评分表
+                    val skillSheet = workbook.createSheet("工序评分")
+                    val persons = r.allPersons.first()
+                    val processNames = r.allProcessNames.first().sorted()
+                    
+                    // 表头: 姓名, 工号, 工序1, 工序2, ...
+                    val skillHeader = skillSheet.createRow(0)
+                    skillHeader.createCell(0).setCellValue("姓名")
+                    skillHeader.createCell(1).setCellValue("工号")
+                    processNames.forEachIndexed { index, name ->
+                        skillHeader.createCell(index + 2).setCellValue(name)
+                    }
+                    
+                    // 数据行
+                    persons.forEachIndexed { rowIndex, person ->
+                        val row = skillSheet.createRow(rowIndex + 1)
+                        row.createCell(0).setCellValue(person.name)
+                        row.createCell(1).setCellValue(person.employeeId)
+                        val scores = r.getScoresByPerson(person.id)
+                        val scoreMap = scores.associate { it.processName to it.score }
+                        processNames.forEachIndexed { colIndex, processName ->
+                            row.createCell(colIndex + 2).setCellValue(scoreMap[processName]?.toDouble() ?: 0.0)
+                        }
+                    }
+                    
+                    // 2. 工序流程表
+                    val processSheet = workbook.createSheet("工序流程")
+                    val products = r.allProducts.first()
+                    
+                    // 表头: 产品, 产能, 人数, 工序1, 工序2, ...
+                    val processHeader = processSheet.createRow(0)
+                    processHeader.createCell(0).setCellValue("产品")
+                    processHeader.createCell(1).setCellValue("产能")
+                    processHeader.createCell(2).setCellValue("人数")
+                    (0..9).forEach { processHeader.createCell(3 + it).setCellValue("工序${it + 1}") }
+                    
+                    // 数据行
+                    products.forEachIndexed { rowIndex, product ->
+                        val row = processSheet.createRow(rowIndex + 1)
+                        row.createCell(0).setCellValue(product.name)
+                        row.createCell(1).setCellValue(product.capacity.toDouble())
+                        row.createCell(2).setCellValue(product.requiredPeople.toDouble())
+                        val processes = r.getProcessesOnce(product.id).sortedBy { it.sortOrder }
+                        processes.forEachIndexed { colIndex, process ->
+                            row.createCell(3 + colIndex).setCellValue(process.processName)
+                        }
+                    }
+                    
+                    // 3. 智能排工主表
+                    val mainSheet = workbook.createSheet("智能排工")
+                    
+                    // 请假人员列
+                    mainSheet.createRow(0).createCell(0).setCellValue("请假人员")
+                    val leavePersons = persons.filter { it.onLeave }
+                    leavePersons.forEachIndexed { index, person ->
+                        mainSheet.createRow(index + 1).createCell(0).setCellValue(person.name)
+                    }
+                    
+                    // 产品列（每产品占2列：人员、工序）
+                    products.forEachIndexed { index, product ->
+                        val col = index * 2 + 1
+                        mainSheet.getRow(0)?.createCell(col)?.setCellValue(product.name)
+                        mainSheet.getRow(0)?.createCell(col + 1)
+                    }
+                    
+                    workbook.write(output)
+                    workbook.close()
+                }
+                addLog("✅ 导出成功")
+                Toast.makeText(ctx, "导出成功", Toast.LENGTH_SHORT).show()
+            }
+        } catch (e: Exception) { 
+            addLog("❌ 导出失败: ${e.message}")
+            Toast.makeText(ctx, "导出失败: ${e.message}", Toast.LENGTH_LONG).show()
+        }
+        _isLoading.value = false
+    }
 }
 
 class MainActivity : ComponentActivity() {
@@ -776,7 +864,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
     val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
     var isTableFullscreen by remember { mutableStateOf(false) }
     val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let { viewModel.importFromExcel(it) } }
-    val exportPicker = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")) { uri -> uri?.let { Toast.makeText(context, "导出功能开发中...", Toast.LENGTH_SHORT).show() } }
+    val exportPicker = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")) { uri -> uri?.let { viewModel.exportToExcel(it) } }
 
     Scaffold(
         topBar = {
