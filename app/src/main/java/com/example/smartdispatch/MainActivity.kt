@@ -882,7 +882,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                     containerColor = Color(0xFF1976D2),
                     contentColor = Color.White
                 ) {
-                    Icon(Icons.Default.Fullscreen, "全屏", modifier = Modifier.size(24.dp))
+                    Icon(Icons.Default.Fullscreen, "全屏", modifier = Modifier.size(18.dp))
                 }
             }
         }
@@ -1245,8 +1245,8 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
             Column(modifier = Modifier.fillMaxSize()) {
                 // 第一行：请假人员标题 + 输入框（两行显示）
                 Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState).background(Color(0xFF90CAF9))) {
-                    Box(modifier = Modifier.width(60.dp).height(rowHeight * 2), contentAlignment = Alignment.Center) { 
-                        Text("请假\n人员", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White, textAlign = androidx.compose.ui.text.style.TextAlign.Center) 
+                    Box(modifier = Modifier.width(60.dp).height(rowHeight * 2).background(Color.White, RoundedCornerShape(2.dp)).padding(1.dp), contentAlignment = Alignment.TopCenter) {
+                        Text("请假\n人员", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.Black, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                     }
                     inputNames.forEachIndexed { index, name ->
                         Box(modifier = Modifier.width(productWidth).height(rowHeight * 2).padding(1.dp)) {
@@ -1257,12 +1257,12 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
                                     if (focusState.isFocused) viewModel.setFocusedInput(index)
                                     else if (focusedIndex == index) viewModel.clearFocus()
                                 },
-                                textStyle = androidx.compose.ui.text.TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.Black),
+                                textStyle = androidx.compose.ui.text.TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.Black, textAlign = androidx.compose.ui.text.style.TextAlign.Center),
                                 singleLine = false,
                                 maxLines = 2,
                                 cursorBrush = androidx.compose.ui.graphics.SolidColor(Color.Black),
                                 decorationBox = { innerTextField ->
-                                    Box(modifier = Modifier.fillMaxSize().background(Color.White, RoundedCornerShape(2.dp)).padding(horizontal = 2.dp), contentAlignment = Alignment.Center) {
+                                    Box(modifier = Modifier.fillMaxSize().background(Color.White, RoundedCornerShape(2.dp)).padding(horizontal = 2.dp, vertical = 4.dp), contentAlignment = Alignment.TopCenter) {
                                         if (name.isEmpty()) {
                                             Text("型号${index + 1}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFFAAAAAA), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                                         }
