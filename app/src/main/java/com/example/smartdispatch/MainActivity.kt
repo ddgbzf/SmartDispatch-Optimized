@@ -161,8 +161,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (focusIndex < 0 || focusIndex >= names.size) emptyList()
         else {
             val text = names[focusIndex].trim()
-            if (text.isEmpty()) emptyList()
-            else {
+            if (text.isEmpty()) {
+                // 输入为空时显示最近使用的产品（最多10个）
+                recent.take(10)
+            } else {
                 val matched = products.filter { it.name.contains(text, ignoreCase = true) }.map { it.name }
                 // 按最近使用排序：最近使用的排在前面
                 matched.sortedBy { productName ->
@@ -221,7 +223,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun updateProcessName(productId: Int, processId: Int, newName: String) = viewModelScope.launch {
-        repo.updateProcess(ProductProcess(id = processId, productId = productId, processName = newName))
+        val existing = repo.getProcessesOnce(productId).find { it.id == processId }
+        if (existing != null) {
+            repo.updateProcess(existing.copy(processName = newName))
+        }
     }
 
     fun deleteProcess(process: ProductProcess) = viewModelScope.launch {
@@ -409,7 +414,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     // 1. 工序评分表
                     val skillSheet = workbook.createSheet("工序评分")
                     val persons = r.allPersons.first()
-                    val processNames = r.allProcessNames.first().sorted()
+                    val processNames = r.allProcessNames.first()  // 保持原始顺序（按id排序）
                     
                     // 表头: 姓名, 工号, 工序1, 工序2, ...
                     val skillHeader = skillSheet.createRow(0)
@@ -457,18 +462,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     // 3. 智能排工主表
                     val mainSheet = workbook.createSheet("智能排工")
                     
-                    // 请假人员列
-                    mainSheet.createRow(0).createCell(0).setCellValue("请假人员")
+                    // 首行：请假人员 + 产品名（每产品占2列：人员、工序）
+                    val headerRow = mainSheet.createRow(0)
+                    headerRow.createCell(0).setCellValue("请假人员")
+                    products.forEachIndexed { index, product ->
+                        val col = index * 2 + 1
+                        headerRow.createCell(col).setCellValue(product.name)
+                        // col+1 留给工序（空列）
+                    }
+                    
+                    // 请假人员列表（从第2行开始）
                     val leavePersons = persons.filter { it.onLeave }
                     leavePersons.forEachIndexed { index, person ->
                         mainSheet.createRow(index + 1).createCell(0).setCellValue(person.name)
-                    }
-                    
-                    // 产品列（每产品占2列：人员、工序）
-                    products.forEachIndexed { index, product ->
-                        val col = index * 2 + 1
-                        mainSheet.getRow(0)?.createCell(col)?.setCellValue(product.name)
-                        mainSheet.getRow(0)?.createCell(col + 1)
                     }
                     
                     workbook.write(output)
