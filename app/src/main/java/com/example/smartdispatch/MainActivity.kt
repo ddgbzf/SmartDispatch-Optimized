@@ -126,6 +126,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
     private val _scoreVersion = MutableStateFlow(0)
     val scoreVersion: StateFlow<Int> = _scoreVersion.asStateFlow()
+    private val _processVersion = MutableStateFlow(0)
+    val processVersion: StateFlow<Int> = _processVersion.asStateFlow()
     
     // 智能排工页输入框状态（持久化到SharedPreferences）
     private val _inputNames = MutableStateFlow(loadInputNames())
@@ -232,17 +234,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val existing = repo.getProcessesOnce(productId).find { it.id == processId }
         if (existing != null) {
             repo.updateProcess(existing.copy(processName = newName))
+            _processVersion.value++
         }
     }
 
     fun deleteProcess(process: ProductProcess) = viewModelScope.launch {
         repo.deleteProcess(process)
+        _processVersion.value++
     }
 
     fun addProcessToProduct(productId: Int, processName: String) = viewModelScope.launch {
         // 获取当前最大排序号
         val processes = repo.getProcessesOnce(productId)
         repo.addProcess(productId, processName, processes.size)
+        _processVersion.value++
     }
 
     fun addProduct(name: String, capacity: Int, requiredPeople: Int) = viewModelScope.launch {
@@ -1154,7 +1159,8 @@ fun ProcessFlowTab(viewModel: MainViewModel) {
     var deletingProduct by remember { mutableStateOf<Product?>(null) }
 
     var processMap by remember { mutableStateOf<Map<Int, List<ProductProcess>>>(emptyMap()) }
-    LaunchedEffect(products) {
+    val processVer by viewModel.processVersion.collectAsState()
+    LaunchedEffect(products, processVer) {
         val map = mutableMapOf<Int, List<ProductProcess>>()
         for (product in products) { map[product.id] = repo.getProcessesOnce(product.id) }
         processMap = map
@@ -1246,7 +1252,8 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
     var showDebugLogs by remember { mutableStateOf(true) }
     var processMap by remember { mutableStateOf<Map<Int, List<ProductProcess>>>(emptyMap()) }
     val unassignedScrollState = rememberScrollState()
-    LaunchedEffect(products) {
+    val processVer by viewModel.processVersion.collectAsState()
+    LaunchedEffect(products, processVer) {
         val map = mutableMapOf<Int, List<ProductProcess>>()
         for (product in products) { map[product.id] = repo.getProcessesOnce(product.id) }
         processMap = map
