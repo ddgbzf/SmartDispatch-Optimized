@@ -1243,11 +1243,13 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
         // 表格区域
         Box(modifier = Modifier.fillMaxSize()) {
             Column(modifier = Modifier.fillMaxSize()) {
-                // 第一行：请假人员标题 + 输入框
-                Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState).background(Color(0xFFBBDEFB))) {
-                    Box(modifier = Modifier.width(60.dp).height(rowHeight), contentAlignment = Alignment.Center) { Text("请假", fontWeight = FontWeight.Bold, fontSize = fontSize) }
+                // 第一行：请假人员标题 + 输入框（两行显示）
+                Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState).background(Color(0xFF90CAF9))) {
+                    Box(modifier = Modifier.width(60.dp).height(rowHeight * 2), contentAlignment = Alignment.Center) { 
+                        Text("请假\n人员", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White, textAlign = androidx.compose.ui.text.style.TextAlign.Center) 
+                    }
                     inputNames.forEachIndexed { index, name ->
-                        Box(modifier = Modifier.width(productWidth).height(rowHeight).padding(1.dp)) {
+                        Box(modifier = Modifier.width(productWidth).height(rowHeight * 2).padding(1.dp)) {
                             BasicTextField(
                                 value = name,
                                 onValueChange = { viewModel.updateInputName(index, it) },
@@ -1255,13 +1257,14 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
                                     if (focusState.isFocused) viewModel.setFocusedInput(index)
                                     else if (focusedIndex == index) viewModel.clearFocus()
                                 },
-                                textStyle = androidx.compose.ui.text.TextStyle(fontSize = fontSize, color = Color.Black),
-                                singleLine = true,
+                                textStyle = androidx.compose.ui.text.TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.Black),
+                                singleLine = false,
+                                maxLines = 2,
                                 cursorBrush = androidx.compose.ui.graphics.SolidColor(Color.Black),
                                 decorationBox = { innerTextField ->
-                                    Box(modifier = Modifier.fillMaxSize().background(Color.White, RoundedCornerShape(2.dp)).padding(horizontal = 2.dp), contentAlignment = Alignment.CenterStart) {
+                                    Box(modifier = Modifier.fillMaxSize().background(Color.White, RoundedCornerShape(2.dp)).padding(horizontal = 2.dp), contentAlignment = Alignment.Center) {
                                         if (name.isEmpty()) {
-                                            Text("型号${index + 1}", fontSize = fontSize, color = Color(0xFFAAAAAA), maxLines = 1)
+                                            Text("型号${index + 1}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFFAAAAAA), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                                         }
                                         innerTextField()
                                     }
@@ -1295,9 +1298,9 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
                     }
                 }
                 Divider()
-                // 第二行：请假人名 + 产能/人数
+                // 第二行：请假人名 + 产能/人数（两行高度）
                 Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState)) {
-                    Box(modifier = Modifier.width(60.dp).height(rowHeight).border(0.5.dp, Color(0xFFE0E0E0)).background(Color(0xFFFFCDD2)), contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier.width(60.dp).height(rowHeight * 2).border(0.5.dp, Color(0xFFE0E0E0)).background(Color(0xFFFFCDD2)), contentAlignment = Alignment.Center) {
                         val p = leavePeople.getOrNull(0)
                         if (p != null) Text(p.name, fontSize = fontSize, fontWeight = FontWeight.Medium, color = Color(0xFFC62828)) else Text("")
                     }
@@ -1305,7 +1308,7 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
                         val product = if (name.isNotBlank()) products.find { it.name.contains(name.trim(), ignoreCase = true) } else null
                         // 固定产品显示黄色背景
                         val cellBg = if (product?.isFixed == true) Color(0xFFFFF9C4) else Color.Transparent
-                        Row(modifier = Modifier.width(productWidth).height(rowHeight).background(cellBg)) {
+                        Row(modifier = Modifier.width(productWidth).height(rowHeight * 2).background(cellBg)) {
                             Box(modifier = Modifier.weight(1f).fillMaxHeight().border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
                                 Text(product?.capacity?.toString() ?: "", fontSize = fontSize, color = Color(0xFF666666))
                             }
