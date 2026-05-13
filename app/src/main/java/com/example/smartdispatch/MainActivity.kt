@@ -213,7 +213,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val names = _inputNames.value.mapNotNull { name ->
                 if (name.isNotBlank()) {
                     allProducts.first().find { it.name.equals(name.trim(), ignoreCase = true) }?.name
-                        ?: allProducts.first().find { it.name.contains(name.trim(), ignoreCase = true) }?.name
                 } else {
                     null
                 }
@@ -1256,7 +1255,6 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
     val selectedProducts = inputNames.mapNotNull { name ->
         if (name.isBlank()) null
         else products.find { it.name.equals(name.trim(), ignoreCase = true) }
-            ?: products.find { it.name.contains(name.trim(), ignoreCase = true) }
     }
 
     // 按输入框索引匹配分配结果（支持相同型号多实例）
@@ -1267,7 +1265,6 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
         for ((index, name) in inputNames.withIndex()) {
             if (name.isBlank()) continue
             val cleanName = products.find { it.name.equals(name.trim(), ignoreCase = true) }?.name
-                ?: products.find { it.name.contains(name.trim(), ignoreCase = true) }?.name
                 ?: continue
             val count = nameCount.getOrDefault(cleanName, 0)
             nameCount[cleanName] = count + 1
@@ -1410,7 +1407,7 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
                         if (p != null) Text(p.name, fontSize = fontSize, fontWeight = FontWeight.Medium, color = Color(0xFFC62828)) else Text("")
                     }
                     inputNames.forEachIndexed { index, name ->
-                        val product = if (name.isNotBlank()) products.find { it.name.equals(name.trim(), ignoreCase = true) } ?: products.find { it.name.contains(name.trim(), ignoreCase = true) } else null
+                        val product = if (name.isNotBlank()) products.find { it.name.equals(name.trim(), ignoreCase = true) } else null
                         // 固定产品显示黄色背景
                         val cellBg = if (product?.isFixed == true) Color(0xFFFFF9C4) else Color.Transparent
                         Row(modifier = Modifier.width(productWidth).height(rowHeight).background(cellBg)) {
@@ -1428,7 +1425,7 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
                 LazyColumn(modifier = Modifier.weight(1f)) {
                     val maxProductRows = inputNames.indices.maxOfOrNull { index ->
                         val name = inputNames[index]
-                        val product = if (name.isNotBlank()) products.find { it.name.equals(name.trim(), ignoreCase = true) } ?: products.find { it.name.contains(name.trim(), ignoreCase = true) } else null
+                        val product = if (name.isNotBlank()) products.find { it.name.equals(name.trim(), ignoreCase = true) } else null
                         val processes = if (product != null) (processMap[product.id] ?: emptyList()) else emptyList()
                         val assignments = assignmentsByIndex[index] ?: emptyList()
                         maxOf(processes.size, assignments.size)
@@ -1442,7 +1439,7 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
                                 if (person != null) Text(person.name, fontSize = fontSize, fontWeight = FontWeight.Medium, color = Color(0xFFC62828))
                             }
                             inputNames.forEachIndexed { index, name ->
-                                val product = if (name.isNotBlank()) products.find { it.name.equals(name.trim(), ignoreCase = true) } ?: products.find { it.name.contains(name.trim(), ignoreCase = true) } else null
+                                val product = if (name.isNotBlank()) products.find { it.name.equals(name.trim(), ignoreCase = true) } else null
                                 val processes = if (product != null) (processMap[product.id] ?: emptyList()) else emptyList()
                                 val assignments = assignmentsByIndex[index] ?: emptyList()
                                 val processName = processes.getOrNull(rowIndex)?.processName ?: ""
