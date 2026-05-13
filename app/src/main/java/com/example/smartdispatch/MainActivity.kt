@@ -879,10 +879,11 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                             }
                         }
                     },
+                    modifier = Modifier.size(36.dp),
                     containerColor = Color(0xFF1976D2),
                     contentColor = Color.White
                 ) {
-                    Icon(Icons.Default.Fullscreen, "全屏", modifier = Modifier.size(18.dp))
+                    Icon(Icons.Default.Fullscreen, "全屏", modifier = Modifier.size(16.dp))
                 }
             }
         }
@@ -1145,6 +1146,7 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
     val repo = (LocalContext.current.applicationContext as DispatchApplication).repository
     var showDebugLogs by remember { mutableStateOf(true) }
     var processMap by remember { mutableStateOf<Map<Int, List<ProductProcess>>>(emptyMap()) }
+    val unassignedScrollState = rememberScrollState()
     LaunchedEffect(products) {
         val map = mutableMapOf<Int, List<ProductProcess>>()
         for (product in products) { map[product.id] = repo.getProcessesOnce(product.id) }
@@ -1245,7 +1247,7 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
             Column(modifier = Modifier.fillMaxSize()) {
                 // 第一行：请假人员标题 + 输入框（两行显示）
                 Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState).background(Color(0xFF90CAF9))) {
-                    Box(modifier = Modifier.width(60.dp).height(rowHeight * 2).background(Color.White, RoundedCornerShape(2.dp)).padding(1.dp), contentAlignment = Alignment.TopCenter) {
+                    Box(modifier = Modifier.width(60.dp).height(rowHeight * 2).background(Color.White, RoundedCornerShape(2.dp)).border(0.5.dp, Color(0xFFE0E0E0)).padding(1.dp), contentAlignment = Alignment.TopCenter) {
                         Text("请假\n人员", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.Black, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                     }
                     inputNames.forEachIndexed { index, name ->
@@ -1359,13 +1361,13 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
                         }
                     }
                 }
-                // 未分配人员紧跟数据行之后
+                // 未分配人员（在LazyColumn外部）
                 val unassigned = result?.unassignedPeople ?: emptyList()
-                    if (unassigned.isNotEmpty()) {
-                        Divider()
-                        Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState)) {
+                if (unassigned.isNotEmpty()) {
+                    Divider()
+                    Row(modifier = Modifier.fillMaxWidth().horizontalScroll(unassignedScrollState)) {
                             Box(modifier = Modifier.width(60.dp).height(rowHeight).border(0.5.dp, Color(0xFFE0E0E0)).background(Color(0xFFFFE0B2)), contentAlignment = Alignment.Center) {
-                                Text("未分", fontSize = fontSize, fontWeight = FontWeight.Bold, color = Color(0xFFE65100))
+                                Text("未分配", fontSize = fontSize, fontWeight = FontWeight.Bold, color = Color(0xFFE65100))
                             }
                             unassigned.forEach { person ->
                                 Box(modifier = Modifier.width(60.dp).height(rowHeight).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
