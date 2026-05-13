@@ -623,7 +623,7 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
 }
 
 // ========== 编辑工序流程页面 ==========
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
     val products by viewModel.allProducts.collectAsState()
