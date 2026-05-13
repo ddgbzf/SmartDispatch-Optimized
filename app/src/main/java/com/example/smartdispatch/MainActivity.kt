@@ -399,8 +399,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun exportToExcel(uri: Uri) = viewModelScope.launch {
         _isLoading.value = true
         addLog("开始导出Excel...")
+        val ctx = getApplication<Application>()
         try {
-            val ctx = getApplication<Application>()
             val r = (ctx as DispatchApplication).repository
             ctx.contentResolver.openOutputStream(uri)?.use { output ->
                 withContext(Dispatchers.IO) {
@@ -1164,7 +1164,6 @@ fun ProcessFlowTab(viewModel: MainViewModel) {
                     Row(modifier = Modifier.weight(1f).horizontalScroll(scrollState).background(MaterialTheme.colorScheme.primaryContainer)) {
                         Box(modifier = Modifier.width(60.dp).height(28.dp), contentAlignment = Alignment.Center) { Text("产能", fontWeight = FontWeight.Bold, fontSize = 13.sp) }
                         Box(modifier = Modifier.width(50.dp).height(28.dp), contentAlignment = Alignment.Center) { Text("人数", fontWeight = FontWeight.Bold, fontSize = 13.sp) }
-                        Box(modifier = Modifier.width(40.dp).height(28.dp), contentAlignment = Alignment.Center) { Text("固定", fontWeight = FontWeight.Bold, fontSize = 13.sp) }
                         repeat(maxProcesses) { i ->
                             Box(modifier = Modifier.width(72.dp).height(28.dp), contentAlignment = Alignment.Center) { Text("工序${i + 1}", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
                         }
@@ -1198,11 +1197,11 @@ fun ProcessFlowTab(viewModel: MainViewModel) {
                 }
             }
         }
-        Column(modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            FloatingActionButton(onClick = { showAddProcessDialog.value = true }, containerColor = MaterialTheme.colorScheme.secondary) { Icon(Icons.Default.Add, "添加工序") }
-            Spacer(Modifier.height(0.dp))
-            FloatingActionButton(onClick = { showAddProductDialog.value = true }, containerColor = MaterialTheme.colorScheme.primary) { Icon(Icons.Default.Add, "添加产品") }
-        }
+        FloatingActionButton(
+            onClick = { showAddProductDialog.value = true },
+            modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
+            containerColor = MaterialTheme.colorScheme.primary
+        ) { Icon(Icons.Default.Add, "添加产品") }
     }
 
     if (showAddProductDialog.value) {
