@@ -922,14 +922,14 @@ fun LeaveTab(viewModel: MainViewModel) {
             LazyColumn(modifier = Modifier.fillMaxSize()) {
                 items(persons, key = { it.id }) { person ->
                     Row(
-                        modifier = Modifier.fillMaxWidth().height(36.dp).padding(horizontal = 8.dp),
+                        modifier = Modifier.fillMaxWidth().height(32.dp).padding(horizontal = 8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(if (person.onLeave) Icons.Default.PersonOff else Icons.Default.Person, null, tint = if (person.onLeave) Color(0xFFC62828) else Color(0xFF2E7D32), modifier = Modifier.size(20.dp))
-                        Spacer(Modifier.width(8.dp))
+                        Icon(if (person.onLeave) Icons.Default.PersonOff else Icons.Default.Person, null, tint = if (person.onLeave) Color(0xFFC62828) else Color(0xFF2E7D32), modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
                         // 显示工号
                         if (person.employeeId.isNotBlank()) {
-                            Text(person.employeeId, fontSize = 12.sp, color = Color(0xFF666666), modifier = Modifier.width(70.dp))
+                            Text(person.employeeId, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF333333), modifier = Modifier.width(70.dp))
                         } else {
                             Spacer(Modifier.width(70.dp))
                         }
