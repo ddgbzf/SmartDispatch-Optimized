@@ -11,10 +11,12 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.*
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -622,7 +624,7 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
 }
 
 // ========== 编辑工序流程页面 ==========
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
     val products by viewModel.allProducts.collectAsState()
@@ -741,9 +743,27 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                         items(editingProcesses.size, key = { editingProcesses[it].id }) { index ->
                             val process = editingProcesses[index]
                             var editName by remember { mutableStateOf(process.processName) }
+                            var isDragging by remember { mutableStateOf(false) }
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(if (isDragging) Color(0xFFE3F2FD) else Color.Transparent, RoundedCornerShape(4.dp))
+                                    .pointerInput(Unit) {
+                                        detectDragGestures(
+                                            onDragStart = { isDragging = true },
+                                            onDragEnd = { isDragging = false },
+                                            onDrag = { change, dragAmount ->
+                                                change.consume()
+                                                val itemHeight = 48f
+                                                val newIndex = (index + (dragAmount.y / itemHeight).toInt())
+                                                    .coerceIn(0, editingProcesses.size - 1)
+                                                if (newIndex != index) {
+                                                    moveProcess(index, newIndex)
+                                                }
+                                            }
+                                        )
+                                    }
                             ) {
                                 Text("${index + 1}.", fontSize = 14.sp, color = Color(0xFF666666), modifier = Modifier.width(28.dp))
                                 BasicTextField(
@@ -758,20 +778,6 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                                         }
                                     }
                                 )
-                                // 上移按钮
-                                IconButton(
-                                    onClick = { if (index > 0) moveProcess(index, index - 1) },
-                                    enabled = index > 0
-                                ) {
-                                    Icon(Icons.Default.KeyboardArrowUp, null, tint = if (index > 0) Color(0xFF1976D2) else Color(0xFFBDBDBD), modifier = Modifier.size(20.dp))
-                                }
-                                // 下移按钮
-                                IconButton(
-                                    onClick = { if (index < editingProcesses.size - 1) moveProcess(index, index + 1) },
-                                    enabled = index < editingProcesses.size - 1
-                                ) {
-                                    Icon(Icons.Default.KeyboardArrowDown, null, tint = if (index < editingProcesses.size - 1) Color(0xFF1976D2) else Color(0xFFBDBDBD), modifier = Modifier.size(20.dp))
-                                }
                                 IconButton(onClick = {
                                     if (editName.isNotBlank() && editName.trim() != process.processName) {
                                         saveHistory()
