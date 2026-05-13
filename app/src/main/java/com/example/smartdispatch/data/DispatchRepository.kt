@@ -43,6 +43,7 @@ class DispatchRepository(
     }
     suspend fun updateProcess(process: ProductProcess) = productProcessDao.update(process)
     suspend fun deleteProcess(process: ProductProcess) = productProcessDao.delete(process)
+    suspend fun deleteProcessesByProduct(productId: Int) = productProcessDao.deleteByProduct(productId)
     suspend fun getProcesses(productId: Int): Flow<List<ProductProcess>> = productProcessDao.getByProduct(productId)
 
     suspend fun getPersonById(id: Int): Person? = personDao.findById(id)

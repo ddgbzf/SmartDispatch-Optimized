@@ -11,6 +11,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.*
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.text.BasicTextField
@@ -627,11 +628,31 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
 fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
     val products by viewModel.allProducts.collectAsState()
     val repo = (LocalContext.current.applicationContext as DispatchApplication).repository
+    val coroutineScope = rememberCoroutineScope()
     var searchText by remember { mutableStateOf("") }
     var editingProduct by remember { mutableStateOf<Product?>(null) }
+    
+    // 本地编辑状态（不立即保存）
+    var editCapacity by remember { mutableStateOf("") }
+    var editPeople by remember { mutableStateOf("") }
     var editingProcesses by remember { mutableStateOf<List<ProductProcess>>(emptyList()) }
-    var showDeleteProcessConfirm by remember { mutableStateOf(false) }
-    var deletingProcess by remember { mutableStateOf<ProductProcess?>(null) }
+    var newProcessName by remember { mutableStateOf("") }
+    
+    // 历史记录（用于撤销）
+    var history by remember { mutableStateOf<List<Triple<String, String, List<ProductProcess>>>>(emptyList()) }
+    
+    // 拖动状态
+    var draggingIndex by remember { mutableStateOf<Int?>(null) }
+    var dragOffset by remember { mutableStateOf(0f) }
+    
+    // 是否有修改
+    val hasChanges = remember(editCapacity, editPeople, editingProcesses, editingProduct) {
+        editingProduct != null && (
+            editCapacity != editingProduct!!.capacity.toString() ||
+            editPeople != editingProduct!!.requiredPeople.toString() ||
+            editingProcesses.map { it.processName } != repo.getProcessesOnce(editingProduct!!.id).sortedBy { it.sortOrder }.map { it.processName }
+        )
+    }
 
     val filteredProducts = remember(searchText, products) {
         if (searchText.length < 2) emptyList()
@@ -641,19 +662,56 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
     val context = LocalContext.current
     LaunchedEffect(editingProduct) {
         if (editingProduct != null) {
-            val processes = repo.getProcessesOnce(editingProduct!!.id)
+            val processes = repo.getProcessesOnce(editingProduct!!.id).sortedBy { it.sortOrder }
             editingProcesses = processes
-            android.widget.Toast.makeText(
-                context,
-                "加载工序: ${editingProduct!!.name}, ${processes.size}个",
-                android.widget.Toast.LENGTH_SHORT
-            ).show()
+            editCapacity = editingProduct!!.capacity.toString()
+            editPeople = editingProduct!!.requiredPeople.toString()
+            history = emptyList()  // 清空历史
+            android.widget.Toast.makeText(context, "加载: ${editingProduct!!.name}, ${processes.size}个工序", android.widget.Toast.LENGTH_SHORT).show()
         }
+    }
+    
+    // 保存历史
+    fun saveHistory() {
+        history = history + Triple(editCapacity, editPeople, editingProcesses.map { it.copy() })
+        if (history.size > 20) history = history.drop(1)  // 最多20步
+    }
+    
+    // 撤销
+    fun undo() {
+        if (history.isNotEmpty()) {
+            val last = history.last()
+            history = history.dropLast(1)
+            editCapacity = last.first
+            editPeople = last.second
+            editingProcesses = last.third
+        }
+    }
+    
+    // 移动工序
+    fun moveProcess(from: Int, to: Int) {
+        if (from == to || from < 0 || to < 0 || from >= editingProcesses.size || to >= editingProcesses.size) return
+        saveHistory()
+        val list = editingProcesses.toMutableList()
+        val item = list.removeAt(from)
+        list.add(to, item)
+        editingProcesses = list.mapIndexed { i, p -> p.copy(sortOrder = i) }
     }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("编辑工序流程", fontWeight = FontWeight.Bold) },
+        title = { 
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("编辑工序流程", fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                if (history.isNotEmpty()) {
+                    TextButton(onClick = { undo() }) {
+                        Icon(Icons.Default.Undo, null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("撤销", fontSize = 12.sp)
+                    }
+                }
+            }
+        },
         text = {
             Column(modifier = Modifier.fillMaxWidth().height(500.dp)) {
                 if (editingProduct != null) {
@@ -662,8 +720,7 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                         Text(editingProduct!!.name, fontWeight = FontWeight.Bold, fontSize = 14.sp, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     Spacer(Modifier.height(8.dp))
-                    var editCapacity by remember { mutableStateOf(editingProduct!!.capacity.toString()) }
-                    var editPeople by remember { mutableStateOf(editingProduct!!.requiredPeople.toString()) }
+                    // 产能/人数
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                         Text("产能:", fontSize = 14.sp, modifier = Modifier.width(40.dp))
                         BasicTextField(
@@ -680,22 +737,34 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                             modifier = Modifier.width(80.dp).height(40.dp).border(1.dp, Color(0xFFBDBDBD), RoundedCornerShape(4.dp)).padding(horizontal = 8.dp, vertical = 6.dp),
                             cursorBrush = androidx.compose.ui.graphics.SolidColor(Color.Black)
                         )
-                        IconButton(onClick = {
-                            viewModel.updateProduct(editingProduct!!.copy(
-                                capacity = editCapacity.toIntOrNull() ?: 0,
-                                requiredPeople = editPeople.toIntOrNull() ?: 0
-                            ))
-                        }, enabled = editCapacity.isNotBlank() && editPeople.isNotBlank()) {
-                            Icon(Icons.Default.Check, null, tint = Color(0xFF2E7D32), modifier = Modifier.size(20.dp))
-                        }
                     }
                     Spacer(Modifier.height(8.dp))
-                    Text("工序列表:", fontSize = 12.sp, color = Color(0xFF666666))
-                    LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("工序列表（长按拖动排序）:", fontSize = 12.sp, color = Color(0xFF666666))
+                    LazyColumn(modifier = Modifier.fillMaxSize().weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         items(editingProcesses.size, key = { editingProcesses[it].id }) { index ->
                             val process = editingProcesses[index]
                             var editName by remember { mutableStateOf(process.processName) }
-                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                            var isDragging by remember { mutableStateOf(false) }
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(if (isDragging) Color(0xFFE3F2FD) else Color.Transparent, RoundedCornerShape(4.dp))
+                                    .pointerInput(Unit) {
+                                        detectDragGestures(
+                                            onDragStart = { isDragging = true; draggingIndex = index },
+                                            onDragEnd = { isDragging = false; draggingIndex = null },
+                                            onDrag = { change, offset ->
+                                                val itemHeight = 48f
+                                                val moveBy = offset.y / itemHeight
+                                                val newIndex = (index + moveBy.toInt()).coerceIn(0, editingProcesses.size - 1)
+                                                if (newIndex != index) {
+                                                    moveProcess(index, newIndex)
+                                                }
+                                            }
+                                        )
+                                    }
+                            ) {
                                 Text("${index + 1}.", fontSize = 14.sp, color = Color(0xFF666666), modifier = Modifier.width(28.dp))
                                 BasicTextField(
                                     value = editName, onValueChange = { editName = it },
@@ -710,20 +779,23 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                                     }
                                 )
                                 IconButton(onClick = {
-                                    viewModel.updateProcessName(editingProduct!!.id, process.id, editName.trim())
-                                    val newList = editingProcesses.toMutableList()
-                                    newList[index] = process.copy(processName = editName.trim())
-                                    editingProcesses = newList
-                                }, enabled = editName.trim() != process.processName && editName.isNotBlank()) {
+                                    if (editName.isNotBlank() && editName.trim() != process.processName) {
+                                        saveHistory()
+                                        editingProcesses = editingProcesses.toMutableList().also { it[index] = process.copy(processName = editName.trim()) }
+                                    }
+                                }, enabled = editName.isNotBlank() && editName.trim() != process.processName) {
                                     Icon(Icons.Default.Check, null, tint = Color(0xFF2E7D32), modifier = Modifier.size(20.dp))
                                 }
-                                IconButton(onClick = { deletingProcess = process; showDeleteProcessConfirm = true }) {
+                                IconButton(onClick = {
+                                    saveHistory()
+                                    editingProcesses = editingProcesses.filterIndexed { i, _ -> i != index }.mapIndexed { i, p -> p.copy(sortOrder = i) }
+                                }) {
                                     Icon(Icons.Default.Delete, null, tint = Color(0xFFC62828), modifier = Modifier.size(20.dp))
                                 }
                             }
                         }
+                        // 添加新工序
                         item {
-                            var newProcessName by remember { mutableStateOf("") }
                             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
                                 Text("${editingProcesses.size + 1}.", fontSize = 14.sp, color = Color(0xFF666666), modifier = Modifier.width(28.dp))
                                 BasicTextField(
@@ -743,8 +815,12 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                                 )
                                 IconButton(onClick = {
                                     if (newProcessName.isNotBlank()) {
-                                        viewModel.addProcessToProduct(editingProduct!!.id, newProcessName.trim())
-                                        editingProcesses = editingProcesses + ProductProcess(productId = editingProduct!!.id, processName = newProcessName.trim(), sortOrder = editingProcesses.size)
+                                        saveHistory()
+                                        editingProcesses = editingProcesses + ProductProcess(
+                                            productId = editingProduct!!.id,
+                                            processName = newProcessName.trim(),
+                                            sortOrder = editingProcesses.size
+                                        )
                                         newProcessName = ""
                                     }
                                 }, enabled = newProcessName.isNotBlank()) {
@@ -794,24 +870,33 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("返回") } }
+        confirmButton = {
+            Row {
+                if (editingProduct != null && hasChanges) {
+                    TextButton(onClick = {
+                        coroutineScope.launch {
+                            // 保存产能/人数
+                            viewModel.updateProduct(editingProduct!!.copy(
+                                capacity = editCapacity.toIntOrNull() ?: 0,
+                                requiredPeople = editPeople.toIntOrNull() ?: 0
+                            ))
+                            // 删除旧工序，插入新工序
+                            repo.deleteProcessesByProduct(editingProduct!!.id)
+                            editingProcesses.forEachIndexed { i, p ->
+                                repo.addProcess(editingProduct!!.id, p.processName, i)
+                            }
+                            editingProduct = null
+                        }
+                    }) {
+                        Icon(Icons.Default.Check, null, tint = Color(0xFF2E7D32), modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("保存", color = Color(0xFF2E7D32))
+                    }
+                }
+                TextButton(onClick = onDismiss) { Text("返回") }
+            }
+        }
     )
-    // 删除工序确认对话框
-    if (showDeleteProcessConfirm && deletingProcess != null) {
-        AlertDialog(
-            onDismissRequest = { showDeleteProcessConfirm = false },
-            title = { Text("确认删除") },
-            text = { Text("确定要删除工序「${deletingProcess!!.processName}」吗？") },
-            confirmButton = {
-                TextButton(onClick = {
-                    viewModel.deleteProcess(deletingProcess!!)
-                    editingProcesses = editingProcesses - deletingProcess!!
-                    showDeleteProcessConfirm = false
-                }) { Text("删除", color = Color(0xFFC62828)) }
-            },
-            dismissButton = { TextButton(onClick = { showDeleteProcessConfirm = false }) { Text("取消") } }
-        )
-    }
 }
 
 // ========== 固定列设置页面 ==========
