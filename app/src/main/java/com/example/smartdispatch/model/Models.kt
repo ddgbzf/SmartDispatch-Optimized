@@ -1,5 +1,7 @@
 package com.example.smartdispatch.model
 
+import kotlinx.serialization.Serializable
+
 /**
  * 产品信息
  */
@@ -14,6 +16,7 @@ data class Product(
 /**
  * 工序分配结果
  */
+@Serializable
 data class ProcessAssignment(
     val productName: String,
     val processName: String,
@@ -25,6 +28,7 @@ data class ProcessAssignment(
 /**
  * 排工结果
  */
+@Serializable
 data class DispatchResult(
     val assignments: List<ProcessAssignment>,
     val totalPeople: Int,

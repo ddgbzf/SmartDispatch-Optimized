@@ -81,8 +81,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _logs = MutableStateFlow(listOf<String>())
     val logs: StateFlow<List<String>> = _logs.asStateFlow()
-    private val _dispatchResult = MutableStateFlow<DispatchResult?>(null)
+    private val _dispatchResult = MutableStateFlow<DispatchResult?>(loadDispatchResult())
     val dispatchResult: StateFlow<DispatchResult?> = _dispatchResult.asStateFlow()
+
+    private fun loadDispatchResult(): DispatchResult? {
+        val json = prefs.getString("last_dispatch_result", null) ?: return null
+        return try {
+            kotlinx.serialization.json.Json.decodeFromString<DispatchResult>(json)
+        } catch (e: Exception) { null }
+    }
+
+    private fun saveDispatchResult(result: DispatchResult?) {
+        prefs.edit().apply {
+            if (result != null) {
+                putString("last_dispatch_result", kotlinx.serialization.json.Json.encodeToString(result))
+            } else {
+                remove("last_dispatch_result")
+            }
+            apply()
+        }
+    }
     // 固定列人员缓存（上次排工中被分配到固定列产品的人员）
     private val _fixedPeople = MutableStateFlow<Set<String>>(emptySet())
     // 固定列输入槽位索引集合（哪些输入框被标记为固定列）
@@ -383,6 +401,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 engine.runWithData(peopleNames, leaveNames, productMap, processNames, fixedPeople, fixedColumnPersons, fixedSlotSet, fixedCellMap)
             }
             _dispatchResult.value = result
+            saveDispatchResult(result)
             // 更新固定列人员集合（用于显示）
             val newFixedPeople = result.assignments
                 .filter { productMap[it.productName]?.isFixed == true }
@@ -1063,10 +1082,10 @@ fun FixedColumnScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(viewModel: MainViewModel = viewModel()) {
-    // 智能排工页为首页
-    var selectedTab by remember { mutableIntStateOf(3) }
-    var showSettings by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    val prefs = context.getSharedPreferences("smart_dispatch", android.content.Context.MODE_PRIVATE)
+    var selectedTab by remember { mutableIntStateOf(prefs.getInt("selectedTab", 3)) }
+    var showSettings by remember { mutableStateOf(false) }
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
     var isTableFullscreen by remember { mutableStateOf(false) }
@@ -1141,7 +1160,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                 tabTitles.forEachIndexed { index, title ->
                     Tab(
                         selected = selectedTab == index,
-                        onClick = { selectedTab = index },
+                        onClick = { selectedTab = index; prefs.edit().putInt("selectedTab", index).apply() },
                         text = { Text(title, fontSize = if (isLandscape) 11.sp else 13.sp) },
                         selectedContentColor = MaterialTheme.colorScheme.primary,
                         unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant
