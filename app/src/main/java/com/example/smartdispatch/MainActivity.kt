@@ -717,27 +717,27 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
             }
         },
         text = {
-            Column(modifier = Modifier.fillMaxWidth().height(500.dp)) {
+            Column(modifier = Modifier.fillMaxWidth().height(500.dp), verticalArrangement = Arrangement.spacedBy(0.dp)) {
                 if (editingProduct != null) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = { editingProduct = null }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.ArrowBack, null, modifier = Modifier.size(18.dp)) }
-                        Text(editingProduct!!.name, fontWeight = FontWeight.Bold, fontSize = 13.sp, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.height(32.dp)) {
+                        IconButton(onClick = { editingProduct = null }, modifier = Modifier.size(28.dp)) { Icon(Icons.Default.ArrowBack, null, modifier = Modifier.size(16.dp)) }
+                        Text(editingProduct!!.name, fontWeight = FontWeight.Bold, fontSize = 12.sp, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     // 产能/人数 - 紧凑排列
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().height(28.dp)) {
-                        Text("产能:", fontSize = 11.sp, modifier = Modifier.width(28.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().height(24.dp)) {
+                        Text("产能:", fontSize = 10.sp, modifier = Modifier.width(26.dp))
                         BasicTextField(
                             value = editCapacity, onValueChange = { if (it.all { c -> c.isDigit() }) editCapacity = it },
-                            singleLine = true, textStyle = androidx.compose.ui.text.TextStyle(fontSize = 11.sp, color = Color.Black),
-                            modifier = Modifier.width(55.dp).height(24.dp).border(1.dp, Color(0xFFBDBDBD), RoundedCornerShape(4.dp)).padding(horizontal = 4.dp, vertical = 2.dp),
+                            singleLine = true, textStyle = androidx.compose.ui.text.TextStyle(fontSize = 10.sp, color = Color.Black),
+                            modifier = Modifier.width(50.dp).height(20.dp).border(1.dp, Color(0xFFBDBDBD), RoundedCornerShape(4.dp)).padding(horizontal = 3.dp, vertical = 1.dp),
                             cursorBrush = androidx.compose.ui.graphics.SolidColor(Color.Black)
                         )
-                        Spacer(Modifier.width(8.dp))
-                        Text("人数:", fontSize = 11.sp, modifier = Modifier.width(28.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("人数:", fontSize = 10.sp, modifier = Modifier.width(26.dp))
                         BasicTextField(
                             value = editPeople, onValueChange = { if (it.all { c -> c.isDigit() }) editPeople = it },
-                            singleLine = true, textStyle = androidx.compose.ui.text.TextStyle(fontSize = 11.sp, color = Color.Black),
-                            modifier = Modifier.width(55.dp).height(24.dp).border(1.dp, Color(0xFFBDBDBD), RoundedCornerShape(4.dp)).padding(horizontal = 4.dp, vertical = 2.dp),
+                            singleLine = true, textStyle = androidx.compose.ui.text.TextStyle(fontSize = 10.sp, color = Color.Black),
+                            modifier = Modifier.width(50.dp).height(20.dp).border(1.dp, Color(0xFFBDBDBD), RoundedCornerShape(4.dp)).padding(horizontal = 3.dp, vertical = 1.dp),
                             cursorBrush = androidx.compose.ui.graphics.SolidColor(Color.Black)
                         )
                     }
