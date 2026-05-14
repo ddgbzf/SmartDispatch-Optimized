@@ -28,8 +28,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -37,6 +37,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -722,33 +723,31 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                         IconButton(onClick = { editingProduct = null }) { Icon(Icons.Default.ArrowBack, null) }
                         Text(editingProduct!!.name, fontWeight = FontWeight.Bold, fontSize = 14.sp, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
-                    Spacer(Modifier.height(8.dp))
-                    // 产能/人数
+                    // 产能/人数 - 紧凑排列
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                        Text("产能:", fontSize = 14.sp, modifier = Modifier.width(40.dp))
+                        Text("产能:", fontSize = 12.sp, modifier = Modifier.width(32.dp))
                         BasicTextField(
                             value = editCapacity, onValueChange = { if (it.all { c -> c.isDigit() }) editCapacity = it },
-                            singleLine = true, textStyle = androidx.compose.ui.text.TextStyle(fontSize = 14.sp, color = Color.Black),
-                            modifier = Modifier.width(80.dp).height(40.dp).border(1.dp, Color(0xFFBDBDBD), RoundedCornerShape(4.dp)).padding(horizontal = 8.dp, vertical = 6.dp),
+                            singleLine = true, textStyle = androidx.compose.ui.text.TextStyle(fontSize = 12.sp, color = Color.Black),
+                            modifier = Modifier.width(60.dp).height(32.dp).border(1.dp, Color(0xFFBDBDBD), RoundedCornerShape(4.dp)).padding(horizontal = 6.dp, vertical = 4.dp),
                             cursorBrush = androidx.compose.ui.graphics.SolidColor(Color.Black)
                         )
-                        Spacer(Modifier.width(16.dp))
-                        Text("人数:", fontSize = 14.sp, modifier = Modifier.width(40.dp))
+                        Spacer(Modifier.width(12.dp))
+                        Text("人数:", fontSize = 12.sp, modifier = Modifier.width(32.dp))
                         BasicTextField(
                             value = editPeople, onValueChange = { if (it.all { c -> c.isDigit() }) editPeople = it },
-                            singleLine = true, textStyle = androidx.compose.ui.text.TextStyle(fontSize = 14.sp, color = Color.Black),
-                            modifier = Modifier.width(80.dp).height(40.dp).border(1.dp, Color(0xFFBDBDBD), RoundedCornerShape(4.dp)).padding(horizontal = 8.dp, vertical = 6.dp),
+                            singleLine = true, textStyle = androidx.compose.ui.text.TextStyle(fontSize = 12.sp, color = Color.Black),
+                            modifier = Modifier.width(60.dp).height(32.dp).border(1.dp, Color(0xFFBDBDBD), RoundedCornerShape(4.dp)).padding(horizontal = 6.dp, vertical = 4.dp),
                             cursorBrush = androidx.compose.ui.graphics.SolidColor(Color.Black)
                         )
                     }
-                    Spacer(Modifier.height(8.dp))
-                    Text("工序列表（长按手柄拖动排序）:", fontSize = 12.sp, color = Color(0xFF666666))
+                    Text("工序列表（长按手柄拖动）:", fontSize = 11.sp, color = Color(0xFF666666))
                     // 记录累计拖动偏移，用于计算目标位置
                     var dragAccumY by remember { mutableStateOf(0f) }
                     var dragFromIndex by remember { mutableStateOf(-1) }
                     LazyColumn(
                         modifier = Modifier.fillMaxSize().weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
                         items(editingProcesses.size, key = { editingProcesses[it].id }) { index ->
                             val process = editingProcesses[index]
@@ -766,9 +765,10 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                                         if (isDragging) Color(0xFFE3F2FD) else Color.White,
                                         RoundedCornerShape(4.dp)
                                     )
+                                    .zIndex(if (isDragging) 1f else 0f)
                                     .offset(y = if (isDragging) dragAccumY.dp else 0.dp)
                             ) {
-                                Text("${index + 1}.", fontSize = 14.sp, color = Color(0xFF666666), modifier = Modifier.width(28.dp))
+                                Text("${index + 1}.", fontSize = 12.sp, color = Color(0xFF666666), modifier = Modifier.width(20.dp))
                                 BasicTextField(
                                     value = editName,
                                     onValueChange = {
@@ -778,8 +778,8 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                                         }
                                     },
                                     singleLine = true,
-                                    textStyle = androidx.compose.ui.text.TextStyle(fontSize = 14.sp, color = Color.Black),
-                                    modifier = Modifier.weight(1f).height(40.dp).border(1.dp, Color(0xFFBDBDBD), RoundedCornerShape(4.dp)).padding(horizontal = 8.dp, vertical = 6.dp),
+                                    textStyle = androidx.compose.ui.text.TextStyle(fontSize = 12.sp, color = Color.Black),
+                                    modifier = Modifier.weight(1f).height(32.dp).border(1.dp, Color(0xFFBDBDBD), RoundedCornerShape(4.dp)).padding(horizontal = 4.dp, vertical = 2.dp),
                                     cursorBrush = androidx.compose.ui.graphics.SolidColor(Color.Black),
                                     decorationBox = { innerTextField ->
                                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.CenterStart) {
@@ -791,13 +791,13 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                                     saveHistory()
                                     editingProcesses = editingProcesses.filterIndexed { i, _ -> i != index }.mapIndexed { i, p -> p.copy(sortOrder = i) }
                                 }) {
-                                    Icon(Icons.Default.Delete, null, tint = Color(0xFFC62828), modifier = Modifier.size(20.dp))
+                                    Icon(Icons.Default.Delete, null, tint = Color(0xFFC62828), modifier = Modifier.size(16.dp))
                                 }
-                                // 拖动手柄 - 长按触发拖动（移到右边）
+                                // 拖动手柄 - 长按触发拖动
                                 Box(
                                     modifier = Modifier
-                                        .width(32.dp)
-                                        .height(44.dp)
+                                        .width(28.dp)
+                                        .height(32.dp)
                                         .pointerInput(Unit) {
                                             detectDragGesturesAfterLongPress(
                                                 onDragStart = {
@@ -806,7 +806,7 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                                                 },
                                                 onDragEnd = {
                                                     if (dragFromIndex >= 0) {
-                                                        val itemHeight = 48f
+                                                        val itemHeight = 34f
                                                         val newIndex = (dragFromIndex + (dragAccumY / itemHeight).toInt())
                                                             .coerceIn(0, editingProcesses.size - 1)
                                                         if (newIndex != dragFromIndex) {
@@ -825,7 +825,7 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                                         },
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Icon(Icons.Default.DragHandle, null, tint = Color(0xFF999999), modifier = Modifier.size(20.dp))
+                                    Icon(Icons.Default.DragHandle, null, tint = Color(0xFF999999), modifier = Modifier.size(16.dp))
                                 }
                             }
                         }
