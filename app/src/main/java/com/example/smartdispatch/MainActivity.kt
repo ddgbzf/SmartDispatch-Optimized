@@ -49,7 +49,6 @@ import com.example.smartdispatch.engine.DispatchEngine
 import com.example.smartdispatch.model.DispatchResult
 import com.example.smartdispatch.model.ProcessAssignment
 import com.example.smartdispatch.ui.theme.智能排工Theme
-import com.example.smartdispatch.ui.screens.FixedCellScreen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -60,8 +59,7 @@ class DispatchApplication : Application() {
     val database by lazy { AppDatabase.getDatabase(this) }
     val repository by lazy { DispatchRepository(
         database.personDao(), database.skillScoreDao(),
-        database.productDao(), database.productProcessDao(), database.assignmentDao(),
-        database.fixedCellDao()
+        database.productDao(), database.productProcessDao(), database.assignmentDao()
     )}
     val userPreferences by lazy { UserPreferences(this) }
 }
@@ -78,7 +76,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val allProducts = repo.allProducts.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     val allAssignments = repo.allAssignments.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     val recentProducts = userPrefs.recentProducts.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
-    val allFixedAssignments = repo.allFixedCells.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     private val _logs = MutableStateFlow(listOf<String>())
     val logs: StateFlow<List<String>> = _logs.asStateFlow()
@@ -96,48 +93,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val rowHeight: StateFlow<Float> = _rowHeight.asStateFlow()
     private val _colWidth = MutableStateFlow(prefs.getFloat("display_colWidth", 80f))
     val colWidth: StateFlow<Float> = _colWidth.asStateFlow()
-    
-    // 固定单元格方法（固定表格位置 → 人员）
-    fun setFixedCell(rowIndex: Int, colIndex: Int, personId: Int) {
-        viewModelScope.launch { repo.setFixedCell(rowIndex, colIndex, personId) }
-    }
-    fun removeFixedCell(rowIndex: Int, colIndex: Int) {
-        viewModelScope.launch { repo.removeFixedCell(rowIndex, colIndex) }
-    }
-    suspend fun getFixedCell(rowIndex: Int, colIndex: Int): FixedCell? {
-        return repo.getFixedCell(rowIndex, colIndex)
-    }
-    // 批量固定某产品的所有人员（从当前排工结果中读取）
-    fun fixProductCells(productName: String) {
-        viewModelScope.launch {
-            // 从当前排工结果中读取
-            val result = _dispatchResult.value ?: return@launch
-            val products = repo.allProducts.first()
-            val product = products.find { it.name == productName } ?: return@launch
-            
-            // 计算该产品在排工表中的列索引（colIndex = productIndex * 2 + 1）
-            val productIndex = products.indexOf(product)
-            val colIndex = productIndex * 2 + 1
-            
-            // 获取该产品的所有分配（从排工结果）
-            val productAssignments = result.assignments.filter { it.productName == productName && it.assignedPerson.isNotBlank() }
-            
-            // 获取人员列表，找到对应的personId
-            val persons = repo.allPersons.first()
-            
-            // 构建固定单元格
-            val fixedCells = mutableListOf<Triple<Int, Int, Int>>()
-            for (assignment in productAssignments) {
-                val personName = assignment.assignedPerson
-                val person = persons.find { it.name == personName } ?: continue
-                val rowIndex = assignment.rowIndex
-                fixedCells.add(Triple(rowIndex, colIndex, person.id))
-            }
-            if (fixedCells.isNotEmpty()) {
-                repo.setFixedCellsForProduct(fixedCells)
-            }
-        }
-    }
 
     fun adjustFontSize(delta: Float) {
         val newVal = (_fontSize.value + delta).coerceIn(8f, 20f)
@@ -407,21 +362,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
             addLog("固定列槽位: ${fixedSlotSet.joinToString(", ")}, 固定产品: ${fixedProductKeys.joinToString(", ")}")
 
-            // 读取固定单元格分配（坐标 → 人员名）
-            val fixedCells = mutableMapOf<Pair<Int, Int>, String>()  // (行,列) → 人员名
-            val allFixed = allFixedAssignments.value
-            for (fa in allFixed) {
-                val person = persons.find { it.id == fa.personId }
-                if (person != null) {
-                    fixedCells[Pair(fa.rowIndex, fa.colIndex)] = person.name
-                }
-            }
-            if (fixedCells.isNotEmpty()) {
-                addLog("固定单元格: ${fixedCells.size}条")
-            }
-
             val result = withContext(Dispatchers.IO) {
-                engine.runWithData(peopleNames, leaveNames, productMap, processNames, fixedPeople, fixedColumnPersons, fixedSlotSet, fixedCells)
+                engine.runWithData(peopleNames, leaveNames, productMap, processNames, fixedPeople, fixedColumnPersons, fixedSlotSet)
             }
             _dispatchResult.value = result
             // 更新固定列人员集合（用于显示）
@@ -584,7 +526,6 @@ class MainActivity : ComponentActivity() {
 fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
     var showProcessEdit by remember { mutableStateOf(false) }
     var showFixedColumn by remember { mutableStateOf(false) }
-    var showFixedCell by remember { mutableStateOf(false) }
     val fontSize by viewModel.fontSize.collectAsState()
     val rowHeight by viewModel.rowHeight.collectAsState()
     val colWidth by viewModel.colWidth.collectAsState()
@@ -593,8 +534,6 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
         ProcessEditScreen(viewModel = viewModel, onDismiss = { showProcessEdit = false })
     } else if (showFixedColumn) {
         FixedColumnScreen(viewModel = viewModel, onDismiss = { showFixedColumn = false })
-    } else if (showFixedCell) {
-        FixedCellScreen(viewModel = viewModel, onDismiss = { showFixedCell = false })
     } else {
         AlertDialog(
             onDismissRequest = onDismiss,
@@ -625,20 +564,6 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text("固定列", fontSize = 15.sp, fontWeight = FontWeight.Medium)
                             Text("设置固定列产品，排工时人员留任原岗位", fontSize = 11.sp, color = Color(0xFF999999))
-                        }
-                        Icon(Icons.Default.KeyboardArrowRight, null, tint = Color(0xFFBDBDBD), modifier = Modifier.size(20.dp))
-                    }
-                    Divider()
-                    // 菜单项：固定单元格
-                    Row(
-                        modifier = Modifier.fillMaxWidth().clickable { showFixedCell = true }.padding(vertical = 16.dp, horizontal = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(Icons.Default.Lock, null, tint = Color(0xFFF57C00), modifier = Modifier.size(24.dp))
-                        Spacer(Modifier.width(12.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("固定单元格", fontSize = 15.sp, fontWeight = FontWeight.Medium)
-                            Text("将人员固定到具体单元格位置", fontSize = 11.sp, color = Color(0xFF999999))
                         }
                         Icon(Icons.Default.KeyboardArrowRight, null, tint = Color(0xFFBDBDBD), modifier = Modifier.size(20.dp))
                     }
