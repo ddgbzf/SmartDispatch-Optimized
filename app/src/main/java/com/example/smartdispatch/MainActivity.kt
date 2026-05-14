@@ -1258,7 +1258,7 @@ fun LeaveTab(viewModel: MainViewModel) {
         }
         FloatingActionButton(
             onClick = { showAddDialog.value = true },
-            modifier = Modifier.padding(12.dp).align(Alignment.BottomEnd).size(40.dp),
+            modifier = Modifier.padding(8.dp).align(Alignment.BottomEnd).size(40.dp),
             containerColor = MaterialTheme.colorScheme.primary
         ) { Icon(Icons.Default.Add, "添加人员", modifier = Modifier.size(20.dp)) }
     }
@@ -1423,7 +1423,7 @@ fun ProcessFlowTab(viewModel: MainViewModel) {
         }
         FloatingActionButton(
             onClick = { showAddProductDialog.value = true },
-            modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp).size(40.dp),
+            modifier = Modifier.align(Alignment.BottomEnd).padding(8.dp).size(40.dp),
             containerColor = MaterialTheme.colorScheme.primary
         ) { Icon(Icons.Default.Add, "添加产品", modifier = Modifier.size(20.dp)) }
     }

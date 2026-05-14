@@ -136,7 +136,10 @@ class DispatchEngine {
         // ===== 第一步：处理固定单元格（坐标 → 人员） =====
         val fixedCellPeople = mutableSetOf<String>()
         val productKeys = productInfo.keys.toList()
-        for (((rowIndex, colIndex), personName) in fixedCellAssignments) {
+        for (entry in fixedCellAssignments) {
+            val rowIndex = entry.key.first
+            val colIndex = entry.key.second
+            val personName = entry.value
             // 检查人员是否在岗
             if (personName !in allPeople) {
                 debugLogs.add("[固定单元格] $personName 不在人员名单中，跳过")
