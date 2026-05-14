@@ -738,8 +738,11 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                         )
                     }
                     Spacer(Modifier.height(8.dp))
-                    Text("工序列表（长按拖动排序）:", fontSize = 12.sp, color = Color(0xFF666666))
-                    LazyColumn(modifier = Modifier.fillMaxSize().weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("工序列表（拖动排序）:", fontSize = 12.sp, color = Color(0xFF666666))
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize().weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
                         items(editingProcesses.size, key = { editingProcesses[it].id }) { index ->
                             val process = editingProcesses[index]
                             var editName by remember { mutableStateOf(process.processName) }
@@ -759,15 +762,32 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                                                 val newIndex = (index + (dragAmount.y / itemHeight).toInt())
                                                     .coerceIn(0, editingProcesses.size - 1)
                                                 if (newIndex != index) {
+                                                    saveHistory()
                                                     moveProcess(index, newIndex)
                                                 }
                                             }
                                         )
                                     }
                             ) {
-                                Text("${index + 1}.", fontSize = 14.sp, color = Color(0xFF666666), modifier = Modifier.width(28.dp))
+                                // 拖动手柄
+                                Box(
+                                    modifier = Modifier
+                                        .width(24.dp)
+                                        .height(40.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(Icons.Default.Menu, null, tint = Color(0xFF999999), modifier = Modifier.size(16.dp))
+                                }
+                                Text("${index + 1}.", fontSize = 14.sp, color = Color(0xFF666666), modifier = Modifier.width(24.dp))
                                 BasicTextField(
-                                    value = editName, onValueChange = { editName = it },
+                                    value = editName,
+                                    onValueChange = {
+                                        editName = it
+                                        // 实时更新本地状态，不保存历史
+                                        editingProcesses = editingProcesses.toMutableList().also { list ->
+                                            list[index] = process.copy(processName = it)
+                                        }
+                                    },
                                     singleLine = true,
                                     textStyle = androidx.compose.ui.text.TextStyle(fontSize = 14.sp, color = Color.Black),
                                     modifier = Modifier.weight(1f).height(40.dp).border(1.dp, Color(0xFFBDBDBD), RoundedCornerShape(4.dp)).padding(horizontal = 8.dp, vertical = 6.dp),
@@ -778,14 +798,6 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                                         }
                                     }
                                 )
-                                IconButton(onClick = {
-                                    if (editName.isNotBlank() && editName.trim() != process.processName) {
-                                        saveHistory()
-                                        editingProcesses = editingProcesses.toMutableList().also { it[index] = process.copy(processName = editName.trim()) }
-                                    }
-                                }, enabled = editName.isNotBlank() && editName.trim() != process.processName) {
-                                    Icon(Icons.Default.Check, null, tint = Color(0xFF2E7D32), modifier = Modifier.size(20.dp))
-                                }
                                 IconButton(onClick = {
                                     saveHistory()
                                     editingProcesses = editingProcesses.filterIndexed { i, _ -> i != index }.mapIndexed { i, p -> p.copy(sortOrder = i) }
