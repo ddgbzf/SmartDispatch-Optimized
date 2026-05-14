@@ -720,24 +720,24 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
             Column(modifier = Modifier.fillMaxWidth().height(500.dp)) {
                 if (editingProduct != null) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = { editingProduct = null }) { Icon(Icons.Default.ArrowBack, null) }
-                        Text(editingProduct!!.name, fontWeight = FontWeight.Bold, fontSize = 14.sp, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        IconButton(onClick = { editingProduct = null }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.ArrowBack, null, modifier = Modifier.size(18.dp)) }
+                        Text(editingProduct!!.name, fontWeight = FontWeight.Bold, fontSize = 13.sp, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     // 产能/人数 - 紧凑排列
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                        Text("产能:", fontSize = 12.sp, modifier = Modifier.width(32.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().height(28.dp)) {
+                        Text("产能:", fontSize = 11.sp, modifier = Modifier.width(28.dp))
                         BasicTextField(
                             value = editCapacity, onValueChange = { if (it.all { c -> c.isDigit() }) editCapacity = it },
-                            singleLine = true, textStyle = androidx.compose.ui.text.TextStyle(fontSize = 12.sp, color = Color.Black),
-                            modifier = Modifier.width(60.dp).height(32.dp).border(1.dp, Color(0xFFBDBDBD), RoundedCornerShape(4.dp)).padding(horizontal = 6.dp, vertical = 4.dp),
+                            singleLine = true, textStyle = androidx.compose.ui.text.TextStyle(fontSize = 11.sp, color = Color.Black),
+                            modifier = Modifier.width(55.dp).height(24.dp).border(1.dp, Color(0xFFBDBDBD), RoundedCornerShape(4.dp)).padding(horizontal = 4.dp, vertical = 2.dp),
                             cursorBrush = androidx.compose.ui.graphics.SolidColor(Color.Black)
                         )
-                        Spacer(Modifier.width(12.dp))
-                        Text("人数:", fontSize = 12.sp, modifier = Modifier.width(32.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("人数:", fontSize = 11.sp, modifier = Modifier.width(28.dp))
                         BasicTextField(
                             value = editPeople, onValueChange = { if (it.all { c -> c.isDigit() }) editPeople = it },
-                            singleLine = true, textStyle = androidx.compose.ui.text.TextStyle(fontSize = 12.sp, color = Color.Black),
-                            modifier = Modifier.width(60.dp).height(32.dp).border(1.dp, Color(0xFFBDBDBD), RoundedCornerShape(4.dp)).padding(horizontal = 6.dp, vertical = 4.dp),
+                            singleLine = true, textStyle = androidx.compose.ui.text.TextStyle(fontSize = 11.sp, color = Color.Black),
+                            modifier = Modifier.width(55.dp).height(24.dp).border(1.dp, Color(0xFFBDBDBD), RoundedCornerShape(4.dp)).padding(horizontal = 4.dp, vertical = 2.dp),
                             cursorBrush = androidx.compose.ui.graphics.SolidColor(Color.Black)
                         )
                     }
@@ -773,7 +773,7 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                                         verticalAlignment = Alignment.CenterVertically,
                                         modifier = Modifier.fillMaxWidth().height(26.dp)
                                     ) {
-                                        Text("${index + 1}.", fontSize = 11.sp, color = Color(0xFF666666), modifier = Modifier.width(28.dp))
+                                        Text("${index + 1}.", fontSize = 11.sp, color = Color(0xFF666666), modifier = Modifier.width(28.dp), textAlign = TextAlign.Center)
                                         BasicTextField(
                                             value = editName,
                                             onValueChange = {
@@ -844,7 +844,7 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                             // 添加新工序
                             item {
                                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = 2.dp).height(26.dp)) {
-                                    Text("${editingProcesses.size + 1}.", fontSize = 11.sp, color = Color(0xFF666666), modifier = Modifier.width(28.dp))
+                                    Text("${editingProcesses.size + 1}.", fontSize = 11.sp, color = Color(0xFF666666), modifier = Modifier.width(28.dp), textAlign = TextAlign.Center)
                                     BasicTextField(
                                         value = newProcessName, onValueChange = { newProcessName = it },
                                         singleLine = true,
