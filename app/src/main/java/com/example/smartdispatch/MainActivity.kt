@@ -1120,7 +1120,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                             }
                         }
                     },
-                    modifier = Modifier.size(36.dp),
+                    modifier = Modifier.padding(8.dp).size(36.dp),
                     containerColor = Color(0xFF1976D2),
                     contentColor = Color.White
                 ) {
