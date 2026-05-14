@@ -89,14 +89,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private fun loadDispatchResult(): DispatchResult? {
         val jsonStr = prefs.getString("last_dispatch_result", null) ?: return null
         return try {
-            json.decodeFromString<DispatchResult>(jsonStr)
+            json.decodeFromString(DispatchResult.serializer(), jsonStr)
         } catch (e: Exception) { null }
     }
 
     private fun saveDispatchResult(result: DispatchResult?) {
         prefs.edit().apply {
             if (result != null) {
-                putString("last_dispatch_result", json.encodeToString(result))
+                putString("last_dispatch_result", json.encodeToString(DispatchResult.serializer(), result))
             } else {
                 remove("last_dispatch_result")
             }
