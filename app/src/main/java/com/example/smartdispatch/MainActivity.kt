@@ -12,11 +12,14 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.PointerInputChange
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -24,7 +27,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.draw.offset
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.graphics.Color
@@ -766,41 +768,7 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                                     )
                                     .offset(y = if (isDragging) dragAccumY.dp else 0.dp)
                             ) {
-                                // 拖动手柄 - 长按触发拖动
-                                Box(
-                                    modifier = Modifier
-                                        .width(32.dp)
-                                        .height(44.dp)
-                                        .pointerInput(Unit) {
-                                            detectDragGesturesAfterLongPress(
-                                                onDragStart = {
-                                                    dragFromIndex = index
-                                                    dragAccumY = 0f
-                                                },
-                                                onDragEnd = {
-                                                    if (dragFromIndex >= 0) {
-                                                        val itemHeight = 48f
-                                                        val newIndex = (dragFromIndex + (dragAccumY / itemHeight).toInt())
-                                                            .coerceIn(0, editingProcesses.size - 1)
-                                                        if (newIndex != dragFromIndex) {
-                                                            saveHistory()
-                                                            moveProcess(dragFromIndex, newIndex)
-                                                        }
-                                                    }
-                                                    dragFromIndex = -1
-                                                    dragAccumY = 0f
-                                                },
-                                                onDrag = { change, dragAmount ->
-                                                    change.consume()
-                                                    dragAccumY += dragAmount.y
-                                                }
-                                            )
-                                        },
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(Icons.Default.DragHandle, null, tint = Color(0xFF999999), modifier = Modifier.size(20.dp))
-                                }
-                                Text("${index + 1}.", fontSize = 14.sp, color = Color(0xFF666666), modifier = Modifier.width(24.dp))
+                                Text("${index + 1}.", fontSize = 14.sp, color = Color(0xFF666666), modifier = Modifier.width(28.dp))
                                 BasicTextField(
                                     value = editName,
                                     onValueChange = {
@@ -824,6 +792,40 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                                     editingProcesses = editingProcesses.filterIndexed { i, _ -> i != index }.mapIndexed { i, p -> p.copy(sortOrder = i) }
                                 }) {
                                     Icon(Icons.Default.Delete, null, tint = Color(0xFFC62828), modifier = Modifier.size(20.dp))
+                                }
+                                // 拖动手柄 - 长按触发拖动（移到右边）
+                                Box(
+                                    modifier = Modifier
+                                        .width(32.dp)
+                                        .height(44.dp)
+                                        .pointerInput(Unit) {
+                                            detectDragGesturesAfterLongPress(
+                                                onDragStart = {
+                                                    dragFromIndex = index
+                                                    dragAccumY = 0f
+                                                },
+                                                onDragEnd = {
+                                                    if (dragFromIndex >= 0) {
+                                                        val itemHeight = 48f
+                                                        val newIndex = (dragFromIndex + (dragAccumY / itemHeight).toInt())
+                                                            .coerceIn(0, editingProcesses.size - 1)
+                                                        if (newIndex != dragFromIndex) {
+                                                            saveHistory()
+                                                            moveProcess(dragFromIndex, newIndex)
+                                                        }
+                                                    }
+                                                    dragFromIndex = -1
+                                                    dragAccumY = 0f
+                                                },
+                                                onDrag = { change: PointerInputChange, dragAmount: Offset ->
+                                                    change.consume()
+                                                    dragAccumY += dragAmount.y
+                                                }
+                                            )
+                                        },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(Icons.Default.DragHandle, null, tint = Color(0xFF999999), modifier = Modifier.size(20.dp))
                                 }
                             }
                         }
