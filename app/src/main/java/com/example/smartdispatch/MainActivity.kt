@@ -773,7 +773,7 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                                         verticalAlignment = Alignment.CenterVertically,
                                         modifier = Modifier.fillMaxWidth().height(26.dp)
                                     ) {
-                                        Text("${index + 1}.", fontSize = 11.sp, color = Color(0xFF666666), modifier = Modifier.width(18.dp))
+                                        Text("${index + 1}.", fontSize = 11.sp, color = Color(0xFF666666), modifier = Modifier.width(28.dp))
                                         BasicTextField(
                                             value = editName,
                                             onValueChange = {
@@ -784,7 +784,7 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                                             },
                                             singleLine = true,
                                             textStyle = androidx.compose.ui.text.TextStyle(fontSize = 11.sp, color = Color.Black),
-                                            modifier = Modifier.weight(1f).height(24.dp).border(1.dp, Color(0xFFBDBDBD), RoundedCornerShape(2.dp)).padding(horizontal = 3.dp, vertical = 1.dp),
+                                            modifier = Modifier.width(160.dp).height(24.dp).border(1.dp, Color(0xFFBDBDBD), RoundedCornerShape(2.dp)).padding(horizontal = 3.dp, vertical = 1.dp),
                                             cursorBrush = androidx.compose.ui.graphics.SolidColor(Color.Black),
                                             decorationBox = { innerTextField ->
                                                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.CenterStart) {
@@ -792,16 +792,18 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                                                 }
                                             }
                                         )
+                                        Spacer(Modifier.weight(1f))
                                         IconButton(onClick = {
                                             saveHistory()
                                             editingProcesses = editingProcesses.filterIndexed { i, _ -> i != index }.mapIndexed { i, p -> p.copy(sortOrder = i) }
                                         }, modifier = Modifier.size(26.dp)) {
                                             Icon(Icons.Default.Delete, null, tint = Color(0xFFC62828), modifier = Modifier.size(14.dp))
                                         }
+                                        Spacer(Modifier.width(8.dp))
                                         // 拖动手柄 - 长按触发拖动
                                         Box(
                                             modifier = Modifier
-                                                .width(26.dp)
+                                                .width(32.dp)
                                                 .height(26.dp)
                                                 .pointerInput(Unit) {
                                                     detectDragGesturesAfterLongPress(
@@ -811,12 +813,16 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                                                         },
                                                         onDragEnd = {
                                                             if (dragFromIndex >= 0) {
-                                                                val itemHeight = 27f
-                                                                val newIndex = (dragFromIndex + (dragAccumY / itemHeight).toInt())
-                                                                    .coerceIn(0, editingProcesses.size - 1)
-                                                                if (newIndex != dragFromIndex) {
-                                                                    saveHistory()
-                                                                    moveProcess(dragFromIndex, newIndex)
+                                                                // 拖动超过行高一半才移动，减小步进
+                                                                val threshold = 13f
+                                                                val moveSteps = (dragAccumY / threshold).toInt()
+                                                                if (moveSteps != 0) {
+                                                                    val newIndex = (dragFromIndex + moveSteps)
+                                                                        .coerceIn(0, editingProcesses.size - 1)
+                                                                    if (newIndex != dragFromIndex) {
+                                                                        saveHistory()
+                                                                        moveProcess(dragFromIndex, newIndex)
+                                                                    }
                                                                 }
                                                             }
                                                             dragFromIndex = -1
@@ -830,21 +836,21 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                                                 },
                                             contentAlignment = Alignment.Center
                                         ) {
-                                            Icon(Icons.Default.DragHandle, null, tint = Color(0xFF999999), modifier = Modifier.size(14.dp))
+                                            Icon(Icons.Default.DragHandle, null, tint = Color(0xFF999999), modifier = Modifier.size(18.dp))
                                         }
                                     }
                                 }
                             }
                             // 添加新工序
                             item {
-                                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = 4.dp).height(26.dp)) {
-                                    Text("${editingProcesses.size + 1}.", fontSize = 11.sp, color = Color(0xFF666666), modifier = Modifier.width(18.dp))
+                                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = 2.dp).height(26.dp)) {
+                                    Text("${editingProcesses.size + 1}.", fontSize = 11.sp, color = Color(0xFF666666), modifier = Modifier.width(28.dp))
                                     BasicTextField(
                                         value = newProcessName, onValueChange = { newProcessName = it },
                                         singleLine = true,
                                         textStyle = androidx.compose.ui.text.TextStyle(fontSize = 11.sp, color = Color.Black),
-                                        modifier = Modifier.weight(1f).height(24.dp).border(1.dp, Color(0xFFBDBDBD), RoundedCornerShape(2.dp)).padding(horizontal = 3.dp, vertical = 1.dp),
-                                        cursorBrush = androidx.compose.ui.graphics.SolidColor(Color.Black),
+                                        modifier = Modifier.width(160.dp).height(24.dp).border(1.dp, Color(0xFFBDBDBD), RoundedCornerShape(2.dp)).padding(horizontal = 3.dp, vertical = 1.dp),
+                                        cursorBrush = androidx.compose.ui.graphics.SolidColor(Color.BLACK),
                                         decorationBox = { innerTextField ->
                                             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.CenterStart) {
                                                 if (newProcessName.isEmpty()) {
@@ -854,6 +860,7 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                                             }
                                         }
                                     )
+                                    Spacer(Modifier.weight(1f))
                                     IconButton(onClick = {
                                         if (newProcessName.isNotBlank()) {
                                             saveHistory()
@@ -867,7 +874,8 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                                     }, enabled = newProcessName.isNotBlank(), modifier = Modifier.size(26.dp)) {
                                         Icon(Icons.Default.Add, null, tint = Color(0xFF1976D2), modifier = Modifier.size(14.dp))
                                     }
-                                    Spacer(modifier = Modifier.width(26.dp)) // 占位，对齐手柄位置
+                                    Spacer(Modifier.width(8.dp))
+                                    Spacer(modifier = Modifier.width(32.dp)) // 占位，对齐手柄位置
                                 }
                             }
                         }
