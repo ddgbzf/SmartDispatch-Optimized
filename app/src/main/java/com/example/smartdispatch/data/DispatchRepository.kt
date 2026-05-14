@@ -9,7 +9,8 @@ class DispatchRepository(
     private val skillScoreDao: SkillScoreDao,
     private val productDao: ProductDao,
     private val productProcessDao: ProductProcessDao,
-    private val assignmentDao: AssignmentDao
+    private val assignmentDao: AssignmentDao,
+    private val fixedCellDao: FixedCellDao
 ) {
     val allPersons: Flow<List<Person>> = personDao.getAll()
     val leavePersons: Flow<List<Person>> = personDao.getOnLeave()
@@ -17,6 +18,7 @@ class DispatchRepository(
     val allProcessNames: Flow<List<String>> = skillScoreDao.getAllProcessNames()
     val allProducts: Flow<List<Product>> = productDao.getAll()
     val allAssignments: Flow<List<Assignment>> = assignmentDao.getAll()
+    val allFixedCells: Flow<List<FixedCell>> = fixedCellDao.getAll()
 
     suspend fun addPerson(name: String, employeeId: String = "") = personDao.insert(Person(name = name, employeeId = employeeId))
     suspend fun updatePerson(person: Person) = personDao.update(person)
@@ -57,8 +59,17 @@ class DispatchRepository(
     suspend fun getFixedAssignments(): List<Assignment> = assignmentDao.getFixedOnce()
     suspend fun insertAssignments(assignments: List<Assignment>) = assignmentDao.insertAll(assignments)
 
+    // 固定单元格
+    suspend fun saveFixedCells(colIndex: Int, cells: List<FixedCell>) {
+        fixedCellDao.deleteByColumn(colIndex)
+        fixedCellDao.insertAll(cells)
+    }
+    suspend fun deleteFixedCellsByColumn(colIndex: Int) = fixedCellDao.deleteByColumn(colIndex)
+    suspend fun clearAllFixedCells() = fixedCellDao.deleteAll()
+
     suspend fun clearAll() {
         assignmentDao.deleteAll()
+        fixedCellDao.deleteAll()
         productProcessDao.deleteAll()
         skillScoreDao.deleteAll()
         productDao.deleteAll()

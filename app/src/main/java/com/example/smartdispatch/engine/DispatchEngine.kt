@@ -91,6 +91,8 @@ class DispatchEngine {
     private var fixedPositionMap: Map<String, String> = emptyMap()
     // 固定列输入槽位索引集合
     private var fixedSlotSet: Set<Int> = emptySet()
+    // 固定单元格：(行,列) → 人员名
+    private var fixedCells: Map<Pair<Int, Int>, String> = emptyMap()
 
     fun runWithData(
         people: List<String>,
@@ -99,7 +101,8 @@ class DispatchEngine {
         processNames: List<String>,
         fixedPeople: Set<String> = emptySet(),
         fixedPositionAssignments: Map<String, String> = emptyMap(),
-        fixedSlots: Set<Int> = emptySet()
+        fixedSlots: Set<Int> = emptySet(),
+        fixedCellMap: Map<Pair<Int, Int>, String> = emptyMap()
     ): DispatchResult {
         allPeople = people
         leaveList = leaveNames
@@ -109,6 +112,7 @@ class DispatchEngine {
         fixedPeopleSet = fixedPeople
         fixedPositionMap = fixedPositionAssignments
         fixedSlotSet = fixedSlots
+        fixedCells = fixedCellMap
         // 为数据库来源的数据自动构建 productColumnMap
         productColumnMap = products.keys.withIndex().associate { (index, name) -> name to (index * 2 + 1) }
         // skillScores 从数据库加载时需要通过 setSkillScores 设置
@@ -125,11 +129,44 @@ class DispatchEngine {
         debugLogs.clear()
         debugLogs.add("=== 排工开始 ===")
         debugLogs.add("固定列位置缓存: ${fixedPositionMap.size}条")
+        debugLogs.add("固定单元格: ${fixedCells.size}条")
 
         val assignments = mutableListOf<ProcessAssignment>()
         val productKeys = productInfo.keys.toList()
 
-        // ===== 第一步：收集固定列在岗人员（按槽位索引+行号匹配） =====
+        // ===== 第一步：处理固定单元格 =====
+        val fixedCellPeople = mutableSetOf<String>()
+        for ((position, personName) in fixedCells) {
+            val (rowIndex, colIndex) = position
+            // 检查人员是否在岗
+            if (personName !in allPeople) {
+                debugLogs.add("[固定单元格] $personName 不在人员名单中，跳过")
+                continue
+            }
+            if (personName in leaveList) {
+                debugLogs.add("[固定单元格] $personName 请假中，跳过")
+                continue
+            }
+            // 找到该列对应的产品
+            val productName = productKeys.find { productColumnMap[it] == colIndex }
+            if (productName == null) {
+                debugLogs.add("[固定单元格] 列$colIndex 无对应产品，跳过")
+                continue
+            }
+            val product = productInfo[productName] ?: continue
+            // 计算工序名称
+            val processIndex = rowIndex - 3
+            if (processIndex < 0 || processIndex >= product.processes.size) continue
+            val processName = product.processes[processIndex]
+            
+            // 分配
+            assignments.add(ProcessAssignment(productName, processName, personName, rowIndex, colIndex + 1))
+            assignedPeople.add(personName)
+            fixedCellPeople.add(personName)
+            debugLogs.add("[固定单元格] $personName → 行$rowIndex 列$colIndex ($productName / $processName)")
+        }
+
+        // ===== 第二步：收集固定列在岗人员 =====
         val fixedOnDutyPeople = mutableSetOf<String>()
         for (slotIndex in fixedSlotSet) {
             if (slotIndex >= productKeys.size) continue
@@ -139,7 +176,7 @@ class DispatchEngine {
                 val rowIndex = 3 + offset
                 val positionKey = "${slotIndex}_${rowIndex}"
                 val person = fixedPositionMap[positionKey]
-                if (person != null && person in allPeople && person !in leaveList) {
+                if (person != null && person in allPeople && person !in leaveList && person !in fixedCellPeople) {
                     fixedOnDutyPeople.add(person)
                 }
             }
@@ -180,8 +217,8 @@ class DispatchEngine {
         processQueue.sortWith(compareBy({ it.priority }, { it.productCol }, { it.rowIndex }))
         debugLogs.add("排工池: ${processQueue.size}个工序待分配")
 
-        // ===== 第三步：可分配人员池（排除请假+固定列在岗） =====
-        val assignablePool = allPeople.filter { it !in leaveList && it !in fixedOnDutyPeople }
+        // ===== 第三步：可分配人员池（排除请假+固定列在岗+固定单元格） =====
+        val assignablePool = allPeople.filter { it !in leaveList && it !in fixedOnDutyPeople && it !in fixedCellPeople }
         debugLogs.add("可分配人员(${assignablePool.size})")
 
         // ===== 第四步：统一排工 =====

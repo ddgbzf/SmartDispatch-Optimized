@@ -59,7 +59,8 @@ class DispatchApplication : Application() {
     val database by lazy { AppDatabase.getDatabase(this) }
     val repository by lazy { DispatchRepository(
         database.personDao(), database.skillScoreDao(),
-        database.productDao(), database.productProcessDao(), database.assignmentDao()
+        database.productDao(), database.productProcessDao(), database.assignmentDao(),
+        database.fixedCellDao()
     )}
     val userPreferences by lazy { UserPreferences(this) }
 }
@@ -76,6 +77,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val allProducts = repo.allProducts.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     val allAssignments = repo.allAssignments.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     val recentProducts = userPrefs.recentProducts.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+    val allFixedCells = repo.allFixedCells.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     private val _logs = MutableStateFlow(listOf<String>())
     val logs: StateFlow<List<String>> = _logs.asStateFlow()
@@ -108,6 +110,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val newVal = (_colWidth.value + delta).coerceIn(40f, 200f)
         _colWidth.value = newVal
         prefs.edit().putFloat("display_colWidth", newVal).apply()
+    }
+
+    // 固定单元格方法
+    fun saveFixedCells(colIndex: Int, cells: List<FixedCell>) {
+        viewModelScope.launch { repo.saveFixedCells(colIndex, cells) }
+    }
+    fun deleteFixedCellsByColumn(colIndex: Int) {
+        viewModelScope.launch { repo.deleteFixedCellsByColumn(colIndex) }
     }
 
     private fun loadFixedInputSlots(): Set<Int> {
@@ -362,8 +372,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
             addLog("固定列槽位: ${fixedSlotSet.joinToString(", ")}, 固定产品: ${fixedProductKeys.joinToString(", ")}")
 
+            // 读取固定单元格
+            val fixedCellList = allFixedCells.value
+            val fixedCellMap = fixedCellList.associate { Pair(it.rowIndex, it.colIndex) to it.personName }
+            if (fixedCellMap.isNotEmpty()) {
+                addLog("固定单元格: ${fixedCellMap.size}条")
+            }
+
             val result = withContext(Dispatchers.IO) {
-                engine.runWithData(peopleNames, leaveNames, productMap, processNames, fixedPeople, fixedColumnPersons, fixedSlotSet)
+                engine.runWithData(peopleNames, leaveNames, productMap, processNames, fixedPeople, fixedColumnPersons, fixedSlotSet, fixedCellMap)
             }
             _dispatchResult.value = result
             // 更新固定列人员集合（用于显示）
@@ -372,6 +389,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 .mapNotNull { it.assignedPerson }
                 .toSet()
             _fixedPeople.value = newFixedPeople
+            
+            // 更新固定单元格（每次排工后更新为最新人员）
+            for (slotIndex in fixedSlotSet) {
+                if (slotIndex < productKeys.size) {
+                    val productName = productKeys[slotIndex]
+                    val colIndex = slotIndex * 2 + 1
+                    val cells = result.assignments
+                        .filter { it.productName == productName && it.assignedPerson.isNotBlank() }
+                        .map { FixedCell(colIndex = colIndex, rowIndex = it.rowIndex, personName = it.assignedPerson) }
+                    if (cells.isNotEmpty()) {
+                        repo.saveFixedCells(colIndex, cells)
+                    }
+                }
+            }
+            
             addLog("✅ 排工完成！分配${result.assignedCount}人, 固定列${newFixedPeople.size}人, ${result.statusMessage}")
             // 保存最近使用的产品
             selectedProductNames.forEach { name ->
@@ -956,6 +988,8 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
 fun FixedColumnScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
     val inputNames by viewModel.inputNames.collectAsState()
     val fixedSlots by viewModel.fixedInputSlots.collectAsState()
+    val dispatchResult by viewModel.dispatchResult.collectAsState()
+    val scope = rememberCoroutineScope()
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -987,7 +1021,27 @@ fun FixedColumnScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                                     Text("第${index + 1}列", fontSize = 11.sp, color = Color(0xFF999999))
                                     Text(name, fontSize = 14.sp, fontWeight = if (isFixed) FontWeight.Bold else FontWeight.Normal, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 }
-                                IconButton(onClick = { viewModel.toggleFixedSlot(index) }, modifier = Modifier.size(36.dp)) {
+                                IconButton(onClick = {
+                                    viewModel.toggleFixedSlot(index)
+                                    // 同时处理固定单元格
+                                    if (!isFixed) {
+                                        // 标记固定：从排工结果读取该列人员，保存到 FixedCell
+                                        val result = dispatchResult
+                                        if (result != null) {
+                                            val colIndex = index * 2 + 1
+                                            val cells = result.assignments
+                                                .filter { it.productName == name && it.assignedPerson.isNotBlank() }
+                                                .map { FixedCell(colIndex = colIndex, rowIndex = it.rowIndex, personName = it.assignedPerson) }
+                                            if (cells.isNotEmpty()) {
+                                                viewModel.saveFixedCells(colIndex, cells)
+                                            }
+                                        }
+                                    } else {
+                                        // 取消固定：删除该列的 FixedCell
+                                        val colIndex = index * 2 + 1
+                                        viewModel.deleteFixedCellsByColumn(colIndex)
+                                    }
+                                }, modifier = Modifier.size(36.dp)) {
                                     Icon(
                                         if (isFixed) Icons.Default.Star else Icons.Default.StarBorder,
                                         contentDescription = if (isFixed) "取消固定" else "设为固定",
@@ -1120,7 +1174,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                             }
                         }
                     },
-                    modifier = Modifier.padding(start = 0.dp, top = 0.dp, end = 4.dp, bottom = 4.dp).size(36.dp),
+                    modifier = Modifier.padding(start = 0.dp, top = 0.dp, end = 16.dp, bottom = 16.dp).size(36.dp),
                     containerColor = Color(0xFF1976D2),
                     contentColor = Color.White
                 ) {
@@ -1192,7 +1246,7 @@ fun LeaveTab(viewModel: MainViewModel) {
         }
         FloatingActionButton(
             onClick = { showAddDialog.value = true },
-            modifier = Modifier.padding(start = 0.dp, top = 0.dp, end = 4.dp, bottom = 4.dp).align(Alignment.BottomEnd).size(40.dp),
+            modifier = Modifier.padding(start = 0.dp, top = 0.dp, end = 16.dp, bottom = 16.dp).align(Alignment.BottomEnd).size(40.dp),
             containerColor = MaterialTheme.colorScheme.primary
         ) { Icon(Icons.Default.Add, "添加人员", modifier = Modifier.size(20.dp)) }
     }
@@ -1357,7 +1411,7 @@ fun ProcessFlowTab(viewModel: MainViewModel) {
         }
         FloatingActionButton(
             onClick = { showAddProductDialog.value = true },
-            modifier = Modifier.align(Alignment.BottomEnd).padding(start = 0.dp, top = 0.dp, end = 4.dp, bottom = 4.dp).size(40.dp),
+            modifier = Modifier.align(Alignment.BottomEnd).padding(start = 0.dp, top = 0.dp, end = 16.dp, bottom = 16.dp).size(40.dp),
             containerColor = MaterialTheme.colorScheme.primary
         ) { Icon(Icons.Default.Add, "添加产品", modifier = Modifier.size(20.dp)) }
     }
