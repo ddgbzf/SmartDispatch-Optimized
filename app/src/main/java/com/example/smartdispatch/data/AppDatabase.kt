@@ -9,7 +9,7 @@ import com.example.smartdispatch.data.entity.*
 
 @Database(
     entities = [Person::class, SkillScore::class, Product::class, ProductProcess::class, Assignment::class],
-    version = 7,
+    version = 9,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

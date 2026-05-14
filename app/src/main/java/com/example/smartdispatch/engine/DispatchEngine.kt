@@ -127,6 +127,7 @@ class DispatchEngine {
         debugLogs.add("固定列位置缓存: ${fixedPositionMap.size}条")
 
         val assignments = mutableListOf<ProcessAssignment>()
+        val productKeys = productInfo.keys.toList()
 
         // ===== 第一步：收集固定列在岗人员（按槽位索引+行号匹配） =====
         val fixedOnDutyPeople = mutableSetOf<String>()
