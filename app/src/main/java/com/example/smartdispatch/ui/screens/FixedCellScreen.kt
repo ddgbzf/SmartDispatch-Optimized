@@ -1,5 +1,6 @@
 package com.example.smartdispatch.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
@@ -121,7 +122,7 @@ fun FixedCellScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                         if (selectedProduct != null) {
                             coroutineScope.launch {
                                 // 从上次排工结果中读取该产品的所有分配
-                                viewModel.fixProductCells(selectedProduct!!.name, -1)
+                                viewModel.fixProductCells(selectedProduct!!.name)
                             }
                             showAddDialog = false
                         }

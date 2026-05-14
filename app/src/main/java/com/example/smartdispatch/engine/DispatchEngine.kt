@@ -177,7 +177,6 @@ class DispatchEngine {
 
         // ===== 第二步：收集固定列在岗人员（按槽位索引+行号匹配） =====
         val fixedOnDutyPeople = mutableSetOf<String>()
-        val productKeys = productInfo.keys.toList()
         for (slotIndex in fixedSlotSet) {
             if (slotIndex >= productKeys.size) continue
             val productName = productKeys[slotIndex]
