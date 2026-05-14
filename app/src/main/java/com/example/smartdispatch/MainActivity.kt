@@ -850,7 +850,7 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                                         singleLine = true,
                                         textStyle = androidx.compose.ui.text.TextStyle(fontSize = 11.sp, color = Color.Black),
                                         modifier = Modifier.width(160.dp).height(24.dp).border(1.dp, Color(0xFFBDBDBD), RoundedCornerShape(2.dp)).padding(horizontal = 3.dp, vertical = 1.dp),
-                                        cursorBrush = androidx.compose.ui.graphics.SolidColor(Color.BLACK),
+                                        cursorBrush = androidx.compose.ui.graphics.SolidColor(Color.Black),
                                         decorationBox = { innerTextField ->
                                             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.CenterStart) {
                                                 if (newProcessName.isEmpty()) {
