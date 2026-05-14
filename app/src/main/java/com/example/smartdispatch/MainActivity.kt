@@ -84,17 +84,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _dispatchResult = MutableStateFlow<DispatchResult?>(loadDispatchResult())
     val dispatchResult: StateFlow<DispatchResult?> = _dispatchResult.asStateFlow()
 
+    private val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+
     private fun loadDispatchResult(): DispatchResult? {
-        val json = prefs.getString("last_dispatch_result", null) ?: return null
+        val jsonStr = prefs.getString("last_dispatch_result", null) ?: return null
         return try {
-            kotlinx.serialization.json.Json.decodeFromString<DispatchResult>(json)
+            json.decodeFromString<DispatchResult>(jsonStr)
         } catch (e: Exception) { null }
     }
 
     private fun saveDispatchResult(result: DispatchResult?) {
         prefs.edit().apply {
             if (result != null) {
-                putString("last_dispatch_result", kotlinx.serialization.json.Json.encodeToString(result))
+                putString("last_dispatch_result", json.encodeToString(result))
             } else {
                 remove("last_dispatch_result")
             }
