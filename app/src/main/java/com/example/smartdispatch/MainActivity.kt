@@ -1174,7 +1174,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                             }
                         }
                     },
-                    modifier = Modifier.padding(start = 0.dp, top = 0.dp, end = 16.dp, bottom = 16.dp).size(36.dp),
+                    modifier = Modifier.padding(start = 0.dp, top = 0.dp, end = 24.dp, bottom = 24.dp).size(36.dp),
                     containerColor = Color(0xFF1976D2),
                     contentColor = Color.White
                 ) {
@@ -1246,7 +1246,7 @@ fun LeaveTab(viewModel: MainViewModel) {
         }
         FloatingActionButton(
             onClick = { showAddDialog.value = true },
-            modifier = Modifier.padding(start = 0.dp, top = 0.dp, end = 16.dp, bottom = 16.dp).align(Alignment.BottomEnd).size(40.dp),
+            modifier = Modifier.padding(start = 0.dp, top = 0.dp, end = 24.dp, bottom = 24.dp).align(Alignment.BottomEnd).size(40.dp),
             containerColor = MaterialTheme.colorScheme.primary
         ) { Icon(Icons.Default.Add, "添加人员", modifier = Modifier.size(20.dp)) }
     }
@@ -1411,7 +1411,7 @@ fun ProcessFlowTab(viewModel: MainViewModel) {
         }
         FloatingActionButton(
             onClick = { showAddProductDialog.value = true },
-            modifier = Modifier.align(Alignment.BottomEnd).padding(start = 0.dp, top = 0.dp, end = 16.dp, bottom = 16.dp).size(40.dp),
+            modifier = Modifier.align(Alignment.BottomEnd).padding(start = 0.dp, top = 0.dp, end = 24.dp, bottom = 24.dp).size(40.dp),
             containerColor = MaterialTheme.colorScheme.primary
         ) { Icon(Icons.Default.Add, "添加产品", modifier = Modifier.size(20.dp)) }
     }
