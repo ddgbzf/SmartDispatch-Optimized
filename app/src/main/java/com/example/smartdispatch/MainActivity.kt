@@ -548,6 +548,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         mainSheet.createRow(index + 1).createCell(0).setCellValue(person.name)
                     }
                     
+                    // 排工结果数据（从第2行开始，每个产品2列：人员+工序）
+                    val result = _dispatchResult.value
+                    if (result != null) {
+                        // 找出最大行数
+                        val maxRow = result.assignments.map { it.rowIndex }.maxOrNull() ?: 0
+                        for (rowIdx in 3..maxRow) {
+                            val row = mainSheet.getRow(rowIdx - 1) ?: mainSheet.createRow(rowIdx - 1)
+                            products.forEachIndexed { index, product ->
+                                val colIndex = index * 2 + 1
+                                val assignment = result.assignments.find { it.rowIndex == rowIdx && it.columnIndex == colIndex + 1 }
+                                if (assignment != null) {
+                                    row.createCell(colIndex).setCellValue(assignment.assignedPerson ?: "")
+                                    row.createCell(colIndex + 1).setCellValue(assignment.processName)
+                                }
+                            }
+                        }
+                    }
+                    
                     workbook.write(output)
                     workbook.close()
                 }
