@@ -396,8 +396,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     val productName = productKeys[slotIndex]
                     val colIndex = slotIndex * 2 + 1
                     val cells = result.assignments
-                        .filter { it.productName == productName && it.assignedPerson.isNotBlank() }
-                        .map { FixedCell(colIndex = colIndex, rowIndex = it.rowIndex, personName = it.assignedPerson) }
+                        .filter { it.productName == productName && !it.assignedPerson.isNullOrBlank() }
+                        .map { FixedCell(colIndex = colIndex, rowIndex = it.rowIndex, personName = it.assignedPerson!!) }
                     if (cells.isNotEmpty()) {
                         repo.saveFixedCells(colIndex, cells)
                     }
@@ -1030,8 +1030,8 @@ fun FixedColumnScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                                         if (result != null) {
                                             val colIndex = index * 2 + 1
                                             val cells = result.assignments
-                                                .filter { it.productName == name && it.assignedPerson.isNotBlank() }
-                                                .map { FixedCell(colIndex = colIndex, rowIndex = it.rowIndex, personName = it.assignedPerson) }
+                                                .filter { it.productName == name && !it.assignedPerson.isNullOrBlank() }
+                                                .map { FixedCell(colIndex = colIndex, rowIndex = it.rowIndex, personName = it.assignedPerson!!) }
                                             if (cells.isNotEmpty()) {
                                                 viewModel.saveFixedCells(colIndex, cells)
                                             }
