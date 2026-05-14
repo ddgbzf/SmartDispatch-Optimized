@@ -8,8 +8,8 @@ import com.example.smartdispatch.data.dao.*
 import com.example.smartdispatch.data.entity.*
 
 @Database(
-    entities = [Person::class, SkillScore::class, Product::class, ProductProcess::class, Assignment::class],
-    version = 4,
+    entities = [Person::class, SkillScore::class, Product::class, ProductProcess::class, Assignment::class, FixedCell::class],
+    version = 6,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -18,6 +18,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun productDao(): ProductDao
     abstract fun productProcessDao(): ProductProcessDao
     abstract fun assignmentDao(): AssignmentDao
+    abstract fun fixedCellDao(): FixedCellDao
 
     companion object {
         @Volatile

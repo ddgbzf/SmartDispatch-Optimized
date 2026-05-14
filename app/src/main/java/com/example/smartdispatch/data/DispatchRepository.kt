@@ -9,7 +9,8 @@ class DispatchRepository(
     private val skillScoreDao: SkillScoreDao,
     private val productDao: ProductDao,
     private val productProcessDao: ProductProcessDao,
-    private val assignmentDao: AssignmentDao
+    private val assignmentDao: AssignmentDao,
+    private val fixedCellDao: FixedCellDao
 ) {
     // Persons
     val allPersons: Flow<List<Person>> = personDao.getAll()
@@ -18,6 +19,7 @@ class DispatchRepository(
     val allProcessNames: Flow<List<String>> = skillScoreDao.getAllProcessNames()
     val allProducts: Flow<List<Product>> = productDao.getAll()
     val allAssignments: Flow<List<Assignment>> = assignmentDao.getAll()
+    val allFixedCells: Flow<List<FixedCell>> = fixedCellDao.getAll()
 
     suspend fun addPerson(name: String, employeeId: String = "") = personDao.insert(Person(name = name, employeeId = employeeId))
     suspend fun updatePerson(person: Person) = personDao.update(person)
@@ -58,8 +60,29 @@ class DispatchRepository(
     suspend fun getFixedAssignments(): List<Assignment> = assignmentDao.getFixedOnce()
     suspend fun insertAssignments(assignments: List<Assignment>) = assignmentDao.insertAll(assignments)
 
+    // 固定单元格（行+列坐标 → 人员）
+    suspend fun setFixedCell(rowIndex: Int, colIndex: Int, personId: Int) {
+        fixedCellDao.insert(FixedCell(rowIndex = rowIndex, colIndex = colIndex, personId = personId))
+    }
+    suspend fun removeFixedCell(rowIndex: Int, colIndex: Int) {
+        fixedCellDao.deleteByPosition(rowIndex, colIndex)
+    }
+    suspend fun getFixedCell(rowIndex: Int, colIndex: Int): FixedCell? {
+        return fixedCellDao.getByPosition(rowIndex, colIndex)
+    }
+    suspend fun clearAllFixedCells() = fixedCellDao.deleteAll()
+    
+    // 批量设置固定单元格（用于固定某产品的所有人员）
+    suspend fun setFixedCellsForProduct(assignments: List<Triple<Int, Int, Int>>) {
+        // assignments: (rowIndex, colIndex, personId)
+        for ((row, col, personId) in assignments) {
+            fixedCellDao.insert(FixedCell(rowIndex = row, colIndex = col, personId = personId))
+        }
+    }
+
     suspend fun clearAll() {
         assignmentDao.deleteAll()
+        fixedCellDao.deleteAll()
         productProcessDao.deleteAll()
         skillScoreDao.deleteAll()
         productDao.deleteAll()
