@@ -30,22 +30,22 @@ jobs:
     - name: Build Debug APK
       run: ./gradlew assembleDebug
 
-    - name: Build Release APK
-      run: ./gradlew assembleRelease
-
     - name: Get current date
       id: date
       run: echo "date=$(date +'%Y%m%d_%H%M%S')" >> $GITHUB_OUTPUT
 
-    - name: Create Release
+    - name: Rename APK
+      run: |
+        mkdir -p release
+        cp app/build/outputs/apk/debug/app-debug.apk release/smartdispatch-${{ steps.date.outputs.date }}.apk
+
+    - name: Upload APK to Release
       if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || github.ref == 'refs/heads/3'
       uses: softprops/action-gh-release@v1
       with:
         tag_name: v${{ steps.date.outputs.date }}
         name: Build ${{ steps.date.outputs.date }}
-        files: |
-          app/build/outputs/apk/debug/app-debug.apk
-          app/build/outputs/apk/release/app-release-unsigned.apk
+        files: release/*.apk
         draft: false
         prerelease: true
       env:
@@ -56,9 +56,3 @@ jobs:
       with:
         name: app-debug
         path: app/build/outputs/apk/debug/*.apk
-
-    - name: Upload Release APK (Artifact)
-      uses: actions/upload-artifact@v4
-      with:
-        name: app-release
-        path: app/build/outputs/apk/release/*.apk
