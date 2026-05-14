@@ -745,121 +745,129 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                     // 记录累计拖动偏移，用于计算目标位置
                     var dragAccumY by remember { mutableStateOf(0f) }
                     var dragFromIndex by remember { mutableStateOf(-1) }
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize().weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(2.dp)
-                    ) {
-                        items(editingProcesses.size, key = { editingProcesses[it].id }) { index ->
-                            val process = editingProcesses[index]
-                            var editName by remember { mutableStateOf(process.processName) }
-                            val isDragging = dragFromIndex == index
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .shadow(
-                                        if (isDragging) 8.dp else 0.dp,
-                                        RoundedCornerShape(4.dp)
-                                    )
-                                    .background(
-                                        if (isDragging) Color(0xFFE3F2FD) else Color.White,
-                                        RoundedCornerShape(4.dp)
-                                    )
-                                    .zIndex(if (isDragging) 1f else 0f)
-                                    .offset(y = if (isDragging) dragAccumY.dp else 0.dp)
-                            ) {
-                                Text("${index + 1}.", fontSize = 12.sp, color = Color(0xFF666666), modifier = Modifier.width(20.dp))
-                                BasicTextField(
-                                    value = editName,
-                                    onValueChange = {
-                                        editName = it
-                                        editingProcesses = editingProcesses.toMutableList().also { list ->
-                                            list[index] = process.copy(processName = it)
-                                        }
-                                    },
-                                    singleLine = true,
-                                    textStyle = androidx.compose.ui.text.TextStyle(fontSize = 12.sp, color = Color.Black),
-                                    modifier = Modifier.weight(1f).height(32.dp).border(1.dp, Color(0xFFBDBDBD), RoundedCornerShape(4.dp)).padding(horizontal = 4.dp, vertical = 2.dp),
-                                    cursorBrush = androidx.compose.ui.graphics.SolidColor(Color.Black),
-                                    decorationBox = { innerTextField ->
-                                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.CenterStart) {
-                                            innerTextField()
-                                        }
-                                    }
-                                )
-                                IconButton(onClick = {
-                                    saveHistory()
-                                    editingProcesses = editingProcesses.filterIndexed { i, _ -> i != index }.mapIndexed { i, p -> p.copy(sortOrder = i) }
-                                }) {
-                                    Icon(Icons.Default.Delete, null, tint = Color(0xFFC62828), modifier = Modifier.size(16.dp))
-                                }
-                                // 拖动手柄 - 长按触发拖动
+                    Box(modifier = Modifier.fillMaxSize().weight(1f)) {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.spacedBy(1.dp)
+                        ) {
+                            items(editingProcesses.size, key = { editingProcesses[it].id }) { index ->
+                                val process = editingProcesses[index]
+                                var editName by remember { mutableStateOf(process.processName) }
+                                val isDragging = dragFromIndex == index
+                                // 拖动时置顶显示
                                 Box(
                                     modifier = Modifier
-                                        .width(28.dp)
-                                        .height(32.dp)
-                                        .pointerInput(Unit) {
-                                            detectDragGesturesAfterLongPress(
-                                                onDragStart = {
-                                                    dragFromIndex = index
-                                                    dragAccumY = 0f
-                                                },
-                                                onDragEnd = {
-                                                    if (dragFromIndex >= 0) {
-                                                        val itemHeight = 34f
-                                                        val newIndex = (dragFromIndex + (dragAccumY / itemHeight).toInt())
-                                                            .coerceIn(0, editingProcesses.size - 1)
-                                                        if (newIndex != dragFromIndex) {
-                                                            saveHistory()
-                                                            moveProcess(dragFromIndex, newIndex)
-                                                        }
-                                                    }
-                                                    dragFromIndex = -1
-                                                    dragAccumY = 0f
-                                                },
-                                                onDrag = { change: PointerInputChange, dragAmount: Offset ->
-                                                    change.consume()
-                                                    dragAccumY += dragAmount.y
-                                                }
-                                            )
-                                        },
-                                    contentAlignment = Alignment.Center
+                                        .fillMaxWidth()
+                                        .zIndex(if (isDragging) 100f else 1f)
+                                        .offset(y = if (isDragging) dragAccumY.dp else 0.dp)
+                                        .shadow(
+                                            if (isDragging) 8.dp else 0.dp,
+                                            RoundedCornerShape(2.dp)
+                                        )
+                                        .background(
+                                            if (isDragging) Color(0xFFE3F2FD) else Color.White,
+                                            RoundedCornerShape(2.dp)
+                                        )
                                 ) {
-                                    Icon(Icons.Default.DragHandle, null, tint = Color(0xFF999999), modifier = Modifier.size(16.dp))
-                                }
-                            }
-                        }
-                        // 添加新工序
-                        item {
-                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                                Text("${editingProcesses.size + 1}.", fontSize = 14.sp, color = Color(0xFF666666), modifier = Modifier.width(28.dp))
-                                BasicTextField(
-                                    value = newProcessName, onValueChange = { newProcessName = it },
-                                    singleLine = true,
-                                    textStyle = androidx.compose.ui.text.TextStyle(fontSize = 14.sp, color = Color.Black),
-                                    modifier = Modifier.weight(1f).height(40.dp).border(1.dp, Color(0xFFBDBDBD), RoundedCornerShape(4.dp)).padding(horizontal = 8.dp, vertical = 6.dp),
-                                    cursorBrush = androidx.compose.ui.graphics.SolidColor(Color.Black),
-                                    decorationBox = { innerTextField ->
-                                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.CenterStart) {
-                                            if (newProcessName.isEmpty()) {
-                                                Text("新工序名称", fontSize = 14.sp, color = Color(0xFFAAAAAA))
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.fillMaxWidth().height(26.dp)
+                                    ) {
+                                        Text("${index + 1}.", fontSize = 11.sp, color = Color(0xFF666666), modifier = Modifier.width(18.dp))
+                                        BasicTextField(
+                                            value = editName,
+                                            onValueChange = {
+                                                editName = it
+                                                editingProcesses = editingProcesses.toMutableList().also { list ->
+                                                    list[index] = process.copy(processName = it)
+                                                }
+                                            },
+                                            singleLine = true,
+                                            textStyle = androidx.compose.ui.text.TextStyle(fontSize = 11.sp, color = Color.Black),
+                                            modifier = Modifier.weight(1f).height(24.dp).border(1.dp, Color(0xFFBDBDBD), RoundedCornerShape(2.dp)).padding(horizontal = 3.dp, vertical = 1.dp),
+                                            cursorBrush = androidx.compose.ui.graphics.SolidColor(Color.Black),
+                                            decorationBox = { innerTextField ->
+                                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.CenterStart) {
+                                                    innerTextField()
+                                                }
                                             }
-                                            innerTextField()
+                                        )
+                                        IconButton(onClick = {
+                                            saveHistory()
+                                            editingProcesses = editingProcesses.filterIndexed { i, _ -> i != index }.mapIndexed { i, p -> p.copy(sortOrder = i) }
+                                        }, modifier = Modifier.size(26.dp)) {
+                                            Icon(Icons.Default.Delete, null, tint = Color(0xFFC62828), modifier = Modifier.size(14.dp))
+                                        }
+                                        // 拖动手柄 - 长按触发拖动
+                                        Box(
+                                            modifier = Modifier
+                                                .width(26.dp)
+                                                .height(26.dp)
+                                                .pointerInput(Unit) {
+                                                    detectDragGesturesAfterLongPress(
+                                                        onDragStart = {
+                                                            dragFromIndex = index
+                                                            dragAccumY = 0f
+                                                        },
+                                                        onDragEnd = {
+                                                            if (dragFromIndex >= 0) {
+                                                                val itemHeight = 27f
+                                                                val newIndex = (dragFromIndex + (dragAccumY / itemHeight).toInt())
+                                                                    .coerceIn(0, editingProcesses.size - 1)
+                                                                if (newIndex != dragFromIndex) {
+                                                                    saveHistory()
+                                                                    moveProcess(dragFromIndex, newIndex)
+                                                                }
+                                                            }
+                                                            dragFromIndex = -1
+                                                            dragAccumY = 0f
+                                                        },
+                                                        onDrag = { change: PointerInputChange, dragAmount: Offset ->
+                                                            change.consume()
+                                                            dragAccumY += dragAmount.y
+                                                        }
+                                                    )
+                                                },
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(Icons.Default.DragHandle, null, tint = Color(0xFF999999), modifier = Modifier.size(14.dp))
                                         }
                                     }
-                                )
-                                IconButton(onClick = {
-                                    if (newProcessName.isNotBlank()) {
-                                        saveHistory()
-                                        editingProcesses = editingProcesses + ProductProcess(
-                                            productId = editingProduct!!.id,
-                                            processName = newProcessName.trim(),
-                                            sortOrder = editingProcesses.size
-                                        )
-                                        newProcessName = ""
+                                }
+                            }
+                            // 添加新工序
+                            item {
+                                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = 4.dp).height(26.dp)) {
+                                    Text("${editingProcesses.size + 1}.", fontSize = 11.sp, color = Color(0xFF666666), modifier = Modifier.width(18.dp))
+                                    BasicTextField(
+                                        value = newProcessName, onValueChange = { newProcessName = it },
+                                        singleLine = true,
+                                        textStyle = androidx.compose.ui.text.TextStyle(fontSize = 11.sp, color = Color.Black),
+                                        modifier = Modifier.weight(1f).height(24.dp).border(1.dp, Color(0xFFBDBDBD), RoundedCornerShape(2.dp)).padding(horizontal = 3.dp, vertical = 1.dp),
+                                        cursorBrush = androidx.compose.ui.graphics.SolidColor(Color.Black),
+                                        decorationBox = { innerTextField ->
+                                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.CenterStart) {
+                                                if (newProcessName.isEmpty()) {
+                                                    Text("新工序名称", fontSize = 11.sp, color = Color(0xFFAAAAAA))
+                                                }
+                                                innerTextField()
+                                            }
+                                        }
+                                    )
+                                    IconButton(onClick = {
+                                        if (newProcessName.isNotBlank()) {
+                                            saveHistory()
+                                            editingProcesses = editingProcesses + ProductProcess(
+                                                productId = editingProduct!!.id,
+                                                processName = newProcessName.trim(),
+                                                sortOrder = editingProcesses.size
+                                            )
+                                            newProcessName = ""
+                                        }
+                                    }, enabled = newProcessName.isNotBlank(), modifier = Modifier.size(26.dp)) {
+                                        Icon(Icons.Default.Add, null, tint = Color(0xFF1976D2), modifier = Modifier.size(14.dp))
                                     }
-                                }, enabled = newProcessName.isNotBlank()) {
-                                    Icon(Icons.Default.Add, null, tint = Color(0xFF1976D2), modifier = Modifier.size(20.dp))
+                                    Spacer(modifier = Modifier.width(26.dp)) // 占位，对齐手柄位置
                                 }
                             }
                         }
