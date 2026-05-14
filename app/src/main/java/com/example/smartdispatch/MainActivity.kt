@@ -107,10 +107,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     suspend fun getFixedCell(rowIndex: Int, colIndex: Int): FixedCell? {
         return repo.getFixedCell(rowIndex, colIndex)
     }
-    // 批量固定某产品的所有人员（从上次排工结果中读取）
+    // 批量固定某产品的所有人员（从当前排工结果中读取）
     fun fixProductCells(productName: String) {
         viewModelScope.launch {
-            // 获取产品列表和目标产品
+            // 从当前排工结果中读取
+            val result = _dispatchResult.value ?: return@launch
             val products = repo.allProducts.first()
             val product = products.find { it.name == productName } ?: return@launch
             
@@ -118,23 +119,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val productIndex = products.indexOf(product)
             val colIndex = productIndex * 2 + 1
             
-            // 获取该产品的工序列表
-            val processes = repo.getProcessesOnce(product.id).sortedBy { it.sortOrder }
+            // 获取该产品的所有分配（从排工结果）
+            val productAssignments = result.assignments.filter { it.productName == productName && it.assignedPerson.isNotBlank() }
             
-            // 获取该产品的所有分配
-            val allAssignments = repo.allAssignments.first()
-            val productAssignments = allAssignments.filter { it.productId == product.id && it.personId != null }
+            // 获取人员列表，找到对应的personId
+            val persons = repo.allPersons.first()
             
             // 构建固定单元格
             val fixedCells = mutableListOf<Triple<Int, Int, Int>>()
             for (assignment in productAssignments) {
-                val personId = assignment.personId ?: continue
-                // 找到工序对应的行号（rowIndex = 3 + processIndex）
-                val processIndex = processes.indexOfFirst { it.processName == assignment.processName }
-                if (processIndex >= 0) {
-                    val rowIndex = 3 + processIndex
-                    fixedCells.add(Triple(rowIndex, colIndex, personId))
-                }
+                val personName = assignment.assignedPerson
+                val person = persons.find { it.name == personName } ?: continue
+                val rowIndex = assignment.rowIndex
+                fixedCells.add(Triple(rowIndex, colIndex, person.id))
             }
             if (fixedCells.isNotEmpty()) {
                 repo.setFixedCellsForProduct(fixedCells)
