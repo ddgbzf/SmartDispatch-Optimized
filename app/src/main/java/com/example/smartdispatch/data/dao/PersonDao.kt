@@ -9,6 +9,9 @@ interface PersonDao {
     @Query("SELECT * FROM persons ORDER BY insertOrder, id")
     fun getAll(): Flow<List<Person>>
 
+    @Query("SELECT * FROM persons ORDER BY insertOrder, id")
+    suspend fun getAllOnce(): List<Person>
+
     @Query("SELECT * FROM persons WHERE onLeave = 1 ORDER BY insertOrder, id")
     fun getOnLeave(): Flow<List<Person>>
 

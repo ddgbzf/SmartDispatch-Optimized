@@ -1217,7 +1217,7 @@ fun FixedColumnScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
 fun MainScreen(viewModel: MainViewModel = viewModel()) {
     val context = LocalContext.current
     val prefs = context.getSharedPreferences("smart_dispatch", android.content.Context.MODE_PRIVATE)
-    var selectedTab by remember { mutableIntStateOf(prefs.getInt("selectedTab", 3)) }
+    var selectedTab by remember { mutableIntStateOf(minOf(prefs.getInt("selectedTab", 2), 2)) }
     var showSettings by remember { mutableStateOf(false) }
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
@@ -1283,7 +1283,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
         },
         bottomBar = {
             if (!isTableFullscreen) {
-            val tabTitles = if (isLandscape) listOf("请假", "评分", "流程", "排工") else listOf("人员名单", "工序评分", "工序流程", "智能排工")
+            val tabTitles = if (isLandscape) listOf("评分", "流程", "排工") else listOf("工序评分", "工序流程", "智能排工")
             TabRow(
                 selectedTabIndex = selectedTab,
                 containerColor = MaterialTheme.colorScheme.surface,
@@ -1303,7 +1303,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
             }
         },
         floatingActionButton = {
-            if (selectedTab == 3) {
+            if (selectedTab == 2) {
                 FloatingActionButton(
                     onClick = {
                         isTableFullscreen = !isTableFullscreen
@@ -1337,10 +1337,9 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
     ) { padding ->
         Box(modifier = Modifier.padding(padding)) {
             when (selectedTab) {
-                0 -> LeaveTab(viewModel)
-                1 -> SkillScoreTab(viewModel)
-                2 -> ProcessFlowTab(viewModel)
-                3 -> DispatchTab(viewModel, isLandscape)
+                0 -> SkillScoreTab(viewModel)
+                1 -> ProcessFlowTab(viewModel)
+                2 -> DispatchTab(viewModel, isLandscape)
             }
         }
 
@@ -1348,188 +1347,6 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
         if (showSettings) {
             SettingsScreen(viewModel = viewModel, onDismiss = { showSettings = false })
         }
-    }
-}
-
-// ========== Tab 1: 人员名单（工号、姓名、工种、状态） ==========
-@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
-@Composable
-fun LeaveTab(viewModel: MainViewModel) {
-    val persons by viewModel.allPersons.collectAsState()
-    val showAddDialog = remember { mutableStateOf(false) }
-    val showDeleteConfirm = remember { mutableStateOf(false) }
-    var deletingPerson by remember { mutableStateOf<Person?>(null) }
-    // 长按菜单状态
-    val showPersonMenu = remember { mutableStateOf(false) }
-    val showEditDialog = remember { mutableStateOf(false) }
-    val showInsertDialog = remember { mutableStateOf(false) }
-    var selectedPerson by remember { mutableStateOf<Person?>(null) }
-    var editName by remember { mutableStateOf("") }
-    var editEmployeeId by remember { mutableStateOf("") }
-    var editJobType by remember { mutableStateOf("") }
-    var insertName by remember { mutableStateOf("") }
-    var insertEmployeeId by remember { mutableStateOf("") }
-    var insertJobType by remember { mutableStateOf("") }
-
-    Box(modifier = Modifier.fillMaxSize()) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            // 统计行
-            Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
-                StatItem("总人数", persons.size.toString())
-                StatItem("请假", persons.count { it.onLeave }.toString(), Color(0xFFC62828))
-                StatItem("可用", persons.count { !it.onLeave }.toString(), Color(0xFF2E7D32))
-            }
-            // 表头
-            Row(modifier = Modifier.fillMaxWidth().height(28.dp).background(MaterialTheme.colorScheme.primaryContainer).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("工号", fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(70.dp))
-                Text("姓名", fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(60.dp))
-                Text("工种", fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                Text("状态", fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(50.dp))
-                Spacer(Modifier.width(64.dp))
-            }
-            Divider()
-            if (persons.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("暂无人员", color = Color(0xFF999999))
-                        Spacer(Modifier.height(8.dp))
-                        TextButton(onClick = { showAddDialog.value = true }) {
-                            Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text("添加人员")
-                        }
-                    }
-                }
-            } else {
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
-                items(persons, key = { it.id }) { person ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth().height(32.dp).padding(horizontal = 8.dp)
-                            .combinedClickable(
-                                onClick = {},
-                                onLongClick = {
-                                    selectedPerson = person
-                                    showPersonMenu.value = true
-                                }
-                            ),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(person.employeeId, fontSize = 13.sp, color = Color(0xFF333333), modifier = Modifier.width(70.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(person.name, fontSize = 13.sp, modifier = Modifier.width(60.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(person.jobType, fontSize = 13.sp, color = Color(0xFF666666), modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(if (person.onLeave) "请假" else "在岗", fontSize = 12.sp, color = if (person.onLeave) Color(0xFFC62828) else Color(0xFF2E7D32), modifier = Modifier.width(50.dp))
-                        IconButton(onClick = {
-                            if (BuildConfig.DEBUG) viewModel.toggleLeaveAndDispatch(person) else viewModel.toggleLeave(person)
-                        }, modifier = Modifier.size(32.dp)) { Icon(if (person.onLeave) Icons.Default.CheckCircle else Icons.Default.RemoveCircle, null, tint = if (person.onLeave) Color(0xFF2E7D32) else Color(0xFFC62828), modifier = Modifier.size(20.dp)) }
-                        IconButton(onClick = { deletingPerson = person; showDeleteConfirm.value = true }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Delete, null, tint = Color(0xFFC62828), modifier = Modifier.size(20.dp)) }
-                    }
-                    Divider(modifier = Modifier.padding(horizontal = 8.dp))
-                }
-            }
-            }
-        }
-    }
-
-    // 添加人员对话框
-    if (showAddDialog.value) {
-        var name by remember { mutableStateOf("") }
-        var employeeId by remember { mutableStateOf("") }
-        var jobType by remember { mutableStateOf("") }
-        AlertDialog(
-            onDismissRequest = { showAddDialog.value = false },
-            title = { Text("添加人员") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("姓名") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(value = employeeId, onValueChange = { employeeId = it }, label = { Text("工号（可选）") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(value = jobType, onValueChange = { jobType = it }, label = { Text("工种（可选）") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                }
-            },
-            confirmButton = { TextButton(onClick = { if (name.isNotBlank()) { viewModel.addPerson(name.trim(), employeeId.trim(), jobType.trim()); showAddDialog.value = false } }, enabled = name.isNotBlank()) { Text("确定") } },
-            dismissButton = { TextButton(onClick = { showAddDialog.value = false }) { Text("取消") } }
-        )
-    }
-
-    // 删除确认
-    if (showDeleteConfirm.value && deletingPerson != null) {
-        AlertDialog(onDismissRequest = { showDeleteConfirm.value = false }, title = { Text("确认删除") }, text = { Text("确定要删除「${deletingPerson!!.name}」吗？") }, confirmButton = { TextButton(onClick = { viewModel.deletePerson(deletingPerson!!); showDeleteConfirm.value = false }) { Text("删除", color = Color(0xFFC62828)) } }, dismissButton = { TextButton(onClick = { showDeleteConfirm.value = false }) { Text("取消") } })
-    }
-
-    // 长按菜单
-    if (showPersonMenu.value && selectedPerson != null) {
-        AlertDialog(
-            onDismissRequest = { showPersonMenu.value = false },
-            title = { Text(selectedPerson!!.name) },
-            text = {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    TextButton(modifier = Modifier.fillMaxWidth(), onClick = {
-                        showPersonMenu.value = false
-                        editName = selectedPerson!!.name
-                        editEmployeeId = selectedPerson!!.employeeId
-                        editJobType = selectedPerson!!.jobType
-                        showEditDialog.value = true
-                    }) { Text("编辑人员信息", modifier = Modifier.fillMaxWidth()) }
-                    TextButton(modifier = Modifier.fillMaxWidth(), onClick = {
-                        showPersonMenu.value = false
-                        insertName = ""
-                        insertEmployeeId = ""
-                        insertJobType = ""
-                        showInsertDialog.value = true
-                    }) { Text("在此人员前插入新人员", modifier = Modifier.fillMaxWidth()) }
-                    Divider()
-                    TextButton(modifier = Modifier.fillMaxWidth(), onClick = {
-                        showPersonMenu.value = false
-                        deletingPerson = selectedPerson
-                        showDeleteConfirm.value = true
-                    }) { Text("删除人员", modifier = Modifier.fillMaxWidth(), color = Color(0xFFC62828)) }
-                }
-            },
-            confirmButton = {}
-        )
-    }
-
-    // 编辑人员对话框
-    if (showEditDialog.value && selectedPerson != null) {
-        AlertDialog(
-            onDismissRequest = { showEditDialog.value = false },
-            title = { Text("编辑人员信息") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(value = editName, onValueChange = { editName = it }, label = { Text("姓名") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(value = editEmployeeId, onValueChange = { editEmployeeId = it }, label = { Text("工号") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(value = editJobType, onValueChange = { editJobType = it }, label = { Text("工种") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                }
-            },
-            confirmButton = { TextButton(onClick = {
-                if (editName.isNotBlank()) {
-                    viewModel.updatePersonInfo(selectedPerson!!, editName.trim(), editEmployeeId.trim(), editJobType.trim())
-                }
-                showEditDialog.value = false
-            }) { Text("保存") } },
-            dismissButton = { TextButton(onClick = { showEditDialog.value = false }) { Text("取消") } }
-        )
-    }
-
-    // 插入人员对话框
-    if (showInsertDialog.value) {
-        AlertDialog(
-            onDismissRequest = { showInsertDialog.value = false },
-            title = { Text("在「${selectedPerson!!.name}」前插入新人员") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(value = insertName, onValueChange = { insertName = it }, label = { Text("姓名") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(value = insertEmployeeId, onValueChange = { insertEmployeeId = it }, label = { Text("工号（可选）") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(value = insertJobType, onValueChange = { insertJobType = it }, label = { Text("工种（可选）") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                }
-            },
-            confirmButton = { TextButton(onClick = {
-                if (insertName.isNotBlank() && selectedPerson != null) {
-                    viewModel.insertPersonBefore(selectedPerson!!, insertName.trim(), insertEmployeeId.trim(), insertJobType.trim())
-                }
-                showInsertDialog.value = false
-            }) { Text("添加") } },
-            dismissButton = { TextButton(onClick = { showInsertDialog.value = false }) { Text("取消") } }
-        )
     }
 }
 
@@ -1607,6 +1424,19 @@ fun SkillScoreTab(viewModel: MainViewModel) {
     var renameValue by remember { mutableStateOf("") }
     var insertValue by remember { mutableStateOf("") }
 
+    // 人员管理对话框状态
+    val showPersonMenu = remember { mutableStateOf(false) }
+    val showPersonEditDialog = remember { mutableStateOf(false) }
+    val showPersonInsertDialog = remember { mutableStateOf(false) }
+    val showPersonDeleteConfirm = remember { mutableStateOf(false) }
+    var selectedPerson by remember { mutableStateOf<Person?>(null) }
+    var personEditName by remember { mutableStateOf("") }
+    var personEditEmployeeId by remember { mutableStateOf("") }
+    var personEditJobType by remember { mutableStateOf("") }
+    var personInsertName by remember { mutableStateOf("") }
+    var personInsertEmployeeId by remember { mutableStateOf("") }
+    var personInsertJobType by remember { mutableStateOf("") }
+
     val scrollState = rememberScrollState()
     val coroutineScope = rememberCoroutineScope()
 
@@ -1636,7 +1466,13 @@ fun SkillScoreTab(viewModel: MainViewModel) {
             LazyColumn(modifier = Modifier.fillMaxSize()) {
                 items(persons, key = { it.id }) { person ->
                     Row(modifier = Modifier.fillMaxWidth()) {
-                        Box(modifier = Modifier.width(72.dp).height(28.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) { Text(person.name, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                        Box(modifier = Modifier.width(72.dp).height(28.dp).border(0.5.dp, Color(0xFFE0E0E0)).combinedClickable(
+                            onClick = {},
+                            onLongClick = {
+                                selectedPerson = person
+                                showPersonMenu.value = true
+                            }
+                        ), contentAlignment = Alignment.Center) { Text(person.name, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                         Row(modifier = Modifier.weight(1f).horizontalScroll(scrollState)) {
                             processNames.forEach { process ->
                                 val score = scoreMap[Pair(person.id, process)] ?: 0
@@ -1748,6 +1584,93 @@ fun SkillScoreTab(viewModel: MainViewModel) {
                 }) { Text("删除", color = Color(0xFFC62828)) }
             },
             dismissButton = { TextButton(onClick = { showDeleteConfirm.value = false }) { Text("取消") } }
+        )
+    }
+
+    // 长按人员弹出菜单
+    if (showPersonMenu.value && selectedPerson != null) {
+        AlertDialog(
+            onDismissRequest = { showPersonMenu.value = false },
+            title = { Text(selectedPerson!!.name) },
+            text = {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    TextButton(modifier = Modifier.fillMaxWidth(), onClick = {
+                        showPersonMenu.value = false
+                        personEditName = selectedPerson!!.name
+                        personEditEmployeeId = selectedPerson!!.employeeId
+                        personEditJobType = selectedPerson!!.jobType
+                        showPersonEditDialog.value = true
+                    }) { Text("编辑人员信息", modifier = Modifier.fillMaxWidth()) }
+                    TextButton(modifier = Modifier.fillMaxWidth(), onClick = {
+                        showPersonMenu.value = false
+                        personInsertName = ""
+                        personInsertEmployeeId = ""
+                        personInsertJobType = ""
+                        showPersonInsertDialog.value = true
+                    }) { Text("在此人员前插入新人员", modifier = Modifier.fillMaxWidth()) }
+                    Divider()
+                    TextButton(modifier = Modifier.fillMaxWidth(), onClick = {
+                        showPersonMenu.value = false
+                        showPersonDeleteConfirm.value = true
+                    }) { Text("删除人员", modifier = Modifier.fillMaxWidth(), color = Color(0xFFC62828)) }
+                }
+            },
+            confirmButton = {}
+        )
+    }
+
+    // 编辑人员对话框
+    if (showPersonEditDialog.value && selectedPerson != null) {
+        AlertDialog(
+            onDismissRequest = { showPersonEditDialog.value = false },
+            title = { Text("编辑人员信息") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(value = personEditName, onValueChange = { personEditName = it }, label = { Text("姓名") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = personEditEmployeeId, onValueChange = { personEditEmployeeId = it }, label = { Text("工号") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = personEditJobType, onValueChange = { personEditJobType = it }, label = { Text("工种") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                }
+            },
+            confirmButton = { TextButton(onClick = {
+                if (personEditName.isNotBlank()) {
+                    viewModel.updatePersonInfo(selectedPerson!!, personEditName.trim(), personEditEmployeeId.trim(), personEditJobType.trim())
+                }
+                showPersonEditDialog.value = false
+            }) { Text("保存") } },
+            dismissButton = { TextButton(onClick = { showPersonEditDialog.value = false }) { Text("取消") } }
+        )
+    }
+
+    // 插入人员对话框
+    if (showPersonInsertDialog.value && selectedPerson != null) {
+        AlertDialog(
+            onDismissRequest = { showPersonInsertDialog.value = false },
+            title = { Text("在「${selectedPerson!!.name}」前插入新人员") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(value = personInsertName, onValueChange = { personInsertName = it }, label = { Text("姓名") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = personInsertEmployeeId, onValueChange = { personInsertEmployeeId = it }, label = { Text("工号（可选）") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = personInsertJobType, onValueChange = { personInsertJobType = it }, label = { Text("工种（可选）") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                }
+            },
+            confirmButton = { TextButton(onClick = {
+                if (personInsertName.isNotBlank()) {
+                    viewModel.insertPersonBefore(selectedPerson!!, personInsertName.trim(), personInsertEmployeeId.trim(), personInsertJobType.trim())
+                }
+                showPersonInsertDialog.value = false
+            }) { Text("添加") } },
+            dismissButton = { TextButton(onClick = { showPersonInsertDialog.value = false }) { Text("取消") } }
+        )
+    }
+
+    // 删除人员确认
+    if (showPersonDeleteConfirm.value && selectedPerson != null) {
+        AlertDialog(
+            onDismissRequest = { showPersonDeleteConfirm.value = false },
+            title = { Text("确认删除") },
+            text = { Text("确定要删除「${selectedPerson!!.name}」吗？该人员的所有评分数据将被清除。") },
+            confirmButton = { TextButton(onClick = { viewModel.deletePerson(selectedPerson!!); showPersonDeleteConfirm.value = false }) { Text("删除", color = Color(0xFFC62828)) } },
+            dismissButton = { TextButton(onClick = { showPersonDeleteConfirm.value = false }) { Text("取消") } }
         )
     }
 }
@@ -1960,7 +1883,38 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
                 // 第一行：请假人员标题 + 输入框（两行显示）
                 Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState).background(Color(0xFF90CAF9))) {
                     Box(modifier = Modifier.width(60.dp).height(rowHeight * 2).background(Color.White, RoundedCornerShape(2.dp)).border(0.5.dp, Color(0xFFE0E0E0)).padding(1.dp), contentAlignment = Alignment.TopCenter) {
-                        Text("请假\n人员", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.Black, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxSize()) {
+                            Text("请假\n人员", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color.Black, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                            Spacer(Modifier.weight(1f))
+                            // 输入框添加请假人员
+                            var leaveInput by remember { mutableStateOf("") }
+                            BasicTextField(
+                                value = leaveInput,
+                                onValueChange = { leaveInput = it },
+                                modifier = Modifier.width(56.dp).height(18.dp).background(Color(0xFFFFF8E1), RoundedCornerShape(2.dp)).border(0.5.dp, Color(0xFFE0E0E0)),
+                                textStyle = androidx.compose.ui.text.TextStyle(fontSize = 10.sp, color = Color.Black, textAlign = androidx.compose.ui.text.style.TextAlign.Center),
+                                singleLine = true,
+                                cursorBrush = androidx.compose.ui.graphics.SolidColor(Color.Black),
+                                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.foundation.text.ImeAction.Done),
+                                keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = {
+                                    if (leaveInput.isNotBlank()) {
+                                        val target = persons.find { it.name.trim() == leaveInput.trim() }
+                                        if (target != null && !target.onLeave) {
+                                            viewModel.toggleLeave(target)
+                                        }
+                                        leaveInput = ""
+                                    }
+                                }),
+                                decorationBox = { innerTextField ->
+                                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                        if (leaveInput.isEmpty()) {
+                                            Text("+", fontSize = 10.sp, color = Color(0xFFAAAAAA))
+                                        }
+                                        innerTextField()
+                                    }
+                                }
+                            )
+                        }
                     }
                     inputNames.forEachIndexed { index, name ->
                         Box(modifier = Modifier.width(productWidth).height(rowHeight * 2).padding(1.dp)) {
@@ -2014,9 +1968,14 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
                 Divider()
                 // 第二行：请假人名 + 产能/人数
                 Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState)) {
-                    Box(modifier = Modifier.width(60.dp).height(rowHeight).border(0.5.dp, Color(0xFFE0E0E0)).background(Color(0xFFFFCDD2)), contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier.width(60.dp).height(rowHeight).border(0.5.dp, Color(0xFFE0E0E0)).background(Color(0xFFFFCDD2), contentAlignment = Alignment.Center) {
                         val p = leavePeople.getOrNull(0)
-                        if (p != null) Text(p.name, fontSize = fontSize, fontWeight = FontWeight.Medium, color = Color(0xFFC62828)) else Text("")
+                        if (p != null) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(p.name, fontSize = (fontSize.value - 2).sp, fontWeight = FontWeight.Medium, color = Color(0xFFC62828), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                                Text("×", fontSize = 12.sp, color = Color(0xFFC62828), modifier = Modifier.clickable { viewModel.toggleLeave(p) })
+                            }
+                        } else Text("")
                     }
                     inputNames.forEachIndexed { index, name ->
                         val product = if (name.isNotBlank()) products.find { it.name.equals(name.trim(), ignoreCase = true) } else null
@@ -2046,9 +2005,14 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
 
                     items(maxRows) { rowIndex ->
                         Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState)) {
-                            Box(modifier = Modifier.width(60.dp).height(rowHeight).border(0.5.dp, Color(0xFFE0E0E0)).background(Color(0xFFFFCDD2)), contentAlignment = Alignment.Center) {
+                            Box(modifier = Modifier.width(60.dp).height(rowHeight).border(0.5.dp, Color(0xFFE0E0E0)).background(Color(0xFFFFCDD2), contentAlignment = Alignment.Center) {
                                 val person = leavePeople.getOrNull(rowIndex + 1)
-                                if (person != null) Text(person.name, fontSize = fontSize, fontWeight = FontWeight.Medium, color = Color(0xFFC62828))
+                                if (person != null) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(person.name, fontSize = (fontSize.value - 2).sp, fontWeight = FontWeight.Medium, color = Color(0xFFC62828), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                                        Text("×", fontSize = 12.sp, color = Color(0xFFC62828), modifier = Modifier.clickable { viewModel.toggleLeave(person) })
+                                    }
+                                }
                             }
                             inputNames.forEachIndexed { index, name ->
                                 val product = if (name.isNotBlank()) products.find { it.name.equals(name.trim(), ignoreCase = true) } else null
