@@ -566,18 +566,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         row1.createCell(0).setCellValue("请假人员")
                         sortedProducts.forEachIndexed { idx, productName ->
                             val startCol = idx * 2 + 1
+                            // 产品名写在第1列，第2列留空（视觉上跨2列）
                             row1.createCell(startCol).setCellValue(productName)
                         }
                         
-                        // 第2行：子表头（人员、工序）
+                        // 第2行：产能、人数
                         val row2 = mainSheet.createRow(1)
-                        sortedProducts.forEachIndexed { idx, _ ->
+                        sortedProducts.forEachIndexed { idx, productName ->
                             val startCol = idx * 2 + 1
-                            row2.createCell(startCol).setCellValue("人员")
-                            row2.createCell(startCol + 1).setCellValue("工序")
+                            // 从products表获取产能和人数
+                            val product = products.find { it.name == productName }
+                            row2.createCell(startCol).setCellValue(product?.capacity?.toString() ?: "")
+                            row2.createCell(startCol + 1).setCellValue(product?.requiredPeople?.toString() ?: "")
                         }
                         
-                        // 第3行起：请假人员 + 排工数据
+                        // 第3行起：工序、人员
                         val leavePersons = persons.filter { it.onLeave }
                         val totalRows = maxOf(leavePersons.size, maxDataRows)
                         
@@ -595,8 +598,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                                 val dataList = productData[productName] ?: emptyList()
                                 if (i < dataList.size) {
                                     val (person, process) = dataList[i]
-                                    dataRow.createCell(startCol).setCellValue(person)
-                                    dataRow.createCell(startCol + 1).setCellValue(process)
+                                    // 工序在第1列，人员在第2列
+                                    dataRow.createCell(startCol).setCellValue(process)
+                                    dataRow.createCell(startCol + 1).setCellValue(person)
                                 }
                             }
                         }
