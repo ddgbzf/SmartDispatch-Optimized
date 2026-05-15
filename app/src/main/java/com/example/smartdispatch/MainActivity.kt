@@ -926,7 +926,7 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                             modifier = Modifier.fillMaxSize(),
                             verticalArrangement = Arrangement.spacedBy(1.dp)
                         ) {
-                            items(editingProcesses.size, key = { editingProcesses[it].id }) { index ->
+                            items(editingProcesses.size, key = { it }) { index ->
                                 val process = editingProcesses[index]
                                 var editName by remember { mutableStateOf(process.processName) }
                                 val isDragging = dragFromIndex == index
@@ -1038,7 +1038,7 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                                     )
                                     Spacer(Modifier.weight(1f))
                                     IconButton(onClick = {
-                                        if (newProcessName.isNotBlank()) {
+                                        if (newProcessName.isNotBlank() && editingProduct != null) {
                                             saveHistory()
                                             editingProcesses = editingProcesses + ProductProcess(
                                                 productId = editingProduct!!.id,
@@ -1047,7 +1047,7 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                                             )
                                             newProcessName = ""
                                         }
-                                    }, enabled = newProcessName.isNotBlank(), modifier = Modifier.size(26.dp)) {
+                                    }, enabled = newProcessName.isNotBlank() && editingProduct != null, modifier = Modifier.size(26.dp)) {
                                         Icon(Icons.Default.Add, null, tint = Color(0xFF1976D2), modifier = Modifier.size(14.dp))
                                     }
                                     Spacer(Modifier.width(8.dp))
