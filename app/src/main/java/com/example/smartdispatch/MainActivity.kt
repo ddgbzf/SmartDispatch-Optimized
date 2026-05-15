@@ -756,8 +756,7 @@ fun HelpScreen(onDismiss: () -> Unit) {
         title = { Text("使用说明", fontWeight = FontWeight.Bold) },
         text = {
             Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalScroll = rememberScrollState()
+                modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
             ) {
                 Text("【工序评分】", fontWeight = FontWeight.Bold, color = Color(0xFF1976D2))
                 Text("• 导入Excel时自动读取工序评分数据", fontSize = 13.sp)
