@@ -1325,7 +1325,7 @@ fun LeaveTab(viewModel: MainViewModel) {
 }
 
 // ========== Tab 2: 工序评分（固定左上角姓名单元格，行高28dp） ==========
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun SkillScoreTab(viewModel: MainViewModel) {
     val persons by viewModel.allPersons.collectAsState()
