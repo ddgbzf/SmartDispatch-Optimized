@@ -1442,9 +1442,12 @@ fun SkillScoreTab(viewModel: MainViewModel) {
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // 固定左上角"姓名"单元格 + 可滚动的工序表头
+            // 固定左上角"工号"+"姓名"单元格 + 可滚动的工序表头
             Row(modifier = Modifier.fillMaxWidth()) {
-                Box(modifier = Modifier.width(72.dp).height(28.dp).background(MaterialTheme.colorScheme.primaryContainer), contentAlignment = Alignment.Center) {
+                Box(modifier = Modifier.width(56.dp).height(28.dp).background(MaterialTheme.colorScheme.primaryContainer), contentAlignment = Alignment.Center) {
+                    Text("工号", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                }
+                Box(modifier = Modifier.width(60.dp).height(28.dp).background(MaterialTheme.colorScheme.primaryContainer), contentAlignment = Alignment.Center) {
                     Text("姓名", fontWeight = FontWeight.Bold, fontSize = 13.sp)
                 }
                 Row(modifier = Modifier.weight(1f).horizontalScroll(scrollState).background(MaterialTheme.colorScheme.primaryContainer)) {
@@ -1462,11 +1465,14 @@ fun SkillScoreTab(viewModel: MainViewModel) {
                 }
             }
             Divider()
-            // 数据行：姓名列固定，评分列随水平滚动
+            // 数据行：工号+姓名列固定，评分列随水平滚动
             LazyColumn(modifier = Modifier.fillMaxSize()) {
                 items(persons, key = { it.id }) { person ->
                     Row(modifier = Modifier.fillMaxWidth()) {
-                        Box(modifier = Modifier.width(72.dp).height(28.dp).border(0.5.dp, Color(0xFFE0E0E0)).combinedClickable(
+                        Box(modifier = Modifier.width(56.dp).height(28.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
+                            Text(person.employeeId, fontSize = 11.sp, color = Color(0xFF666666), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                        Box(modifier = Modifier.width(60.dp).height(28.dp).border(0.5.dp, Color(0xFFE0E0E0)).combinedClickable(
                             onClick = {},
                             onLongClick = {
                                 selectedPerson = person
