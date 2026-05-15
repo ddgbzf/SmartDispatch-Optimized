@@ -547,36 +547,54 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     // 3. 智能排工主表
                     val mainSheet = workbook.createSheet("智能排工")
                     
-                    // 首行：请假人员 + 产品名（每产品占2列：人员、工序）
-                    val headerRow = mainSheet.createRow(0)
-                    headerRow.createCell(0).setCellValue("请假人员")
-                    products.forEachIndexed { index, product ->
-                        val col = index * 2 + 1
-                        headerRow.createCell(col).setCellValue(product.name)
-                        // col+1 留给工序（空列）
-                    }
-                    
-                    // 请假人员列表（从第2行开始）
-                    val leavePersons = persons.filter { it.onLeave }
-                    leavePersons.forEachIndexed { index, person ->
-                        mainSheet.createRow(index + 1).createCell(0).setCellValue(person.name)
-                    }
-                    
-                    // 排工结果数据（从第2行开始，每个产品2列：人员+工序）
                     val result = _dispatchResult.value
                     if (result != null) {
-                        // 找出最大行数
-                        val maxRow = result.assignments.map { it.rowIndex }.maxOrNull() ?: 0
+                        // 收集所有工序（从rowIndex=3开始就是工序名）
+                        val maxRow = result.assignments.maxOfOrNull { it.rowIndex } ?: 0
+                        
+                        // 按列收集每个产品的人员和工序
+                        val productColumns = mutableMapOf<Int, MutableMap<Int, Pair<String?, String>>>() // col -> (row -> (person, process))
+                        for (a in result.assignments) {
+                            productColumns.getOrPut(a.columnIndex) { mutableMapOf() }[a.rowIndex] = Pair(a.assignedPerson, a.processName)
+                        }
+                        
+                        // 表头行（第1行）
+                        val headerRow = mainSheet.createRow(0)
+                        headerRow.createCell(0).setCellValue("请假人员")
+                        val sortedCols = productColumns.keys.sorted()
+                        sortedCols.forEachIndexed { idx, col ->
+                            val personCol = col
+                            val processCol = col + 1
+                            headerRow.createCell(personCol).setCellValue("人员")
+                            headerRow.createCell(processCol).setCellValue("工序")
+                        }
+                        
+                        // 请假人员（第2行起，可能多行）
+                        val leavePersons = persons.filter { it.onLeave }
+                        leavePersons.forEachIndexed { idx, person ->
+                            mainSheet.createRow(idx + 1).createCell(0).setCellValue(person.name)
+                        }
+                        
+                        // 排工数据（从第3行开始，对应rowIndex=3）
+                        val startExcelRow = 2 + leavePersons.size
                         for (rowIdx in 3..maxRow) {
-                            val row = mainSheet.getRow(rowIdx - 1) ?: mainSheet.createRow(rowIdx - 1)
-                            products.forEachIndexed { index, product ->
-                                val colIndex = index * 2 + 1
-                                val assignment = result.assignments.find { it.rowIndex == rowIdx && it.columnIndex == colIndex + 1 }
-                                if (assignment != null) {
-                                    row.createCell(colIndex).setCellValue(assignment.assignedPerson ?: "")
-                                    row.createCell(colIndex + 1).setCellValue(assignment.processName)
+                            val excelRow = startExcelRow + (rowIdx - 3)
+                            val row = mainSheet.getRow(excelRow) ?: mainSheet.createRow(excelRow)
+                            sortedCols.forEach { col ->
+                                val data = productColumns[col]?.get(rowIdx)
+                                if (data != null) {
+                                    row.createCell(col).setCellValue(data.first ?: "")
+                                    row.createCell(col + 1).setCellValue(data.second)
                                 }
                             }
+                        }
+                    } else {
+                        // 没有排工结果，只显示请假人员
+                        val headerRow = mainSheet.createRow(0)
+                        headerRow.createCell(0).setCellValue("请假人员")
+                        val leavePersons = persons.filter { it.onLeave }
+                        leavePersons.forEachIndexed { idx, person ->
+                            mainSheet.createRow(idx + 1).createCell(0).setCellValue(person.name)
                         }
                     }
                     
@@ -611,6 +629,7 @@ class MainActivity : ComponentActivity() {
 fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
     var showProcessEdit by remember { mutableStateOf(false) }
     var showFixedColumn by remember { mutableStateOf(false) }
+    var showHelp by remember { mutableStateOf(false) }
     val fontSize by viewModel.fontSize.collectAsState()
     val rowHeight by viewModel.rowHeight.collectAsState()
     val colWidth by viewModel.colWidth.collectAsState()
@@ -619,12 +638,28 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
         ProcessEditScreen(viewModel = viewModel, onDismiss = { showProcessEdit = false })
     } else if (showFixedColumn) {
         FixedColumnScreen(viewModel = viewModel, onDismiss = { showFixedColumn = false })
+    } else if (showHelp) {
+        HelpScreen(onDismiss = { showHelp = false })
     } else {
         AlertDialog(
             onDismissRequest = onDismiss,
             title = { Text("设置", fontWeight = FontWeight.Bold) },
             text = {
                 Column(modifier = Modifier.fillMaxWidth()) {
+                    // 菜单项：使用说明
+                    Row(
+                        modifier = Modifier.fillMaxWidth().clickable { showHelp = true }.padding(vertical = 16.dp, horizontal = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.Help, null, tint = Color(0xFF1976D2), modifier = Modifier.size(24.dp))
+                        Spacer(Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("使用说明", fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                            Text("查看APP使用帮助", fontSize = 11.sp, color = Color(0xFF999999))
+                        }
+                        Icon(Icons.Default.KeyboardArrowRight, null, tint = Color(0xFFBDBDBD), modifier = Modifier.size(20.dp))
+                    }
+                    Divider()
                     // 菜单项：编辑工序流程
                     Row(
                         modifier = Modifier.fillMaxWidth().clickable { showProcessEdit = true }.padding(vertical = 16.dp, horizontal = 8.dp),
@@ -711,6 +746,44 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
             confirmButton = { TextButton(onClick = onDismiss) { Text("关闭") } }
         )
     }
+}
+
+// ========== 使用说明页面 ==========
+@Composable
+fun HelpScreen(onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("使用说明", fontWeight = FontWeight.Bold) },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalScroll = rememberScrollState()
+            ) {
+                Text("【工序评分】", fontWeight = FontWeight.Bold, color = Color(0xFF1976D2))
+                Text("• 导入Excel时自动读取工序评分数据", fontSize = 13.sp)
+                Text("• 点击评分格可编辑单个评分", fontSize = 13.sp)
+                Text("• 长按工序名可编辑/插入/删除工序", fontSize = 13.sp)
+                Spacer(Modifier.height(12.dp))
+                Text("【工序流程】", fontWeight = FontWeight.Bold, color = Color(0xFF1976D2))
+                Text("• 添加产品，设置产能和人数需求", fontSize = 13.sp)
+                Text("• 为每个产品配置工序流程", fontSize = 13.sp)
+                Spacer(Modifier.height(12.dp))
+                Text("【智能排工】", fontWeight = FontWeight.Bold, color = Color(0xFF1976D2))
+                Text("• 输入产品名称，点击排工", fontSize = 13.sp)
+                Text("• 系统自动分配人员到各工序", fontSize = 13.sp)
+                Text("• 点击人员名可标记请假/删除", fontSize = 13.sp)
+                Spacer(Modifier.height(12.dp))
+                Text("【固定列】", fontWeight = FontWeight.Bold, color = Color(0xFF1976D2))
+                Text("• 设置固定列后，该列人员排工时留任原位置", fontSize = 13.sp)
+                Text("• 取消固定列会同时解除单元格绑定", fontSize = 13.sp)
+                Spacer(Modifier.height(12.dp))
+                Text("【导出/导入】", fontWeight = FontWeight.Bold, color = Color(0xFF1976D2))
+                Text("• 支持导出Excel排工结果", fontSize = 13.sp)
+                Text("• 支持从Excel导入人员评分和产品数据", fontSize = 13.sp)
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("知道了") } }
+    )
 }
 
 // ========== 编辑工序流程页面 ==========
