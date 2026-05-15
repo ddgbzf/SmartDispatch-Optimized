@@ -1547,6 +1547,42 @@ fun SkillScoreTab(viewModel: MainViewModel) {
         return
     }
 
+    // 添加工序对话框（用于空列表时）
+    val showAddProcessDialog = remember { mutableStateOf(false) }
+
+    if (processNames.isEmpty()) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("暂无工序", color = Color(0xFF999999))
+                Spacer(Modifier.height(8.dp))
+                TextButton(onClick = { showAddProcessDialog.value = true }) {
+                    Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("添加工序")
+                }
+            }
+        }
+        // 添加工序对话框
+        if (showAddProcessDialog.value) {
+            var newProcessName by remember { mutableStateOf("") }
+            AlertDialog(
+                onDismissRequest = { showAddProcessDialog.value = false },
+                title = { Text("添加工序") },
+                text = {
+                    OutlinedTextField(value = newProcessName, onValueChange = { newProcessName = it }, label = { Text("工序名称") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                },
+                confirmButton = { TextButton(onClick = {
+                    if (newProcessName.isNotBlank()) {
+                        viewModel.addScoreProcess(newProcessName.trim())
+                    }
+                    showAddProcessDialog.value = false
+                }) { Text("添加") } },
+                dismissButton = { TextButton(onClick = { showAddProcessDialog.value = false }) { Text("取消") } }
+            )
+        }
+        return
+    }
+
     var scoreMap by remember { mutableStateOf<Map<Pair<Int, String>, Int>>(emptyMap()) }
     LaunchedEffect(persons, scoreVer) {
         val map = mutableMapOf<Pair<Int, String>, Int>()
