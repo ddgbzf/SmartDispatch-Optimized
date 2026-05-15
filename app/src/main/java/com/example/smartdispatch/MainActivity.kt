@@ -1968,7 +1968,7 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
                 Divider()
                 // 第二行：请假人名 + 产能/人数
                 Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState)) {
-                    Box(modifier = Modifier.width(60.dp).height(rowHeight).border(0.5.dp, Color(0xFFE0E0E0)).background(Color(0xFFFFCDD2), contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier.width(60.dp).height(rowHeight).border(0.5.dp, Color(0xFFE0E0E0)).background(Color(0xFFFFCDD2)), contentAlignment = Alignment.Center) {
                         val p = leavePeople.getOrNull(0)
                         if (p != null) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -2005,7 +2005,7 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
 
                     items(maxRows) { rowIndex ->
                         Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState)) {
-                            Box(modifier = Modifier.width(60.dp).height(rowHeight).border(0.5.dp, Color(0xFFE0E0E0)).background(Color(0xFFFFCDD2), contentAlignment = Alignment.Center) {
+                            Box(modifier = Modifier.width(60.dp).height(rowHeight).border(0.5.dp, Color(0xFFE0E0E0)).background(Color(0xFFFFCDD2)), contentAlignment = Alignment.Center) {
                                 val person = leavePeople.getOrNull(rowIndex + 1)
                                 if (person != null) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
