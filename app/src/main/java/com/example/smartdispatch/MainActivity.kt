@@ -140,6 +140,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch { repo.deleteFixedCellsByColumn(colIndex) }
     }
 
+    // 工序评分管理
+    fun deleteScoreProcess(processName: String) {
+        viewModelScope.launch { repo.deleteProcess(processName) }
+    }
+    fun renameScoreProcess(oldName: String, newName: String) {
+        viewModelScope.launch { repo.renameProcess(oldName, newName) }
+    }
+    fun addScoreProcess(processName: String) {
+        viewModelScope.launch {
+            val persons = repo.allPersons.first()
+            repo.addProcessForAllPersons(processName, persons)
+        }
+    }
+
     private fun loadFixedInputSlots(): Set<Int> {
         val str = prefs.getString("fixed_slots", "") ?: ""
         return if (str.isBlank()) emptySet() else str.split(",").mapNotNull { it.toIntOrNull() }.toSet()
@@ -1311,6 +1325,7 @@ fun LeaveTab(viewModel: MainViewModel) {
 }
 
 // ========== Tab 2: 工序评分（固定左上角姓名单元格，行高28dp） ==========
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SkillScoreTab(viewModel: MainViewModel) {
     val persons by viewModel.allPersons.collectAsState()
@@ -1338,6 +1353,16 @@ fun SkillScoreTab(viewModel: MainViewModel) {
     var editingProcess by remember { mutableStateOf("") }
     var currentScore by remember { mutableStateOf("0") }
 
+    // 工序管理对话框状态
+    val showProcessMenu = remember { mutableStateOf(false) }
+    val showRenameDialog = remember { mutableStateOf(false) }
+    val showInsertDialog = remember { mutableStateOf(false) }
+    val showDeleteConfirm = remember { mutableStateOf(false) }
+    var selectedProcess by remember { mutableStateOf("") }
+    var insertPosition by remember { mutableStateOf(0) } // 0=左侧, 1=右侧
+    var renameValue by remember { mutableStateOf("") }
+    var insertValue by remember { mutableStateOf("") }
+
     val scrollState = rememberScrollState()
     val coroutineScope = rememberCoroutineScope()
 
@@ -1349,8 +1374,16 @@ fun SkillScoreTab(viewModel: MainViewModel) {
                     Text("姓名", fontWeight = FontWeight.Bold, fontSize = 13.sp)
                 }
                 Row(modifier = Modifier.weight(1f).horizontalScroll(scrollState).background(MaterialTheme.colorScheme.primaryContainer)) {
-                    processNames.forEach { process ->
-                        Box(modifier = Modifier.width(64.dp).height(28.dp), contentAlignment = Alignment.Center) { Text(process, fontWeight = FontWeight.Bold, fontSize = 12.sp, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                    processNames.forEachIndexed { index, process ->
+                        Box(modifier = Modifier.width(64.dp).height(28.dp).combinedClickable(
+                            onClick = {},
+                            onLongClick = {
+                                selectedProcess = process
+                                showProcessMenu.value = true
+                            }
+                        ), contentAlignment = Alignment.Center) {
+                            Text(process, fontWeight = FontWeight.Bold, fontSize = 12.sp, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
                     }
                 }
             }
@@ -1375,8 +1408,110 @@ fun SkillScoreTab(viewModel: MainViewModel) {
         }
     }
 
+    // 评分编辑对话框
     if (showEditDialog.value && editingPerson != null) {
         AlertDialog(onDismissRequest = { showEditDialog.value = false }, title = { Text("编辑评分") }, text = { Column { Text("${editingPerson!!.name} - $editingProcess"); Spacer(Modifier.height(8.dp)); OutlinedTextField(value = currentScore, onValueChange = { if (it.all { c -> c.isDigit() } && it.length <= 3) currentScore = it }, label = { Text("评分") }, singleLine = true) } }, confirmButton = { TextButton(onClick = { viewModel.setSkillScore(editingPerson!!.id, editingProcess, currentScore.toIntOrNull() ?: 0); scoreMap = scoreMap.toMutableMap().apply { put(Pair(editingPerson!!.id, editingProcess), currentScore.toIntOrNull() ?: 0) }; showEditDialog.value = false }) { Text("保存") } }, dismissButton = { TextButton(onClick = { showEditDialog.value = false }) { Text("取消") } })
+    }
+
+    // 长按工序弹出菜单
+    if (showProcessMenu.value) {
+        AlertDialog(
+            onDismissRequest = { showProcessMenu.value = false },
+            title = { Text(selectedProcess) },
+            text = {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    TextButton(modifier = Modifier.fillMaxWidth(), onClick = {
+                        showProcessMenu.value = false
+                        renameValue = selectedProcess
+                        showRenameDialog.value = true
+                    }) { Text("编辑工序名", modifier = Modifier.fillMaxWidth()) }
+                    TextButton(modifier = Modifier.fillMaxWidth(), onClick = {
+                        showProcessMenu.value = false
+                        insertValue = ""
+                        insertPosition = 0
+                        showInsertDialog.value = true
+                    }) { Text("在左侧插入新工序", modifier = Modifier.fillMaxWidth()) }
+                    TextButton(modifier = Modifier.fillMaxWidth(), onClick = {
+                        showProcessMenu.value = false
+                        insertValue = ""
+                        insertPosition = 1
+                        showInsertDialog.value = true
+                    }) { Text("在右侧插入新工序", modifier = Modifier.fillMaxWidth()) }
+                    Divider()
+                    TextButton(modifier = Modifier.fillMaxWidth(), onClick = {
+                        showProcessMenu.value = false
+                        showDeleteConfirm.value = true
+                    }) { Text("删除工序", modifier = Modifier.fillMaxWidth(), color = Color(0xFFC62828)) }
+                }
+            },
+            confirmButton = {}
+        )
+    }
+
+    // 重命名工序对话框
+    if (showRenameDialog.value) {
+        AlertDialog(
+            onDismissRequest = { showRenameDialog.value = false },
+            title = { Text("编辑工序名") },
+            text = {
+                OutlinedTextField(
+                    value = renameValue,
+                    onValueChange = { renameValue = it },
+                    label = { Text("工序名") },
+                    singleLine = true
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    if (renameValue.isNotBlank() && renameValue != selectedProcess) {
+                        viewModel.renameScoreProcess(selectedProcess, renameValue)
+                    }
+                    showRenameDialog.value = false
+                }) { Text("保存") }
+            },
+            dismissButton = { TextButton(onClick = { showRenameDialog.value = false }) { Text("取消") } }
+        )
+    }
+
+    // 插入工序对话框
+    if (showInsertDialog.value) {
+        AlertDialog(
+            onDismissRequest = { showInsertDialog.value = false },
+            title = { Text(if (insertPosition == 0) "在${selectedProcess}左侧插入" else "在${selectedProcess}右侧插入") },
+            text = {
+                OutlinedTextField(
+                    value = insertValue,
+                    onValueChange = { insertValue = it },
+                    label = { Text("新工序名") },
+                    singleLine = true
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    if (insertValue.isNotBlank()) {
+                        viewModel.addScoreProcess(insertValue)
+                    }
+                    showInsertDialog.value = false
+                }) { Text("添加") }
+            },
+            dismissButton = { TextButton(onClick = { showInsertDialog.value = false }) { Text("取消") } }
+        )
+    }
+
+    // 删除确认对话框
+    if (showDeleteConfirm.value) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm.value = false },
+            title = { Text("确认删除") },
+            text = { Text("确定要删除工序「${selectedProcess}」吗？所有人员在该工序上的评分将被清除，此操作不可撤销。") },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.deleteScoreProcess(selectedProcess)
+                    showDeleteConfirm.value = false
+                }) { Text("删除", color = Color(0xFFC62828)) }
+            },
+            dismissButton = { TextButton(onClick = { showDeleteConfirm.value = false }) { Text("取消") } }
+        )
     }
 }
 

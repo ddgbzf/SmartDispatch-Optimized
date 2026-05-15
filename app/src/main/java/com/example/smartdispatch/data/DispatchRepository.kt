@@ -59,6 +59,17 @@ class DispatchRepository(
     suspend fun getFixedAssignments(): List<Assignment> = assignmentDao.getFixedOnce()
     suspend fun insertAssignments(assignments: List<Assignment>) = assignmentDao.insertAll(assignments)
 
+    // 工序评分管理
+    suspend fun deleteProcess(processName: String) = skillScoreDao.deleteByProcessName(processName)
+    suspend fun renameProcess(oldName: String, newName: String) = skillScoreDao.renameProcess(oldName, newName)
+    suspend fun processNameExists(processName: String) = skillScoreDao.processNameExists(processName) > 0
+    suspend fun getAllProcessNamesOnce() = skillScoreDao.getAllProcessNamesOnce()
+    suspend fun addProcessForAllPersons(processName: String, persons: List<Person>) {
+        for (person in persons) {
+            skillScoreDao.insert(SkillScore(personId = person.id, processName = processName, score = 0))
+        }
+    }
+
     // 固定单元格
     suspend fun saveFixedCells(colIndex: Int, cells: List<FixedCell>) {
         fixedCellDao.deleteByColumn(colIndex)
