@@ -147,10 +147,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun renameScoreProcess(oldName: String, newName: String) {
         viewModelScope.launch { repo.renameProcess(oldName, newName) }
     }
-    fun addScoreProcess(processName: String) {
+    fun addScoreProcess(processName: String, beforeProcess: String? = null) {
         viewModelScope.launch {
             val persons = repo.allPersons.first()
-            repo.addProcessForAllPersons(processName, persons)
+            repo.addProcessForAllPersons(processName, persons, beforeProcess)
         }
     }
 
@@ -553,14 +553,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         val productData = mutableMapOf<String, MutableList<Pair<String, String>>>() // productName -> [(person, process)]
                         for (a in result.assignments) {
                             if (a.assignedPerson != null) {
-                                // 去掉@数字后缀
                                 val cleanName = a.productName.replace(Regex("@\\d+$"), "")
                                 productData.getOrPut(cleanName) { mutableListOf() }
                                     .add(Pair(a.assignedPerson, a.processName))
                             }
                         }
                         
-                        val sortedProducts = products.sortedBy { it.name }.map { it.name }
+                        // 优先用products表的产品列表，如果为空则从排工结果提取
+                        val sortedProducts = if (products.isNotEmpty()) {
+                            products.sortedBy { it.name }.map { it.name }
+                        } else {
+                            productData.keys.sorted()
+                        }
                         val maxDataRows = productData.values.maxOfOrNull { it.size } ?: 0
                         
                         // 第1行：请假人员 + 产品名（每个产品跨2列）
@@ -1568,7 +1572,7 @@ fun SkillScoreTab(viewModel: MainViewModel) {
             confirmButton = {
                 TextButton(onClick = {
                     if (insertValue.isNotBlank()) {
-                        viewModel.addScoreProcess(insertValue)
+                        viewModel.addScoreProcess(insertValue, selectedProcess)
                     }
                     showInsertDialog.value = false
                 }) { Text("添加") }

@@ -64,9 +64,27 @@ class DispatchRepository(
     suspend fun renameProcess(oldName: String, newName: String) = skillScoreDao.renameProcess(oldName, newName)
     suspend fun processNameExists(processName: String) = skillScoreDao.processNameExists(processName) > 0
     suspend fun getAllProcessNamesOnce() = skillScoreDao.getAllProcessNamesOnce()
-    suspend fun addProcessForAllPersons(processName: String, persons: List<Person>) {
+    suspend fun addProcessForAllPersons(processName: String, persons: List<Person>, beforeProcess: String? = null) {
+        // 确定新工序的sortOrder
+        var newSortOrder = 0
+        if (beforeProcess != null) {
+            val targetOrder = skillScoreDao.getMinSortOrder(beforeProcess)
+            if (targetOrder != null) {
+                // 将 >= targetOrder 的记录全部+1，腾出位置
+                skillScoreDao.shiftSortOrder(targetOrder)
+                newSortOrder = targetOrder
+            } else {
+                // 目标工序不存在，放到最后
+                val maxOrder = skillScoreDao.getProcessOrders().maxOfOrNull { it.sortOrder } ?: -1
+                newSortOrder = maxOrder + 1
+            }
+        } else {
+            // 没有指定位置，放到最后
+            val maxOrder = skillScoreDao.getProcessOrders().maxOfOrNull { it.sortOrder } ?: -1
+            newSortOrder = maxOrder + 1
+        }
         for (person in persons) {
-            skillScoreDao.insert(SkillScore(personId = person.id, processName = processName, score = 0))
+            skillScoreDao.insert(SkillScore(personId = person.id, processName = processName, score = 0, sortOrder = newSortOrder))
         }
     }
 
