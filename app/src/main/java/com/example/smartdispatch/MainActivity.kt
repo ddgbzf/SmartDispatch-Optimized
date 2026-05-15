@@ -1388,7 +1388,20 @@ fun LeaveTab(viewModel: MainViewModel) {
                 Spacer(Modifier.width(64.dp))
             }
             Divider()
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
+            if (persons.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("暂无人员", color = Color(0xFF999999))
+                        Spacer(Modifier.height(8.dp))
+                        TextButton(onClick = { showAddDialog.value = true }) {
+                            Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("添加人员")
+                        }
+                    }
+                }
+            } else {
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
                 items(persons, key = { it.id }) { person ->
                     Row(
                         modifier = Modifier.fillMaxWidth().height(32.dp).padding(horizontal = 8.dp)
@@ -1413,12 +1426,8 @@ fun LeaveTab(viewModel: MainViewModel) {
                     Divider(modifier = Modifier.padding(horizontal = 8.dp))
                 }
             }
+            }
         }
-        FloatingActionButton(
-            onClick = { showAddDialog.value = true },
-            modifier = Modifier.padding(start = 0.dp, top = 0.dp, end = 24.dp, bottom = 24.dp).align(Alignment.BottomEnd).size(40.dp),
-            containerColor = MaterialTheme.colorScheme.primary
-        ) { Icon(Icons.Default.Add, "添加人员", modifier = Modifier.size(20.dp)) }
     }
 
     // 添加人员对话框
