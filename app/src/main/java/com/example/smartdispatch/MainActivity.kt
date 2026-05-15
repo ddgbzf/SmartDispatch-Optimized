@@ -550,34 +550,31 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     val result = _dispatchResult.value
                     if (result != null) {
                         // 按产品分组收集数据
-                        val productData = mutableMapOf<String, MutableList<Triple<String, String, Int>>>() // productName -> [(person, process, row)]
+                        val productData = mutableMapOf<String, MutableList<Pair<String, String>>>() // productName -> [(person, process)]
                         for (a in result.assignments) {
                             if (a.assignedPerson != null) {
                                 productData.getOrPut(a.productName) { mutableListOf() }
-                                    .add(Triple(a.assignedPerson, a.processName, a.rowIndex))
+                                    .add(Pair(a.assignedPerson, a.processName))
                             }
                         }
                         
                         val sortedProducts = productData.keys.sorted()
                         val maxDataRows = productData.values.maxOfOrNull { it.size } ?: 0
                         
-                        // 第1行：请假人员 + 产品名（每个产品跨3列）
+                        // 第1行：请假人员 + 产品名（每个产品跨2列）
                         val row1 = mainSheet.createRow(0)
                         row1.createCell(0).setCellValue("请假人员")
                         sortedProducts.forEachIndexed { idx, productName ->
-                            val startCol = idx * 3 + 1
-                            // 合并单元格显示产品名
-                            val cell = row1.createCell(startCol)
-                            cell.setCellValue(productName)
+                            val startCol = idx * 2 + 1
+                            row1.createCell(startCol).setCellValue(productName)
                         }
                         
-                        // 第2行：子表头（人员、产能、人数）
+                        // 第2行：子表头（人员、工序）
                         val row2 = mainSheet.createRow(1)
                         sortedProducts.forEachIndexed { idx, _ ->
-                            val startCol = idx * 3 + 1
+                            val startCol = idx * 2 + 1
                             row2.createCell(startCol).setCellValue("人员")
-                            row2.createCell(startCol + 1).setCellValue("产能")
-                            row2.createCell(startCol + 2).setCellValue("人数")
+                            row2.createCell(startCol + 1).setCellValue("工序")
                         }
                         
                         // 第3行起：请假人员 + 排工数据
@@ -594,14 +591,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             
                             // 各产品数据
                             sortedProducts.forEachIndexed { idx, productName ->
-                                val startCol = idx * 3 + 1
+                                val startCol = idx * 2 + 1
                                 val dataList = productData[productName] ?: emptyList()
                                 if (i < dataList.size) {
-                                    val (person, process, _) = dataList[i]
+                                    val (person, process) = dataList[i]
                                     dataRow.createCell(startCol).setCellValue(person)
                                     dataRow.createCell(startCol + 1).setCellValue(process)
-                                    // 人数列留空或显示1
-                                    dataRow.createCell(startCol + 2).setCellValue(1)
                                 }
                             }
                         }
