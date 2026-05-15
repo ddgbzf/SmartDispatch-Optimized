@@ -1359,7 +1359,6 @@ fun SkillScoreTab(viewModel: MainViewModel) {
     val showInsertDialog = remember { mutableStateOf(false) }
     val showDeleteConfirm = remember { mutableStateOf(false) }
     var selectedProcess by remember { mutableStateOf("") }
-    var insertPosition by remember { mutableStateOf(0) } // 0=左侧, 1=右侧
     var renameValue by remember { mutableStateOf("") }
     var insertValue by remember { mutableStateOf("") }
 
@@ -1428,15 +1427,8 @@ fun SkillScoreTab(viewModel: MainViewModel) {
                     TextButton(modifier = Modifier.fillMaxWidth(), onClick = {
                         showProcessMenu.value = false
                         insertValue = ""
-                        insertPosition = 0
                         showInsertDialog.value = true
-                    }) { Text("在左侧插入新工序", modifier = Modifier.fillMaxWidth()) }
-                    TextButton(modifier = Modifier.fillMaxWidth(), onClick = {
-                        showProcessMenu.value = false
-                        insertValue = ""
-                        insertPosition = 1
-                        showInsertDialog.value = true
-                    }) { Text("在右侧插入新工序", modifier = Modifier.fillMaxWidth()) }
+                    }) { Text("在此工序前插入新工序", modifier = Modifier.fillMaxWidth()) }
                     Divider()
                     TextButton(modifier = Modifier.fillMaxWidth(), onClick = {
                         showProcessMenu.value = false
@@ -1477,7 +1469,7 @@ fun SkillScoreTab(viewModel: MainViewModel) {
     if (showInsertDialog.value) {
         AlertDialog(
             onDismissRequest = { showInsertDialog.value = false },
-            title = { Text(if (insertPosition == 0) "在${selectedProcess}左侧插入" else "在${selectedProcess}右侧插入") },
+            title = { Text("在「${selectedProcess}」前插入新工序") },
             text = {
                 OutlinedTextField(
                     value = insertValue,

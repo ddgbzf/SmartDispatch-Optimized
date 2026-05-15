@@ -12,7 +12,7 @@ interface SkillScoreDao {
     @Query("SELECT * FROM skill_scores WHERE personId = :personId")
     fun getByPerson(personId: Int): Flow<List<SkillScore>>
 
-    @Query("SELECT DISTINCT processName FROM skill_scores ORDER BY MIN(id)")
+    @Query("SELECT DISTINCT processName FROM skill_scores ORDER BY id")
     fun getAllProcessNames(): Flow<List<String>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -34,7 +34,7 @@ interface SkillScoreDao {
     suspend fun find(personId: Int, processName: String): SkillScore?
 
     @Query("SELECT * FROM skill_scores WHERE personId = :personId ORDER BY id")
-    suspend fun getByPersonOnce(personId: Int): List<SkillScore>>
+    suspend fun getByPersonOnce(personId: Int): List<SkillScore>
 
     // 工序管理：删除某工序的所有评分
     @Query("DELETE FROM skill_scores WHERE processName = :processName")
@@ -49,6 +49,6 @@ interface SkillScoreDao {
     suspend fun processNameExists(processName: String): Int
 
     // 工序管理：获取所有工序名（非Flow版本）
-    @Query("SELECT DISTINCT processName FROM skill_scores ORDER BY MIN(id)")
+    @Query("SELECT DISTINCT processName FROM skill_scores ORDER BY id")
     suspend fun getAllProcessNamesOnce(): List<String>
 }
