@@ -549,16 +549,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     
                     val result = _dispatchResult.value
                     if (result != null) {
-                        // 按产品分组收集数据
+                        // 按产品分组收集数据（去掉@0/@1后缀）
                         val productData = mutableMapOf<String, MutableList<Pair<String, String>>>() // productName -> [(person, process)]
                         for (a in result.assignments) {
                             if (a.assignedPerson != null) {
-                                productData.getOrPut(a.productName) { mutableListOf() }
+                                // 去掉@数字后缀
+                                val cleanName = a.productName.replace(Regex("@\\d+$"), "")
+                                productData.getOrPut(cleanName) { mutableListOf() }
                                     .add(Pair(a.assignedPerson, a.processName))
                             }
                         }
                         
-                        val sortedProducts = productData.keys.sorted()
+                        val sortedProducts = products.sortedBy { it.name }.map { it.name }
                         val maxDataRows = productData.values.maxOfOrNull { it.size } ?: 0
                         
                         // 第1行：请假人员 + 产品名（每个产品跨2列）
@@ -566,7 +568,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         row1.createCell(0).setCellValue("请假人员")
                         sortedProducts.forEachIndexed { idx, productName ->
                             val startCol = idx * 2 + 1
-                            // 产品名写在第1列，第2列留空（视觉上跨2列）
                             row1.createCell(startCol).setCellValue(productName)
                         }
                         
@@ -574,7 +575,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         val row2 = mainSheet.createRow(1)
                         sortedProducts.forEachIndexed { idx, productName ->
                             val startCol = idx * 2 + 1
-                            // 从products表获取产能和人数
                             val product = products.find { it.name == productName }
                             row2.createCell(startCol).setCellValue(product?.capacity?.toString() ?: "")
                             row2.createCell(startCol + 1).setCellValue(product?.requiredPeople?.toString() ?: "")
@@ -598,7 +598,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                                 val dataList = productData[productName] ?: emptyList()
                                 if (i < dataList.size) {
                                     val (person, process) = dataList[i]
-                                    // 工序在第1列，人员在第2列
                                     dataRow.createCell(startCol).setCellValue(process)
                                     dataRow.createCell(startCol + 1).setCellValue(person)
                                 }
