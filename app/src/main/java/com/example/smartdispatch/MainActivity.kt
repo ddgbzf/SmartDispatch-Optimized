@@ -1895,7 +1895,7 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
                                 textStyle = androidx.compose.ui.text.TextStyle(fontSize = 10.sp, color = Color.Black, textAlign = androidx.compose.ui.text.style.TextAlign.Center),
                                 singleLine = true,
                                 cursorBrush = androidx.compose.ui.graphics.SolidColor(Color.Black),
-                                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.foundation.text.ImeAction.Done),
+                                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Done),
                                 keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = {
                                     if (leaveInput.isNotBlank()) {
                                         val target = persons.find { it.name.trim() == leaveInput.trim() }
