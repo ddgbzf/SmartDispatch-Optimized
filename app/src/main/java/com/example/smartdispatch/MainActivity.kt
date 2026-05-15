@@ -549,42 +549,59 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     
                     val result = _dispatchResult.value
                     if (result != null) {
-                        // 收集所有工序（从rowIndex=3开始就是工序名）
-                        val maxRow = result.assignments.maxOfOrNull { it.rowIndex } ?: 0
-                        
-                        // 按列收集每个产品的人员和工序
-                        val productColumns = mutableMapOf<Int, MutableMap<Int, Pair<String?, String>>>() // col -> (row -> (person, process))
+                        // 按产品分组收集数据
+                        val productData = mutableMapOf<String, MutableList<Triple<String, String, Int>>>() // productName -> [(person, process, row)]
                         for (a in result.assignments) {
-                            productColumns.getOrPut(a.columnIndex) { mutableMapOf() }[a.rowIndex] = Pair(a.assignedPerson, a.processName)
+                            if (a.assignedPerson != null) {
+                                productData.getOrPut(a.productName) { mutableListOf() }
+                                    .add(Triple(a.assignedPerson, a.processName, a.rowIndex))
+                            }
                         }
                         
-                        // 表头行（第1行）
-                        val headerRow = mainSheet.createRow(0)
-                        headerRow.createCell(0).setCellValue("请假人员")
-                        val sortedCols = productColumns.keys.sorted()
-                        sortedCols.forEachIndexed { idx, col ->
-                            val personCol = col
-                            val processCol = col + 1
-                            headerRow.createCell(personCol).setCellValue("人员")
-                            headerRow.createCell(processCol).setCellValue("工序")
+                        val sortedProducts = productData.keys.sorted()
+                        val maxDataRows = productData.values.maxOfOrNull { it.size } ?: 0
+                        
+                        // 第1行：请假人员 + 产品名（每个产品跨3列）
+                        val row1 = mainSheet.createRow(0)
+                        row1.createCell(0).setCellValue("请假人员")
+                        sortedProducts.forEachIndexed { idx, productName ->
+                            val startCol = idx * 3 + 1
+                            // 合并单元格显示产品名
+                            val cell = row1.createCell(startCol)
+                            cell.setCellValue(productName)
                         }
                         
-                        // 请假人员（第2行起，可能多行）
+                        // 第2行：子表头（人员、产能、人数）
+                        val row2 = mainSheet.createRow(1)
+                        sortedProducts.forEachIndexed { idx, _ ->
+                            val startCol = idx * 3 + 1
+                            row2.createCell(startCol).setCellValue("人员")
+                            row2.createCell(startCol + 1).setCellValue("产能")
+                            row2.createCell(startCol + 2).setCellValue("人数")
+                        }
+                        
+                        // 第3行起：请假人员 + 排工数据
                         val leavePersons = persons.filter { it.onLeave }
-                        leavePersons.forEachIndexed { idx, person ->
-                            mainSheet.createRow(idx + 1).createCell(0).setCellValue(person.name)
-                        }
+                        val totalRows = maxOf(leavePersons.size, maxDataRows)
                         
-                        // 排工数据（从第3行开始，对应rowIndex=3）
-                        val startExcelRow = 2 + leavePersons.size
-                        for (rowIdx in 3..maxRow) {
-                            val excelRow = startExcelRow + (rowIdx - 3)
-                            val row = mainSheet.getRow(excelRow) ?: mainSheet.createRow(excelRow)
-                            sortedCols.forEach { col ->
-                                val data = productColumns[col]?.get(rowIdx)
-                                if (data != null) {
-                                    row.createCell(col).setCellValue(data.first ?: "")
-                                    row.createCell(col + 1).setCellValue(data.second)
+                        for (i in 0 until totalRows) {
+                            val dataRow = mainSheet.createRow(i + 2)
+                            
+                            // A列：请假人员
+                            if (i < leavePersons.size) {
+                                dataRow.createCell(0).setCellValue(leavePersons[i].name)
+                            }
+                            
+                            // 各产品数据
+                            sortedProducts.forEachIndexed { idx, productName ->
+                                val startCol = idx * 3 + 1
+                                val dataList = productData[productName] ?: emptyList()
+                                if (i < dataList.size) {
+                                    val (person, process, _) = dataList[i]
+                                    dataRow.createCell(startCol).setCellValue(person)
+                                    dataRow.createCell(startCol + 1).setCellValue(process)
+                                    // 人数列留空或显示1
+                                    dataRow.createCell(startCol + 2).setCellValue(1)
                                 }
                             }
                         }
