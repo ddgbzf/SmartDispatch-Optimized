@@ -1972,7 +1972,7 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
                         val p = leavePeople.getOrNull(0)
                         if (p != null) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(p.name, fontSize = (fontSize.value - 2).sp, fontWeight = FontWeight.Medium, color = Color(0xFFC62828), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                                Text(p.name, fontSize = fontSize, fontWeight = FontWeight.Medium, color = Color(0xFFC62828), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                                 Text("×", fontSize = 12.sp, color = Color(0xFFC62828), modifier = Modifier.clickable { viewModel.toggleLeave(p) })
                             }
                         } else Text("")
@@ -2009,7 +2009,7 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
                                 val person = leavePeople.getOrNull(rowIndex + 1)
                                 if (person != null) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(person.name, fontSize = (fontSize.value - 2).sp, fontWeight = FontWeight.Medium, color = Color(0xFFC62828), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                                        Text(person.name, fontSize = fontSize, fontWeight = FontWeight.Medium, color = Color(0xFFC62828), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                                         Text("×", fontSize = 12.sp, color = Color(0xFFC62828), modifier = Modifier.clickable { viewModel.toggleLeave(person) })
                                     }
                                 }
