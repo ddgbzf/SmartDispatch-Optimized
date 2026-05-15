@@ -35,4 +35,7 @@ interface PersonDao {
 
     @Query("SELECT * FROM persons WHERE id = :id")
     suspend fun findById(id: Int): Person?
+
+    @Query("UPDATE persons SET insertOrder = insertOrder + 1 WHERE insertOrder >= :targetOrder")
+    suspend fun shiftInsertOrder(targetOrder: Int)
 }
