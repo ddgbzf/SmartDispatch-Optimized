@@ -997,24 +997,25 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                                                             dragAccumY = 0f
                                                         },
                                                         onDragEnd = {
-                                                            if (dragFromIndex >= 0) {
-                                                                // 按目标位置中心点判断：行高27，偏移超过±13.5才算移动到下一位置
-                                                                val rowHeight = 27f
-                                                                val moveSteps = (dragAccumY / rowHeight).roundToInt()
-                                                                if (moveSteps != 0) {
-                                                                    val newIndex = (dragFromIndex + moveSteps)
-                                                                        .coerceIn(0, editingProcesses.size - 1)
-                                                                    if (newIndex != dragFromIndex) {
-                                                                        moveProcess(dragFromIndex, newIndex)
-                                                                    }
-                                                                }
-                                                            }
                                                             dragFromIndex = -1
                                                             dragAccumY = 0f
                                                         },
                                                         onDrag = { change: PointerInputChange, dragAmount: Offset ->
                                                             change.consume()
                                                             dragAccumY += dragAmount.y
+                                                            // 实时交换：超过半行高度就移动到目标位置
+                                                            val rowHeight = 27f
+                                                            val moveSteps = (dragAccumY / rowHeight).toInt()
+                                                            if (moveSteps != 0 && dragFromIndex >= 0) {
+                                                                val newIndex = (dragFromIndex + moveSteps)
+                                                                    .coerceIn(0, editingProcesses.size - 1)
+                                                                if (newIndex != dragFromIndex) {
+                                                                    moveProcess(dragFromIndex, newIndex)
+                                                                    // 交换后调整偏移量，保持视觉连续性
+                                                                    dragAccumY -= moveSteps * rowHeight
+                                                                    dragFromIndex = newIndex
+                                                                }
+                                                            }
                                                         }
                                                     )
                                                 },
