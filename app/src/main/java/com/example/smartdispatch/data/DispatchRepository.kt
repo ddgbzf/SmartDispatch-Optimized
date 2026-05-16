@@ -73,7 +73,7 @@ class DispatchRepository(
     suspend fun addProcessForAllPersons(processName: String, persons: List<Person>, beforeProcess: String? = null) {
         // 确定新工序的sortOrder
         var newSortOrder = 0
-        if (beforeProcess != null) {
+        if (beforeProcess != null && beforeProcess.isNotBlank()) {
             val targetOrder = skillScoreDao.getMinSortOrder(beforeProcess)
             if (targetOrder != null) {
                 // 将 >= targetOrder 的记录全部+1，腾出位置

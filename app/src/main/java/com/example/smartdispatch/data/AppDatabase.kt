@@ -14,7 +14,7 @@ import kotlinx.coroutines.launch
 
 @Database(
     entities = [Person::class, SkillScore::class, Product::class, ProductProcess::class, Assignment::class, FixedCell::class],
-    version = 12,
+    version = 13,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -29,10 +29,20 @@ abstract class AppDatabase : RoomDatabase() {
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
-        // version 10 → 11: skill_scores 添加 sortOrder 列
+        // version 10 → 11: skill_scores 添加 sortOrder 列，并为已有数据设置顺序
         private val MIGRATION_10_11 = object : Migration(10, 11) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE skill_scores ADD COLUMN sortOrder INTEGER NOT NULL DEFAULT 0")
+                // 为已有数据按工序首次出现的id顺序设置sortOrder
+                // 获取所有不重复的工序名（按首次出现的id排序）
+                val cursor = db.query("SELECT DISTINCT processName FROM skill_scores ORDER BY MIN(id)")
+                var order = 0
+                while (cursor.moveToNext()) {
+                    val processName = cursor.getString(0)
+                    db.execSQL("UPDATE skill_scores SET sortOrder = ? WHERE processName = ?", arrayOf(order, processName))
+                    order++
+                }
+                cursor.close()
             }
         }
 
@@ -40,6 +50,21 @@ abstract class AppDatabase : RoomDatabase() {
         private val MIGRATION_11_12 = object : Migration(11, 12) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE persons ADD COLUMN jobType TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
+        // version 12 → 13: 修复已有工序的sortOrder（按首次出现的id排序）
+        private val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // 获取所有不重复的工序名（按首次出现的id排序）
+                val cursor = db.query("SELECT DISTINCT processName FROM skill_scores ORDER BY MIN(id)")
+                var order = 0
+                while (cursor.moveToNext()) {
+                    val processName = cursor.getString(0)
+                    db.execSQL("UPDATE skill_scores SET sortOrder = ? WHERE processName = ?", arrayOf(order, processName))
+                    order++
+                }
+                cursor.close()
             }
         }
 
@@ -145,7 +170,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "smart_dispatch.db"
                 )
-                    .addMigrations(MIGRATION_10_11, MIGRATION_11_12)
+                    .addMigrations(MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13)
                     .addCallback(prepopulateCallback)
                     .fallbackToDestructiveMigration()
                     .build()
