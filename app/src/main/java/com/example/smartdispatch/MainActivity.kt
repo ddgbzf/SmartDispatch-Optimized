@@ -990,7 +990,7 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                                             modifier = Modifier
                                                 .width(32.dp)
                                                 .height(24.dp)
-                                                .pointerInput(dragFromId) {
+                                                .pointerInput(process.id) {
                                                     detectDragGesturesAfterLongPress(
                                                         onDragStart = {
                                                             dragFromId = editingProcesses[index].id
