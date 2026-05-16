@@ -84,14 +84,14 @@ abstract class AppDatabase : RoomDatabase() {
                     val personCount = getCount(personDao)
                     if (personCount > 0) return@launch
 
-                    // 插入6个人员
+                    // 插入6个人员（使用大间隔insertOrder，方便中间插入）
                     val persons = listOf(
-                        Person(name = "张三", employeeId = "001", jobType = "焊工", insertOrder = 1),
-                        Person(name = "李四", employeeId = "002", jobType = "折边工", insertOrder = 2),
-                        Person(name = "王五", employeeId = "003", jobType = "打磨工", insertOrder = 3),
-                        Person(name = "赵六", employeeId = "004", jobType = "组装工", insertOrder = 4),
-                        Person(name = "陈七", employeeId = "005", jobType = "检验员", insertOrder = 5),
-                        Person(name = "刘八", employeeId = "006", jobType = "搬运工", insertOrder = 6)
+                        Person(name = "张三", employeeId = "001", jobType = "焊工", insertOrder = 100),
+                        Person(name = "李四", employeeId = "002", jobType = "折边工", insertOrder = 200),
+                        Person(name = "王五", employeeId = "003", jobType = "打磨工", insertOrder = 300),
+                        Person(name = "赵六", employeeId = "004", jobType = "组装工", insertOrder = 400),
+                        Person(name = "陈七", employeeId = "005", jobType = "检验员", insertOrder = 500),
+                        Person(name = "刘八", employeeId = "006", jobType = "搬运工", insertOrder = 600)
                     )
                     personDao.insertAll(persons)
 

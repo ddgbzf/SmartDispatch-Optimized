@@ -25,9 +25,27 @@ class DispatchRepository(
     suspend fun deletePerson(person: Person) = personDao.delete(person)
 
     suspend fun insertPersonBefore(beforePerson: Person, name: String, employeeId: String = "", jobType: String = "") {
-        // 将 insertOrder >= beforePerson.insertOrder 的记录+1，腾出位置
-        personDao.shiftInsertOrder(beforePerson.insertOrder)
-        personDao.insert(Person(name = name, employeeId = employeeId, jobType = jobType, insertOrder = beforePerson.insertOrder))
+        // 找到beforePerson前面的人，计算中间insertOrder
+        val allPersons = personDao.getAllOnce()
+        val beforeIndex = allPersons.indexOfFirst { it.id == beforePerson.id }
+        val prevInsertOrder = if (beforeIndex > 0) allPersons[beforeIndex - 1].insertOrder else 0
+        val newInsertOrder = (prevInsertOrder + beforePerson.insertOrder) / 2
+        
+        // 如果中间没有空间（差值<=1），则需要重新分配所有insertOrder
+        if (newInsertOrder <= prevInsertOrder || newInsertOrder >= beforePerson.insertOrder) {
+            // 重新分配：按当前顺序，间隔100
+            allPersons.forEachIndexed { index, p ->
+                personDao.update(p.copy(insertOrder = (index + 1) * 100))
+            }
+            // 重新计算新位置
+            val newBeforeIndex = allPersons.indexOfFirst { it.id == beforePerson.id }
+            val newPrevOrder = if (newBeforeIndex > 0) allPersons[newBeforeIndex - 1].insertOrder else 0
+            val newBeforeOrder = allPersons[newBeforeIndex].insertOrder
+            val finalInsertOrder = (newPrevOrder + newBeforeOrder) / 2
+            personDao.insert(Person(name = name, employeeId = employeeId, jobType = jobType, insertOrder = finalInsertOrder))
+        } else {
+            personDao.insert(Person(name = name, employeeId = employeeId, jobType = jobType, insertOrder = newInsertOrder))
+        }
     }
 
     suspend fun setSkillScore(personId: Int, processName: String, score: Int) {
