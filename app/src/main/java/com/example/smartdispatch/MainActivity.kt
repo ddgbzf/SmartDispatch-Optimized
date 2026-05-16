@@ -935,9 +935,9 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                             modifier = Modifier.fillMaxSize(),
                             verticalArrangement = Arrangement.spacedBy(1.dp)
                         ) {
-                            items(editingProcesses.size, key = { it }) { index ->
+                            items(editingProcesses.size, key = { editingProcesses[it].id }) { index ->
                                 val process = editingProcesses[index]
-                                var editName by remember { mutableStateOf(process.processName) }
+                                var editName by remember(process.id) { mutableStateOf(process.processName) }
                                 val isDragging = dragFromIndex == index
                                 // 拖动时置顶显示
                                 Box(
