@@ -829,6 +829,9 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
     var editingProcesses by remember { mutableStateOf<List<ProductProcess>>(emptyList()) }
     var originalProcesses by remember { mutableStateOf<List<ProductProcess>>(emptyList()) }
     var newProcessName by remember { mutableStateOf("") }
+    // 拖动状态提升到外层，避免重组时丢失
+    var dragFromIndex by remember { mutableStateOf(-1) }
+    var dragAccumY by remember { mutableStateOf(0f) }
     
     // 历史记录（用于撤销）
     var history by remember { mutableStateOf<List<Triple<String, String, List<ProductProcess>>>>(emptyList()) }
@@ -889,20 +892,20 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("编辑工序流程", fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                if (history.isNotEmpty()) {
-                    TextButton(onClick = { undo() }) {
-                        Icon(Icons.Default.Undo, null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text("撤销", fontSize = 12.sp)
-                    }
-                }
-            }
-        },
+        title = null,
         text = {
             Column(modifier = Modifier.fillMaxWidth().height(500.dp), verticalArrangement = Arrangement.spacedBy(0.dp)) {
+                // 标题行（放在text内部，减少空白）
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("编辑工序流程", fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    if (history.isNotEmpty()) {
+                        TextButton(onClick = { undo() }) {
+                            Icon(Icons.Default.Undo, null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("撤销", fontSize = 12.sp)
+                        }
+                    }
+                }
                 if (editingProduct != null) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.height(32.dp)) {
                         IconButton(onClick = { editingProduct = null }, modifier = Modifier.size(28.dp)) { Icon(Icons.Default.ArrowBack, null, modifier = Modifier.size(16.dp)) }
@@ -927,9 +930,6 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                         )
                     }
                     Text("工序列表（长按手柄拖动）:", fontSize = 11.sp, color = Color(0xFF666666))
-                    // 记录累计拖动偏移，用于计算目标位置
-                    var dragAccumY by remember { mutableStateOf(0f) }
-                    var dragFromIndex by remember { mutableStateOf(-1) }
                     Box(modifier = Modifier.fillMaxSize().weight(1f)) {
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
@@ -1005,7 +1005,6 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                                                                     val newIndex = (dragFromIndex + moveSteps)
                                                                         .coerceIn(0, editingProcesses.size - 1)
                                                                     if (newIndex != dragFromIndex) {
-                                                                        saveHistory()
                                                                         moveProcess(dragFromIndex, newIndex)
                                                                     }
                                                                 }
