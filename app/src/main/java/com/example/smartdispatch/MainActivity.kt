@@ -1890,38 +1890,7 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
                 // 第一行：请假人员标题 + 输入框（两行显示）
                 Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState).background(Color(0xFF90CAF9))) {
                     Box(modifier = Modifier.width(60.dp).height(rowHeight * 2).background(Color.White, RoundedCornerShape(2.dp)).border(0.5.dp, Color(0xFFE0E0E0)).padding(1.dp), contentAlignment = Alignment.TopCenter) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxSize()) {
-                            Text("请假\n人员", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color.Black, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-                            Spacer(Modifier.weight(1f))
-                            // 输入框添加请假人员
-                            var leaveInput by remember { mutableStateOf("") }
-                            BasicTextField(
-                                value = leaveInput,
-                                onValueChange = { leaveInput = it },
-                                modifier = Modifier.width(56.dp).height(18.dp).background(Color(0xFFFFF8E1), RoundedCornerShape(2.dp)).border(0.5.dp, Color(0xFFE0E0E0)),
-                                textStyle = androidx.compose.ui.text.TextStyle(fontSize = 10.sp, color = Color.Black, textAlign = androidx.compose.ui.text.style.TextAlign.Center),
-                                singleLine = true,
-                                cursorBrush = androidx.compose.ui.graphics.SolidColor(Color.Black),
-                                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Done),
-                                keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = {
-                                    if (leaveInput.isNotBlank()) {
-                                        val target = persons.find { it.name.trim() == leaveInput.trim() }
-                                        if (target != null && !target.onLeave) {
-                                            viewModel.toggleLeave(target)
-                                        }
-                                        leaveInput = ""
-                                    }
-                                }),
-                                decorationBox = { innerTextField ->
-                                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                        if (leaveInput.isEmpty()) {
-                                            Text("+", fontSize = 10.sp, color = Color(0xFFAAAAAA))
-                                        }
-                                        innerTextField()
-                                    }
-                                }
-                            )
-                        }
+                        Text("请假\n人员", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color.Black, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                     }
                     inputNames.forEachIndexed { index, name ->
                         Box(modifier = Modifier.width(productWidth).height(rowHeight * 2).padding(1.dp)) {
@@ -1978,11 +1947,33 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
                     Box(modifier = Modifier.width(60.dp).height(rowHeight).border(0.5.dp, Color(0xFFE0E0E0)).background(Color(0xFFFFCDD2)), contentAlignment = Alignment.Center) {
                         val p = leavePeople.getOrNull(0)
                         if (p != null) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(p.name, fontSize = fontSize, fontWeight = FontWeight.Medium, color = Color(0xFFC62828), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                                Text("×", fontSize = 12.sp, color = Color(0xFFC62828), modifier = Modifier.clickable { viewModel.toggleLeave(p) })
-                            }
-                        } else Text("")
+                            Text(p.name, fontSize = fontSize, fontWeight = FontWeight.Medium, color = Color(0xFFC62828), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        } else {
+                            // 空单元格，可输入添加请假人员
+                            var leaveInput0 by remember { mutableStateOf("") }
+                            BasicTextField(
+                                value = leaveInput0,
+                                onValueChange = { leaveInput0 = it },
+                                modifier = Modifier.fillMaxSize().padding(2.dp),
+                                textStyle = androidx.compose.ui.text.TextStyle(fontSize = fontSize, color = Color(0xFFC62828), textAlign = androidx.compose.ui.text.style.TextAlign.Center),
+                                singleLine = true,
+                                cursorBrush = androidx.compose.ui.graphics.SolidColor(Color(0xFFC62828)),
+                                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Done),
+                                keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = {
+                                    if (leaveInput0.isNotBlank()) {
+                                        val target = persons.find { it.name.trim() == leaveInput0.trim() }
+                                        if (target != null && !target.onLeave) viewModel.toggleLeave(target)
+                                        leaveInput0 = ""
+                                    }
+                                }),
+                                decorationBox = { innerTextField ->
+                                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                        if (leaveInput0.isEmpty()) Text("", fontSize = fontSize)
+                                        innerTextField()
+                                    }
+                                }
+                            )
+                        }
                     }
                     inputNames.forEachIndexed { index, name ->
                         val product = if (name.isNotBlank()) products.find { it.name.equals(name.trim(), ignoreCase = true) } else null
@@ -2015,10 +2006,32 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
                             Box(modifier = Modifier.width(60.dp).height(rowHeight).border(0.5.dp, Color(0xFFE0E0E0)).background(Color(0xFFFFCDD2)), contentAlignment = Alignment.Center) {
                                 val person = leavePeople.getOrNull(rowIndex + 1)
                                 if (person != null) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(person.name, fontSize = fontSize, fontWeight = FontWeight.Medium, color = Color(0xFFC62828), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                                        Text("×", fontSize = 12.sp, color = Color(0xFFC62828), modifier = Modifier.clickable { viewModel.toggleLeave(person) })
-                                    }
+                                    Text(person.name, fontSize = fontSize, fontWeight = FontWeight.Medium, color = Color(0xFFC62828), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                } else {
+                                    // 空单元格，可输入添加请假人员
+                                    var leaveInputN by remember { mutableStateOf("") }
+                                    BasicTextField(
+                                        value = leaveInputN,
+                                        onValueChange = { leaveInputN = it },
+                                        modifier = Modifier.fillMaxSize().padding(2.dp),
+                                        textStyle = androidx.compose.ui.text.TextStyle(fontSize = fontSize, color = Color(0xFFC62828), textAlign = androidx.compose.ui.text.style.TextAlign.Center),
+                                        singleLine = true,
+                                        cursorBrush = androidx.compose.ui.graphics.SolidColor(Color(0xFFC62828)),
+                                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Done),
+                                        keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = {
+                                            if (leaveInputN.isNotBlank()) {
+                                                val target = persons.find { it.name.trim() == leaveInputN.trim() }
+                                                if (target != null && !target.onLeave) viewModel.toggleLeave(target)
+                                                leaveInputN = ""
+                                            }
+                                        }),
+                                        decorationBox = { innerTextField ->
+                                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                                if (leaveInputN.isEmpty()) Text("", fontSize = fontSize)
+                                                innerTextField()
+                                            }
+                                        }
+                                    )
                                 }
                             }
                             inputNames.forEachIndexed { index, name ->
