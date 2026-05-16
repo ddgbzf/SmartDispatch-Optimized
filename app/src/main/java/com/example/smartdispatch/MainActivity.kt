@@ -538,7 +538,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     processHeader.createCell(0).setCellValue("产品")
                     processHeader.createCell(1).setCellValue("产能")
                     processHeader.createCell(2).setCellValue("人数")
-                    (0..9).forEach { processHeader.createCell(3 + it).setCellValue("工序${it + 1}") }
+                    val maxProcessCount = products.maxOfOrNull { r.getProcessesOnce(it.id).size } ?: 0
+                    (0 until maxProcessCount.coerceAtLeast(22)).forEach { processHeader.createCell(3 + it).setCellValue("工序${it + 1}") }
                     
                     // 数据行
                     products.forEachIndexed { rowIndex, product ->
