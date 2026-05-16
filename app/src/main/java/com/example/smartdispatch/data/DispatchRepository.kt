@@ -89,22 +89,41 @@ class DispatchRepository(
     suspend fun processNameExists(processName: String) = skillScoreDao.processNameExists(processName) > 0
     suspend fun getAllProcessNamesOnce() = skillScoreDao.getAllProcessNamesOnce()
     suspend fun addProcessForAllPersons(processName: String, persons: List<Person>, beforeProcess: String? = null) {
-        // 确定新工序的sortOrder
+        // 获取所有工序及其sortOrder（按当前顺序）
+        val orders = skillScoreDao.getProcessOrders()
+
+        // 确定新工序的sortOrder（使用中间值算法，与insertPersonBefore一致）
         var newSortOrder = 0
         if (beforeProcess != null && beforeProcess.isNotBlank()) {
-            val targetOrder = skillScoreDao.getMinSortOrder(beforeProcess)
-            if (targetOrder != null) {
-                // 将 >= targetOrder 的记录全部+1，腾出位置
-                skillScoreDao.shiftSortOrder(targetOrder)
-                newSortOrder = targetOrder
+            val targetIndex = orders.indexOfFirst { it.processName == beforeProcess }
+            if (targetIndex >= 0) {
+                val targetOrder = orders[targetIndex].sortOrder
+                val prevOrder = if (targetIndex > 0) orders[targetIndex - 1].sortOrder else 0
+                val midOrder = (prevOrder + targetOrder) / 2
+
+                if (midOrder > prevOrder && midOrder < targetOrder) {
+                    // 中间有空间，直接使用中间值
+                    newSortOrder = midOrder
+                } else {
+                    // 中间没有空间，重新分配所有工序的sortOrder（间隔100）
+                    orders.forEachIndexed { index, po ->
+                        skillScoreDao.updateProcessSortOrder(po.processName, (index + 1) * 100)
+                    }
+                    // 重新获取并计算中间值
+                    val newOrders = skillScoreDao.getProcessOrders()
+                    val newTargetIndex = newOrders.indexOfFirst { it.processName == beforeProcess }
+                    val newTargetOrder = newOrders[newTargetIndex].sortOrder
+                    val newPrevOrder = if (newTargetIndex > 0) newOrders[newTargetIndex - 1].sortOrder else 0
+                    newSortOrder = (newPrevOrder + newTargetOrder) / 2
+                }
             } else {
                 // 目标工序不存在，放到最后
-                val maxOrder = skillScoreDao.getProcessOrders().maxOfOrNull { it.sortOrder } ?: -1
+                val maxOrder = orders.maxOfOrNull { it.sortOrder } ?: -1
                 newSortOrder = maxOrder + 1
             }
         } else {
             // 没有指定位置，放到最后
-            val maxOrder = skillScoreDao.getProcessOrders().maxOfOrNull { it.sortOrder } ?: -1
+            val maxOrder = orders.maxOfOrNull { it.sortOrder } ?: -1
             newSortOrder = maxOrder + 1
         }
         for (person in persons) {
