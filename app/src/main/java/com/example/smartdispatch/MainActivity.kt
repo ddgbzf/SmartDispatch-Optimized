@@ -830,7 +830,7 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
     var originalProcesses by remember { mutableStateOf<List<ProductProcess>>(emptyList()) }
     var newProcessName by remember { mutableStateOf("") }
     // 拖动状态提升到外层，避免重组时丢失
-    var dragFromIndex by remember { mutableStateOf(-1) }
+    var dragFromId by remember { mutableStateOf(-1) }
     var dragAccumY by remember { mutableStateOf(0f) }
     
     // 历史记录（用于撤销）
@@ -938,7 +938,7 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                             items(editingProcesses.size, key = { editingProcesses[it].id }) { index ->
                                 val process = editingProcesses[index]
                                 var editName by remember(process.id) { mutableStateOf(process.processName) }
-                                val isDragging = dragFromIndex == index
+                                val isDragging = dragFromId == editingProcesses[index].id
                                 // 拖动时置顶显示
                                 Box(
                                     modifier = Modifier
@@ -989,31 +989,31 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                                         Box(
                                             modifier = Modifier
                                                 .width(32.dp)
-                                                .height(26.dp)
-                                                .pointerInput(Unit) {
+                                                .height(24.dp)
+                                                .pointerInput(dragFromId) {
                                                     detectDragGesturesAfterLongPress(
                                                         onDragStart = {
-                                                            dragFromIndex = index
+                                                            dragFromId = editingProcesses[index].id
                                                             dragAccumY = 0f
                                                         },
                                                         onDragEnd = {
-                                                            dragFromIndex = -1
+                                                            dragFromId = -1
                                                             dragAccumY = 0f
                                                         },
                                                         onDrag = { change: PointerInputChange, dragAmount: Offset ->
                                                             change.consume()
                                                             dragAccumY += dragAmount.y
-                                                            // 实时交换：超过半行高度就移动到目标位置
-                                                            val rowHeight = 27f
+                                                            val rowHeight = 25f
                                                             val moveSteps = (dragAccumY / rowHeight).toInt()
-                                                            if (moveSteps != 0 && dragFromIndex >= 0) {
-                                                                val newIndex = (dragFromIndex + moveSteps)
-                                                                    .coerceIn(0, editingProcesses.size - 1)
-                                                                if (newIndex != dragFromIndex) {
-                                                                    moveProcess(dragFromIndex, newIndex)
-                                                                    // 交换后调整偏移量，保持视觉连续性
-                                                                    dragAccumY -= moveSteps * rowHeight
-                                                                    dragFromIndex = newIndex
+                                                            if (moveSteps != 0 && dragFromId > 0) {
+                                                                val currentIdx = editingProcesses.indexOfFirst { it.id == dragFromId }
+                                                                if (currentIdx >= 0) {
+                                                                    val newIndex = (currentIdx + moveSteps)
+                                                                        .coerceIn(0, editingProcesses.size - 1)
+                                                                    if (newIndex != currentIdx) {
+                                                                        moveProcess(currentIdx, newIndex)
+                                                                        dragAccumY -= moveSteps * rowHeight
+                                                                    }
                                                                 }
                                                             }
                                                         }
@@ -1445,22 +1445,22 @@ fun SkillScoreTab(viewModel: MainViewModel) {
         Column(modifier = Modifier.fillMaxSize()) {
             // 固定左上角"工号"+"姓名"单元格 + 可滚动的工序表头
             Row(modifier = Modifier.fillMaxWidth()) {
-                Box(modifier = Modifier.width(56.dp).height(28.dp).background(MaterialTheme.colorScheme.primaryContainer), contentAlignment = Alignment.Center) {
-                    Text("工号", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                Box(modifier = Modifier.width(60.dp).height(24.dp).background(MaterialTheme.colorScheme.primaryContainer), contentAlignment = Alignment.Center) {
+                    Text("工号", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                 }
-                Box(modifier = Modifier.width(60.dp).height(28.dp).background(MaterialTheme.colorScheme.primaryContainer), contentAlignment = Alignment.Center) {
-                    Text("姓名", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                Box(modifier = Modifier.width(60.dp).height(24.dp).background(MaterialTheme.colorScheme.primaryContainer), contentAlignment = Alignment.Center) {
+                    Text("姓名", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                 }
                 Row(modifier = Modifier.weight(1f).horizontalScroll(scrollState).background(MaterialTheme.colorScheme.primaryContainer)) {
                     processNames.forEachIndexed { index, process ->
-                        Box(modifier = Modifier.width(64.dp).height(28.dp).combinedClickable(
+                        Box(modifier = Modifier.width(64.dp).height(24.dp).combinedClickable(
                             onClick = {},
                             onLongClick = {
                                 selectedProcess = process
                                 showProcessMenu.value = true
                             }
                         ), contentAlignment = Alignment.Center) {
-                            Text(process, fontWeight = FontWeight.Bold, fontSize = 12.sp, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(process, fontWeight = FontWeight.Bold, fontSize = 14.sp, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                     }
                 }
@@ -1470,21 +1470,21 @@ fun SkillScoreTab(viewModel: MainViewModel) {
             LazyColumn(modifier = Modifier.fillMaxSize()) {
                 items(persons, key = { it.id }) { person ->
                     Row(modifier = Modifier.fillMaxWidth()) {
-                        Box(modifier = Modifier.width(56.dp).height(28.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
-                            Text(person.employeeId, fontSize = 11.sp, color = Color(0xFF666666), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Box(modifier = Modifier.width(60.dp).height(24.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
+                            Text(person.employeeId, fontSize = 14.sp, color = Color.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
-                        Box(modifier = Modifier.width(60.dp).height(28.dp).border(0.5.dp, Color(0xFFE0E0E0)).combinedClickable(
+                        Box(modifier = Modifier.width(60.dp).height(24.dp).border(0.5.dp, Color(0xFFE0E0E0)).combinedClickable(
                             onClick = {},
                             onLongClick = {
                                 selectedPerson = person
                                 showPersonMenu.value = true
                             }
-                        ), contentAlignment = Alignment.Center) { Text(person.name, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                        ), contentAlignment = Alignment.Center) { Text(person.name, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                         Row(modifier = Modifier.weight(1f).horizontalScroll(scrollState)) {
                             processNames.forEach { process ->
                                 val score = scoreMap[Pair(person.id, process)] ?: 0
                                 val bgColor = when { score >= 7 -> Color(0xFFE8F5E9); score >= 4 -> Color(0xFFFFFFF3); score > 0 -> Color(0xFFFFF3E0); else -> Color(0xFFFAFAFA) }
-                                Box(modifier = Modifier.width(64.dp).height(28.dp).background(bgColor).border(0.5.dp, Color(0xFFE0E0E0)).clickable { editingPerson = person; editingProcess = process; currentScore = score.toString(); showEditDialog.value = true }, contentAlignment = Alignment.Center) {
+                                Box(modifier = Modifier.width(64.dp).height(24.dp).background(bgColor).border(0.5.dp, Color(0xFFE0E0E0)).clickable { editingPerson = person; editingProcess = process; currentScore = score.toString(); showEditDialog.value = true }, contentAlignment = Alignment.Center) {
                                     Text(if (score > 0) score.toString() else "", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = if (score >= 7) Color(0xFF2E7D32) else if (score > 0) Color(0xFFF57F17) else Color(0xFFBDBDBD))
                                 }
                             }
@@ -1713,14 +1713,14 @@ fun ProcessFlowTab(viewModel: MainViewModel) {
             Column(modifier = Modifier.fillMaxSize()) {
                 // 固定左上角"型号名称"单元格 + 可滚动的表头
                 Row(modifier = Modifier.fillMaxWidth()) {
-                    Box(modifier = Modifier.width(120.dp).height(28.dp).background(MaterialTheme.colorScheme.primaryContainer), contentAlignment = Alignment.Center) { Text("型号名称", fontWeight = FontWeight.Bold, fontSize = 13.sp) }
+                    Box(modifier = Modifier.width(120.dp).height(24.dp).background(MaterialTheme.colorScheme.primaryContainer), contentAlignment = Alignment.Center) { Text("型号名称", fontWeight = FontWeight.Bold, fontSize = 14.sp) }
                     Row(modifier = Modifier.weight(1f).horizontalScroll(scrollState).background(MaterialTheme.colorScheme.primaryContainer)) {
-                        Box(modifier = Modifier.width(60.dp).height(28.dp), contentAlignment = Alignment.Center) { Text("产能", fontWeight = FontWeight.Bold, fontSize = 13.sp) }
-                        Box(modifier = Modifier.width(50.dp).height(28.dp), contentAlignment = Alignment.Center) { Text("人数", fontWeight = FontWeight.Bold, fontSize = 13.sp) }
+                        Box(modifier = Modifier.width(60.dp).height(24.dp), contentAlignment = Alignment.Center) { Text("产能", fontWeight = FontWeight.Bold, fontSize = 14.sp) }
+                        Box(modifier = Modifier.width(50.dp).height(24.dp), contentAlignment = Alignment.Center) { Text("人数", fontWeight = FontWeight.Bold, fontSize = 14.sp) }
                         repeat(maxProcesses) { i ->
-                            Box(modifier = Modifier.width(72.dp).height(28.dp), contentAlignment = Alignment.Center) { Text("工序${i + 1}", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+                            Box(modifier = Modifier.width(72.dp).height(24.dp), contentAlignment = Alignment.Center) { Text("工序${i + 1}", fontWeight = FontWeight.Bold, fontSize = 14.sp) }
                         }
-                        Box(modifier = Modifier.width(48.dp).height(28.dp)) {}
+                        Box(modifier = Modifier.width(48.dp).height(24.dp)) {}
                     }
                 }
                 Divider()
@@ -1730,18 +1730,18 @@ fun ProcessFlowTab(viewModel: MainViewModel) {
                         val processes = processMap[product.id] ?: emptyList()
                         val rowBg = if (product.isFixed) Color(0xFFFFF9C4) else Color.Transparent
                         Row(modifier = Modifier.fillMaxWidth()) {
-                            Box(modifier = Modifier.width(120.dp).height(28.dp).border(0.5.dp, Color(0xFFE0E0E0)).padding(horizontal = 4.dp).background(rowBg), contentAlignment = Alignment.CenterStart) { Text(product.name, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                            Box(modifier = Modifier.width(120.dp).height(24.dp).border(0.5.dp, Color(0xFFE0E0E0)).padding(horizontal = 4.dp).background(rowBg), contentAlignment = Alignment.CenterStart) { Text(product.name, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                             Row(modifier = Modifier.weight(1f).horizontalScroll(scrollState).background(rowBg)) {
-                                Box(modifier = Modifier.width(60.dp).height(28.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) { Text(product.capacity.toString(), fontSize = 13.sp) }
-                                Box(modifier = Modifier.width(50.dp).height(28.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) { Text(product.requiredPeople.toString(), fontSize = 13.sp) }
+                                Box(modifier = Modifier.width(60.dp).height(24.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) { Text(product.capacity.toString(), fontSize = 14.sp) }
+                                Box(modifier = Modifier.width(50.dp).height(24.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) { Text(product.requiredPeople.toString(), fontSize = 14.sp) }
                                 // 工序列表（固定产品黄色背景）
                                 for (i in 0 until maxProcesses) {
                                     val pp = processes.getOrNull(i)
-                                    Box(modifier = Modifier.width(72.dp).height(28.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
-                                        if (pp != null) { Text(pp.processName, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                                    Box(modifier = Modifier.width(72.dp).height(24.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
+                                        if (pp != null) { Text(pp.processName, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                                     }
                                 }
-                                Box(modifier = Modifier.width(48.dp).height(28.dp), contentAlignment = Alignment.Center) {
+                                Box(modifier = Modifier.width(48.dp).height(24.dp), contentAlignment = Alignment.Center) {
                                     IconButton(onClick = { deletingProduct = product; showDeleteProductConfirm.value = true }, modifier = Modifier.size(24.dp)) { Icon(Icons.Default.Delete, null, tint = Color(0xFFC62828), modifier = Modifier.size(14.dp)) }
                                 }
                             }
