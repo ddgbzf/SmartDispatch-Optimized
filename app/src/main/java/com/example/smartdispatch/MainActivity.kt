@@ -347,7 +347,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 var cancelled = 0
                 for (slotIndex in fixedSlotSet.toList()) {
                     if (slotIndex < lastProductKeys.size && slotIndex < selectedProductNames.size) {
-                        val lastProduct = lastProductKeys[slotIndex].substringBefore("@")
+                        val lastProduct = lastProductKeys[slotIndex]
                         val currentProduct = selectedProductNames[slotIndex]
                         if (lastProduct != currentProduct) {
                             // 产品变了，取消固定
@@ -378,17 +378,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 addLog("固定列人员: ${fixedColumnPersons.size}个已读取")
             }
 
-            // 用带索引的key区分相同名称的产品实例（如 "G32705@0", "G32705@1"）
+            // 产品映射（直接用产品名作为key，不区分同产品多实例）
             val productMap = mutableMapOf<String, com.example.smartdispatch.model.Product>()
-            val nameCount = mutableMapOf<String, Int>()
             for (name in selectedProductNames) {
                 val product = allProductsList.find { it.name == name }
                 if (product != null) {
-                    val count = nameCount.getOrDefault(name, 0)
-                    val uniqueKey = "${name}@$count"
-                    nameCount[name] = count + 1
                     val processes = repo.getProcessesOnce(product.id)
-                    productMap[uniqueKey] = com.example.smartdispatch.model.Product(
+                    productMap[name] = com.example.smartdispatch.model.Product(
                         name, product.capacity, product.requiredPeople,
                         processes.map { it.processName }, product.isFixed
                     )
@@ -567,12 +563,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     
                     val result = _dispatchResult.value
                     if (result != null) {
-                        // 按产品分组收集数据（去掉@0/@1后缀）
+                        // 按产品分组收集数据
                         val productData = mutableMapOf<String, MutableList<Pair<String, String>>>() // productName -> [(person, process)]
                         for (a in result.assignments) {
                             if (a.assignedPerson != null) {
-                                val cleanName = a.productName.replace(Regex("@\\d+$"), "")
-                                productData.getOrPut(cleanName) { mutableListOf() }
+                                productData.getOrPut(a.productName) { mutableListOf() }
                                     .add(Pair(a.assignedPerson, a.processName))
                             }
                         }
@@ -1813,16 +1808,12 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
     val assignmentsByIndex = remember(result, inputNames) {
         val r = result ?: return@remember emptyMap<Int, List<ProcessAssignment>>()
         val map = mutableMapOf<Int, List<ProcessAssignment>>()
-        val nameCount = mutableMapOf<String, Int>()
         for ((index, name) in inputNames.withIndex()) {
             if (name.isBlank()) continue
             val cleanName = products.find { it.name.equals(name.trim(), ignoreCase = true) }?.name
                 ?: continue
-            val count = nameCount.getOrDefault(cleanName, 0)
-            nameCount[cleanName] = count + 1
-            val uniqueKey = "${cleanName}@$count"
             // 按 rowIndex 匹配分配人员
-            map[index] = r.assignments.filter { it.productName == uniqueKey }
+            map[index] = r.assignments.filter { it.productName == cleanName }
         }
         map
     }
