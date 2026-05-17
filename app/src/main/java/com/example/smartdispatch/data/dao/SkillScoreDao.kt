@@ -61,7 +61,7 @@ interface SkillScoreDao {
     suspend fun updateProcessSortOrder(processName: String, newOrder: Int)
 
     // 工序管理：获取所有工序及其sortOrder
-    @Query("SELECT DISTINCT processName, MIN(sortOrder) as sortOrder FROM skill_scores GROUP BY processName ORDER BY sortOrder")
+    @Query("SELECT DISTINCT processName, MIN(sortOrder) as sortOrder, MIN(id) as minId FROM skill_scores GROUP BY processName ORDER BY MIN(sortOrder), MIN(id)")
     suspend fun getProcessOrders(): List<ProcessOrder>
 
     // 工序管理：将sortOrder >= targetOrder 的所有记录+1
@@ -72,5 +72,6 @@ interface SkillScoreDao {
 // 用于查询工序排序
 data class ProcessOrder(
     val processName: String,
-    val sortOrder: Int
+    val sortOrder: Int,
+    val minId: Int = 0
 )
