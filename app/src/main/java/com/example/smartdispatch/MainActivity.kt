@@ -1447,7 +1447,7 @@ fun SkillScoreTab(viewModel: MainViewModel) {
     val scrollState = rememberScrollState()
     val coroutineScope = rememberCoroutineScope()
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize().background(brush = androidx.compose.ui.graphics.Brush.verticalGradient(colors = listOf(Color(0xFFF0F4FF), Color(0xFFE8EDF5))))) {
         Column(modifier = Modifier.fillMaxSize()) {
             // 固定左上角"工号"+"姓名"单元格 + 可滚动的工序表头
             Row(modifier = Modifier.fillMaxWidth()) {
@@ -1710,7 +1710,7 @@ fun ProcessFlowTab(viewModel: MainViewModel) {
     val maxProcesses = processMap.values.maxOfOrNull { it.size } ?: 0
     val scrollState = rememberScrollState()
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize().background(brush = androidx.compose.ui.graphics.Brush.verticalGradient(colors = listOf(Color(0xFFF0FFF4), Color(0xFFE8F5ED))))) {
         if (products.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) { Text("暂无产品数据", color = MaterialTheme.colorScheme.outline); Spacer(Modifier.height(8.dp)); Button(onClick = { showAddProductDialog.value = true }) { Text("添加产品") } }
@@ -1887,7 +1887,7 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
         }
 
         // 表格区域
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(modifier = Modifier.fillMaxSize().background(brush = androidx.compose.ui.graphics.Brush.verticalGradient(colors = listOf(Color(0xFFF5F0FF), Color(0xFFEDE8F5))))) {
             Column(modifier = Modifier.fillMaxSize()) {
                 // 第一行：请假人员标题 + 输入框（两行显示）
                 Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState).background(Color(0xFF90CAF9))) {
