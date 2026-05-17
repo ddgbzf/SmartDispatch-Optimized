@@ -5,6 +5,7 @@ import com.example.smartdispatch.data.entity.*
 import kotlinx.coroutines.flow.Flow
 
 class DispatchRepository(
+    private val db: AppDatabase,
     private val personDao: PersonDao,
     private val skillScoreDao: SkillScoreDao,
     private val productDao: ProductDao,
@@ -89,10 +90,12 @@ class DispatchRepository(
             if (targetIndex >= 0) {
                 newSortOrder = orders[targetIndex].sortOrder  // 占据目标位置
                 
-                // targetIndex及之后的所有工序sortOrder+1
-                for (i in targetIndex until orders.size) {
-                    val po = orders[i]
-                    skillScoreDao.updateProcessSortOrder(po.processName, po.sortOrder + 1)
+                // 用事务包裹所有更新，避免多次触发Flow刷新
+                db.runInTransaction {
+                    for (i in targetIndex until orders.size) {
+                        val po = orders[i]
+                        skillScoreDao.updateProcessSortOrder(po.processName, po.sortOrder + 1)
+                    }
                 }
             } else {
                 // 目标工序不存在，放到最后
