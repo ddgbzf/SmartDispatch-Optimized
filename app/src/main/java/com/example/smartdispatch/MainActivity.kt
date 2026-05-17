@@ -830,7 +830,7 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
     var originalProcesses by remember { mutableStateOf<List<ProductProcess>>(emptyList()) }
     var newProcessName by remember { mutableStateOf("") }
     // 拖动状态提升到外层，避免重组时丢失
-    var dragFromId by remember { mutableStateOf(-1) }
+    var dragFromIndex by remember { mutableStateOf(-1) }
     var dragAccumY by remember { mutableStateOf(0f) }
     
     // 历史记录（用于撤销）
@@ -880,14 +880,16 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
         }
     }
     
-    // 移动工序
+    // 移动工序（只交换文本内容，不交换列表项，避免id错乱）
     fun moveProcess(from: Int, to: Int) {
         if (from == to || from < 0 || to < 0 || from >= editingProcesses.size || to >= editingProcesses.size) return
         saveHistory()
         val list = editingProcesses.toMutableList()
-        val item = list.removeAt(from)
-        list.add(to, item)
-        editingProcesses = list.mapIndexed { i, p -> p.copy(sortOrder = i) }
+        val fromName = list[from].processName
+        val toName = list[to].processName
+        list[from] = list[from].copy(processName = toName)
+        list[to] = list[to].copy(processName = fromName)
+        editingProcesses = list
     }
 
     AlertDialog(
@@ -938,7 +940,7 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                             items(editingProcesses.size, key = { editingProcesses[it].id }) { index ->
                                 val process = editingProcesses[index]
                                 var editName by remember(process.id) { mutableStateOf(process.processName) }
-                                val isDragging = dragFromId == editingProcesses[index].id
+                                val isDragging = dragFromIndex == index
                                 // 拖动时置顶显示
                                 Box(
                                     modifier = Modifier
@@ -993,11 +995,11 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                                                 .pointerInput(process.id) {
                                                     detectDragGesturesAfterLongPress(
                                                         onDragStart = {
-                                                            dragFromId = editingProcesses[index].id
+                                                            dragFromIndex = index
                                                             dragAccumY = 0f
                                                         },
                                                         onDragEnd = {
-                                                            dragFromId = -1
+                                                            dragFromIndex = -1
                                                             dragAccumY = 0f
                                                         },
                                                         onDrag = { change: PointerInputChange, dragAmount: Offset ->
@@ -1005,15 +1007,13 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                                                             dragAccumY += dragAmount.y
                                                             val rowHeight = 25f
                                                             val moveSteps = (dragAccumY / rowHeight).toInt()
-                                                            if (moveSteps != 0 && dragFromId > 0) {
-                                                                val currentIdx = editingProcesses.indexOfFirst { it.id == dragFromId }
-                                                                if (currentIdx >= 0) {
-                                                                    val newIndex = (currentIdx + moveSteps)
-                                                                        .coerceIn(0, editingProcesses.size - 1)
-                                                                    if (newIndex != currentIdx) {
-                                                                        moveProcess(currentIdx, newIndex)
-                                                                        dragAccumY -= moveSteps * rowHeight
-                                                                    }
+                                                            if (moveSteps != 0 && dragFromIndex >= 0) {
+                                                                val newIndex = (dragFromIndex + moveSteps)
+                                                                    .coerceIn(0, editingProcesses.size - 1)
+                                                                if (newIndex != dragFromIndex) {
+                                                                    moveProcess(dragFromIndex, newIndex)
+                                                                    dragAccumY -= moveSteps * rowHeight
+                                                                    dragFromIndex = newIndex
                                                                 }
                                                             }
                                                         }
