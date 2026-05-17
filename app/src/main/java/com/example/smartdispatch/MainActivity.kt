@@ -335,7 +335,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             // ===== 第一步：检测固定列，从上次排工结果中读取人员 =====
             val fixedSlotSet = _fixedInputSlots.value.toMutableSet()
             val lastResult = _dispatchResult.value
-            val lastProductKeys = lastResult?.assignments?.mapNotNull { it.productName }?.distinct() ?: emptyList()
+            // 按columnIndex分组，取每个槽位的产品名（支持同一产品多实例）
+            val lastProductKeys = lastResult?.assignments
+                ?.groupBy { it.columnIndex }
+                ?.toSortedMap()
+                ?.map { (_, assignments) -> assignments.first().productName }
+                ?: emptyList()
             
             // 检测产品变更：产品变了就取消固定列
             if (lastResult != null && fixedSlotSet.isNotEmpty()) {
