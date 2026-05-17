@@ -25,24 +25,18 @@ class DispatchRepository(
     suspend fun deletePerson(person: Person) = personDao.delete(person)
 
     suspend fun insertPersonBefore(beforePerson: Person, name: String, employeeId: String = "", jobType: String = "") {
-        // 找到beforePerson前面的人，计算中间insertOrder
+        // 方案A：物理位置，beforeIndex及之后的全部+1
         val allPersons = personDao.getAllOnce()
         val beforeIndex = allPersons.indexOfFirst { it.id == beforePerson.id }
-        val prevInsertOrder = if (beforeIndex > 0) allPersons[beforeIndex - 1].insertOrder else 0
-        val newInsertOrder = (prevInsertOrder + beforePerson.insertOrder) / 2
+        val newInsertOrder = beforePerson.insertOrder  // 占据beforePerson的位置
         
-        // 如果中间没有空间（差值<=1），则需要重新分配所有insertOrder
-        if (newInsertOrder <= prevInsertOrder || newInsertOrder >= beforePerson.insertOrder) {
-            // 重新分配：按当前顺序，间隔100
-            allPersons.forEachIndexed { index, p ->
-                personDao.update(p.copy(insertOrder = (index + 1) * 100))
-            }
-            // 重新分配后直接用数学计算：beforeIndex位置=(beforeIndex+1)*100，前一个=beforeIndex*100
-            val finalInsertOrder = beforeIndex * 100 + 50
-            personDao.insert(Person(name = name, employeeId = employeeId, jobType = jobType, insertOrder = finalInsertOrder))
-        } else {
-            personDao.insert(Person(name = name, employeeId = employeeId, jobType = jobType, insertOrder = newInsertOrder))
+        // beforeIndex及之后的所有人员insertOrder+1
+        for (i in beforeIndex until allPersons.size) {
+            val p = allPersons[i]
+            personDao.update(p.copy(insertOrder = p.insertOrder + 1))
         }
+        
+        personDao.insert(Person(name = name, employeeId = employeeId, jobType = jobType, insertOrder = newInsertOrder))
     }
 
     suspend fun setSkillScore(personId: Int, processName: String, score: Int) {
@@ -86,28 +80,19 @@ class DispatchRepository(
     suspend fun processNameExists(processName: String) = skillScoreDao.processNameExists(processName) > 0
     suspend fun getAllProcessNamesOnce() = skillScoreDao.getAllProcessNamesOnce()
     suspend fun addProcessForAllPersons(processName: String, persons: List<Person>, beforeProcess: String? = null) {
-        // 获取所有工序及其sortOrder（按当前顺序）
+        // 方案A：物理位置，targetIndex及之后的全部+1
         val orders = skillScoreDao.getProcessOrders()
-
-        // 确定新工序的sortOrder（使用中间值算法，与insertPersonBefore一致）
         var newSortOrder = 0
+        
         if (beforeProcess != null && beforeProcess.isNotBlank()) {
             val targetIndex = orders.indexOfFirst { it.processName == beforeProcess }
             if (targetIndex >= 0) {
-                val targetOrder = orders[targetIndex].sortOrder
-                val prevOrder = if (targetIndex > 0) orders[targetIndex - 1].sortOrder else 0
-                val midOrder = (prevOrder + targetOrder) / 2
-
-                if (midOrder > prevOrder && midOrder < targetOrder) {
-                    // 中间有空间，直接使用中间值
-                    newSortOrder = midOrder
-                } else {
-                    // 中间没有空间，重新分配所有工序的sortOrder（间隔100）
-                    orders.forEachIndexed { index, po ->
-                        skillScoreDao.updateProcessSortOrder(po.processName, (index + 1) * 100)
-                    }
-                    // 重新分配后直接用数学计算：targetIndex位置=(targetIndex+1)*100，前一个=targetIndex*100
-                    newSortOrder = targetIndex * 100 + 50
+                newSortOrder = orders[targetIndex].sortOrder  // 占据目标位置
+                
+                // targetIndex及之后的所有工序sortOrder+1
+                for (i in targetIndex until orders.size) {
+                    val po = orders[i]
+                    skillScoreDao.updateProcessSortOrder(po.processName, po.sortOrder + 1)
                 }
             } else {
                 // 目标工序不存在，放到最后
