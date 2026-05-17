@@ -3,6 +3,7 @@ package com.example.smartdispatch.data
 import com.example.smartdispatch.data.dao.*
 import com.example.smartdispatch.data.entity.*
 import kotlinx.coroutines.flow.Flow
+import androidx.room.withTransaction
 
 class DispatchRepository(
     private val db: AppDatabase,
@@ -32,7 +33,7 @@ class DispatchRepository(
         val newInsertOrder = beforePerson.insertOrder  // 占据beforePerson的位置
         
         // 用事务包裹所有更新，避免多次触发Flow刷新
-        db.runInTransaction {
+        db.withTransaction {
             for (i in beforeIndex until allPersons.size) {
                 val p = allPersons[i]
                 personDao.update(p.copy(insertOrder = p.insertOrder + 1))
@@ -93,7 +94,7 @@ class DispatchRepository(
                 newSortOrder = orders[targetIndex].sortOrder  // 占据目标位置
                 
                 // 用事务包裹所有更新，避免多次触发Flow刷新
-                db.runInTransaction {
+                db.withTransaction {
                     for (i in targetIndex until orders.size) {
                         val po = orders[i]
                         skillScoreDao.updateProcessSortOrder(po.processName, po.sortOrder + 1)
