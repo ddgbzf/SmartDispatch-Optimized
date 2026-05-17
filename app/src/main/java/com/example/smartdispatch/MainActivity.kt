@@ -31,6 +31,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -351,6 +352,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     }
                 }
                 if (cancelled > 0) {
+                    // 更新UI和持久化
+                    _fixedInputSlots.value = fixedSlotSet.toSet()
+                    saveFixedInputSlots(fixedSlotSet.toSet())
                     addLog("固定列: $cancelled 个槽位产品变更，自动取消固定")
                 }
             }
@@ -1225,6 +1229,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
     var isTableFullscreen by remember { mutableStateOf(false) }
     val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let { viewModel.importFromExcel(it) } }
     val exportPicker = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")) { uri -> uri?.let { viewModel.exportToExcel(it) } }
+    val focusManager = LocalFocusManager.current
 
     Scaffold(
         topBar = {
@@ -1253,7 +1258,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                     actions = {
                         // 发布版显示排工按钮
                         if (!BuildConfig.DEBUG) {
-                            IconButton(onClick = { viewModel.autoDispatch() }) { 
+                            IconButton(onClick = { focusManager.clearFocus(); viewModel.autoDispatch() }) { 
                                 Icon(Icons.Default.PlayArrow, "排工", modifier = Modifier.size(20.dp), tint = Color(0xFF1976D2))
                             }
                         }
@@ -1270,7 +1275,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                     actions = {
                         // 发布版显示排工按钮
                         if (!BuildConfig.DEBUG) {
-                            IconButton(onClick = { viewModel.autoDispatch() }) { 
+                            IconButton(onClick = { focusManager.clearFocus(); viewModel.autoDispatch() }) { 
                                 Icon(Icons.Default.PlayArrow, "排工", tint = Color(0xFF1976D2))
                             }
                         }
