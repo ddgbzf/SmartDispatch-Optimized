@@ -37,11 +37,8 @@ class DispatchRepository(
             allPersons.forEachIndexed { index, p ->
                 personDao.update(p.copy(insertOrder = (index + 1) * 100))
             }
-            // 重新计算新位置
-            val newBeforeIndex = allPersons.indexOfFirst { it.id == beforePerson.id }
-            val newPrevOrder = if (newBeforeIndex > 0) allPersons[newBeforeIndex - 1].insertOrder else 0
-            val newBeforeOrder = allPersons[newBeforeIndex].insertOrder
-            val finalInsertOrder = (newPrevOrder + newBeforeOrder) / 2
+            // 重新分配后直接用数学计算：beforeIndex位置=(beforeIndex+1)*100，前一个=beforeIndex*100
+            val finalInsertOrder = beforeIndex * 100 + 50
             personDao.insert(Person(name = name, employeeId = employeeId, jobType = jobType, insertOrder = finalInsertOrder))
         } else {
             personDao.insert(Person(name = name, employeeId = employeeId, jobType = jobType, insertOrder = newInsertOrder))
@@ -109,12 +106,8 @@ class DispatchRepository(
                     orders.forEachIndexed { index, po ->
                         skillScoreDao.updateProcessSortOrder(po.processName, (index + 1) * 100)
                     }
-                    // 重新获取并计算中间值
-                    val newOrders = skillScoreDao.getProcessOrders()
-                    val newTargetIndex = newOrders.indexOfFirst { it.processName == beforeProcess }
-                    val newTargetOrder = newOrders[newTargetIndex].sortOrder
-                    val newPrevOrder = if (newTargetIndex > 0) newOrders[newTargetIndex - 1].sortOrder else 0
-                    newSortOrder = (newPrevOrder + newTargetOrder) / 2
+                    // 重新分配后直接用数学计算：targetIndex位置=(targetIndex+1)*100，前一个=targetIndex*100
+                    newSortOrder = targetIndex * 100 + 50
                 }
             } else {
                 // 目标工序不存在，放到最后
