@@ -1891,8 +1891,11 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
             Column(modifier = Modifier.fillMaxSize()) {
                 // 第一行：请假人员标题 + 输入框（两行显示）
                 Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState).background(Color(0xFF90CAF9))) {
-                    Box(modifier = Modifier.width(60.dp).height(rowHeight * 2).background(Color.White, RoundedCornerShape(2.dp)).border(0.5.dp, Color(0xFFE0E0E0)).padding(1.dp), contentAlignment = Alignment.Center) {
-                        Text("请假人员", fontWeight = FontWeight.Bold, fontSize = fontSize, color = Color.Black, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                    Box(modifier = Modifier.width(60.dp).height(rowHeight * 2).background(Color.White).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("请假", fontWeight = FontWeight.Bold, fontSize = fontSize, color = Color.Black)
+                            Text("人员", fontWeight = FontWeight.Bold, fontSize = fontSize, color = Color.Black)
+                        }
                     }
                     inputNames.forEachIndexed { index, name ->
                         Box(modifier = Modifier.width(productWidth).height(rowHeight * 2).padding(1.dp)) {
@@ -1956,9 +1959,9 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
                             value = leaveInput0,
                             onValueChange = { leaveInput0 = it },
                             modifier = Modifier.fillMaxSize().padding(2.dp),
-                            textStyle = androidx.compose.ui.text.TextStyle(fontSize = fontSize, color = Color(0xFFC62828), textAlign = androidx.compose.ui.text.style.TextAlign.Center),
+                            textStyle = androidx.compose.ui.text.TextStyle(fontSize = fontSize, color = Color(0xFF333333), textAlign = androidx.compose.ui.text.style.TextAlign.Center),
                             singleLine = true,
-                            cursorBrush = androidx.compose.ui.graphics.SolidColor(Color(0xFFC62828)),
+                            cursorBrush = androidx.compose.ui.graphics.SolidColor(Color(0xFF1976D2)),
                             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Done),
                             keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = {
                                 if (leaveInput0.isBlank() && p != null) {
@@ -2016,9 +2019,9 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
                                     value = leaveInputN,
                                     onValueChange = { leaveInputN = it },
                                     modifier = Modifier.fillMaxSize().padding(2.dp),
-                                    textStyle = androidx.compose.ui.text.TextStyle(fontSize = fontSize, color = Color(0xFFC62828), textAlign = androidx.compose.ui.text.style.TextAlign.Center),
+                                    textStyle = androidx.compose.ui.text.TextStyle(fontSize = fontSize, color = Color(0xFF333333), textAlign = androidx.compose.ui.text.style.TextAlign.Center),
                                     singleLine = true,
-                                    cursorBrush = androidx.compose.ui.graphics.SolidColor(Color(0xFFC62828)),
+                                    cursorBrush = androidx.compose.ui.graphics.SolidColor(Color(0xFF1976D2)),
                                     keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Done),
                                     keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = {
                                         if (leaveInputN.isBlank() && person != null) {
@@ -2051,7 +2054,7 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
 
                                 Row(modifier = Modifier.width(productWidth).height(rowHeight).background(cellBg)) {
                                     Box(modifier = Modifier.weight(1f).fillMaxHeight().border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
-                                        if (processName.isNotEmpty()) Text(processName, fontSize = fontSize, maxLines = 1, overflow = TextOverflow.Ellipsis, color = Color(0xFF424242))
+                                        if (processName.isNotEmpty()) Text(processName, fontSize = fontSize, maxLines = 1, overflow = TextOverflow.Ellipsis, color = Color.Black, fontWeight = FontWeight.Medium)
                                     }
                                     Box(modifier = Modifier.weight(1f).fillMaxHeight().border(0.5.dp, Color(0xFFE0E0E0)).background(Color(0xFF1976D2)), contentAlignment = Alignment.Center) {
                                         if (assignedPerson.isNotEmpty()) Text(assignedPerson, fontSize = fontSize, fontWeight = FontWeight.Bold, color = Color.White)
