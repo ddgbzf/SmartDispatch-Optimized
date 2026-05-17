@@ -43,12 +43,12 @@ class DispatchRepository(
         personDao.insert(Person(name = name, employeeId = employeeId, jobType = jobType, insertOrder = newInsertOrder))
     }
 
-    suspend fun setSkillScore(personId: Int, processName: String, score: Int) {
+    suspend fun setSkillScore(personId: Int, processName: String, score: Int, sortOrder: Int = 0) {
         val existing = skillScoreDao.find(personId, processName)
         if (existing != null) {
-            skillScoreDao.update(existing.copy(score = score))
+            skillScoreDao.update(existing.copy(score = score, sortOrder = sortOrder))
         } else {
-            skillScoreDao.insert(SkillScore(personId = personId, processName = processName, score = score))
+            skillScoreDao.insert(SkillScore(personId = personId, processName = processName, score = score, sortOrder = sortOrder))
         }
     }
 

@@ -483,9 +483,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         val allP = r.allPersons.first()
                         for (person in allP) { if (person.name in data.leaveList) { r.updatePerson(person.copy(onLeave = true)) } }
                         val updatedP = r.allPersons.first()
+                        // 构建工序名到sortOrder的映射
+                        val processOrderMap = data.processNames.withIndex().associate { it.value to it.index }
                         for (person in updatedP) {
                             val scores = data.skillScores[person.name] ?: continue
-                            for ((processName, score) in scores) { r.setSkillScore(person.id, processName, score) }
+                            for ((processName, score) in scores) {
+                                val order = processOrderMap[processName] ?: 0
+                                r.setSkillScore(person.id, processName, score, order)
+                            }
                         }
                         for ((name, product) in data.products) {
                             val pid = r.addProduct(name, product.capacity, product.requiredPeople)
