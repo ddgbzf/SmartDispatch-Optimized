@@ -1891,7 +1891,7 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
             Column(modifier = Modifier.fillMaxSize()) {
                 // 第一行：请假人员标题 + 输入框（两行显示）
                 Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState).background(Color(0xFF90CAF9))) {
-                    Box(modifier = Modifier.width(60.dp).height(rowHeight * 2).background(Color.White).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier.width(60.dp).height(rowHeight * 2).padding(1.dp).background(Color.White), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text("请假", fontWeight = FontWeight.Bold, fontSize = fontSize, color = Color.Black)
                             Text("人员", fontWeight = FontWeight.Bold, fontSize = fontSize, color = Color.Black)
