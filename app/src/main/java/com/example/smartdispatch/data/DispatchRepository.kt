@@ -31,10 +31,12 @@ class DispatchRepository(
         val beforeIndex = allPersons.indexOfFirst { it.id == beforePerson.id }
         val newInsertOrder = beforePerson.insertOrder  // 占据beforePerson的位置
         
-        // beforeIndex及之后的所有人员insertOrder+1
-        for (i in beforeIndex until allPersons.size) {
-            val p = allPersons[i]
-            personDao.update(p.copy(insertOrder = p.insertOrder + 1))
+        // 用事务包裹所有更新，避免多次触发Flow刷新
+        db.runInTransaction {
+            for (i in beforeIndex until allPersons.size) {
+                val p = allPersons[i]
+                personDao.update(p.copy(insertOrder = p.insertOrder + 1))
+            }
         }
         
         personDao.insert(Person(name = name, employeeId = employeeId, jobType = jobType, insertOrder = newInsertOrder))
