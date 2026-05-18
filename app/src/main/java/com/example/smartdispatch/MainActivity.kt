@@ -1272,13 +1272,13 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primaryContainer, titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer),
                     actions = {
                         IconButton(onClick = { filePicker.launch(arrayOf("*/*")) }) { Icon(Icons.Default.FileUpload, "导入", modifier = Modifier.size(20.dp)) }
+                        IconButton(onClick = { exportPicker.launch("排工结果_${System.currentTimeMillis()}.xlsx") }) { Icon(Icons.Default.FileDownload, "导出", modifier = Modifier.size(20.dp)) }
                         // 发布版显示排工按钮（与导出互换位置）
                         if (!BuildConfig.DEBUG) {
                             IconButton(onClick = { focusManager.clearFocus(); viewModel.autoDispatch() }) { 
                                 Icon(Icons.Default.PlayArrow, "排工", modifier = Modifier.size(20.dp), tint = Color(0xFF1976D2))
                             }
                         }
-                        IconButton(onClick = { exportPicker.launch("排工结果_${System.currentTimeMillis()}.xlsx") }) { Icon(Icons.Default.FileDownload, "导出", modifier = Modifier.size(20.dp)) }
                         IconButton(onClick = { showSettings = true }) { Icon(Icons.Default.Settings, "设置", modifier = Modifier.size(20.dp)) }
                     },
                     modifier = Modifier.height(32.dp)
@@ -1289,13 +1289,13 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primaryContainer, titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer),
                     actions = {
                         IconButton(onClick = { filePicker.launch(arrayOf("*/*")) }) { Icon(Icons.Default.FileUpload, "导入") }
+                        IconButton(onClick = { exportPicker.launch("排工结果_${System.currentTimeMillis()}.xlsx") }) { Icon(Icons.Default.FileDownload, "导出") }
                         // 发布版显示排工按钮（与导出互换位置）
                         if (!BuildConfig.DEBUG) {
                             IconButton(onClick = { focusManager.clearFocus(); viewModel.autoDispatch() }) { 
                                 Icon(Icons.Default.PlayArrow, "排工", tint = Color(0xFF1976D2))
                             }
                         }
-                        IconButton(onClick = { exportPicker.launch("排工结果_${System.currentTimeMillis()}.xlsx") }) { Icon(Icons.Default.FileDownload, "导出") }
                         IconButton(onClick = { showSettings = true }) { Icon(Icons.Default.Settings, "设置") }
                     }
                 )
