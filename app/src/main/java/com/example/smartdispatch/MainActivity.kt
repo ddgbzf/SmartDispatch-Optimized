@@ -16,6 +16,8 @@ import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardType
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.PointerInputChange
@@ -27,8 +29,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -1298,23 +1301,23 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
             if (!isTableFullscreen) {
             val tabTitles = listOf("工序评分", "工序流程", "智能排工")
             // 金属质感底部导航栏
-            Box(modifier = Modifier.height(48.dp).fillMaxWidth().background(Color(0xFFD0D0D0)).shadow(8.dp, spotColor = Color.Black.copy(alpha = 0.3f))) {
+            Box(modifier = Modifier.height(52.dp).fillMaxWidth().background(Color(0xFFD0D0D0)).shadow(8.dp, spotColor = Color.Black.copy(alpha = 0.3f))) {
                 Row(modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
                     tabTitles.forEachIndexed { index, title ->
                         val isSelected = selectedTab == index
                         Box(modifier = Modifier.weight(1f).fillMaxHeight().clickable { selectedTab = index; prefs.edit().putInt("selectedTab", index).apply() }, contentAlignment = Alignment.Center) {
                             if (isSelected) {
                                 // 选中项：凸起金属按钮效果
-                                Box(modifier = Modifier.padding(4.dp).background(
+                                Box(modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp).background(
                                     brush = androidx.compose.ui.graphics.Brush.linearGradient(
                                         colors = listOf(Color(0xFFE8E8E8), Color(0xFFB8B8B8), Color(0xFF888888))
                                     ),
-                                    shape = RoundedCornerShape(12.dp)
-                                ).border(1.dp, Color.White.copy(alpha = 0.5f), RoundedCornerShape(12.dp)).shadow(4.dp, RoundedCornerShape(12.dp)).padding(horizontal = 28.dp, vertical = 6.dp)) {
-                                    Text(title, fontSize = if (isLandscape) 11.sp else 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1565C0))
+                                    shape = RoundedCornerShape(14.dp)
+                                ).border(1.dp, Color.White.copy(alpha = 0.5f), RoundedCornerShape(14.dp)).shadow(4.dp, RoundedCornerShape(14.dp)).padding(horizontal = 20.dp, vertical = 8.dp)) {
+                                    Text(title, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1565C0))
                                 }
                             } else {
-                                Text(title, fontSize = if (isLandscape) 11.sp else 13.sp, fontWeight = FontWeight.Normal, color = Color(0xFF444444))
+                                Text(title, fontSize = 14.sp, fontWeight = FontWeight.Normal, color = Color(0xFF444444))
                             }
                         }
                     }
@@ -1366,7 +1369,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
             }
         }
     ) { padding ->
-        Box(modifier = Modifier.padding(padding)) {
+        Box(modifier = Modifier.padding(top = padding.calculateTopPadding())) {
             when (selectedTab) {
                 0 -> SkillScoreTab(viewModel)
                 1 -> ProcessFlowTab(viewModel)
@@ -1528,7 +1531,7 @@ fun SkillScoreTab(viewModel: MainViewModel) {
                                             textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Color(0xFF1565C0), textAlign = androidx.compose.ui.text.style.TextAlign.Center),
                                             singleLine = true,
                                             cursorBrush = androidx.compose.ui.graphics.SolidColor(Color(0xFF1565C0)),
-                                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.foundation.text.KeyboardType.Number, imeAction = androidx.compose.ui.text.input.ImeAction.Done),
+                                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = androidx.compose.ui.text.input.ImeAction.Done),
                                             keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = {
                                                 val newScore = editValue.toIntOrNull() ?: 0
                                                 viewModel.setSkillScore(person.id, process, newScore)
@@ -1856,10 +1859,10 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
         processMap = map
     }
 
-    // 启动时自动排工两次（消除首次排工分配错误）
-    LaunchedEffect(products) {
+    // 启动时自动排工两次（消除首次排工分配错误，仅在首次组合时执行）
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(800)
         if (products.isNotEmpty() && inputNames.any { it.isNotBlank() }) {
-            kotlinx.coroutines.delay(300)
             viewModel.autoDispatch()
             kotlinx.coroutines.delay(500)
             viewModel.autoDispatch()
