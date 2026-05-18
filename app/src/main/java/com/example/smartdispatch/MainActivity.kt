@@ -187,7 +187,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val inputNames: StateFlow<List<String>> = _inputNames.asStateFlow()
     
     private fun loadInputNames(): List<String> {
-        return (1..6).map { i -> prefs.getString("input_$i", "") ?: "" }
+        return (1..7).map { i -> prefs.getString("input_$i", "") ?: "" }
     }
     
     private fun saveInputNames(names: List<String>) {
@@ -1296,35 +1296,31 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
         bottomBar = {
             if (!isTableFullscreen) {
             val tabTitles = if (isLandscape) listOf("评分", "流程", "排工") else listOf("工序评分", "工序流程", "智能排工")
-            TabRow(
-                selectedTabIndex = selectedTab,
-                containerColor = Color.Transparent,
-                contentColor = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.height(40.dp).background(
-                    brush = androidx.compose.ui.graphics.Brush.verticalGradient(
-                        colors = listOf(Color(0xFFE8E8E8), Color(0xFFD0D0D0), Color(0xFFE0E0E0))
-                    )
-                ).shadow(4.dp)
-            ) {
-                tabTitles.forEachIndexed { index, title ->
-                    Tab(
-                        selected = selectedTab == index,
-                        onClick = { selectedTab = index; prefs.edit().putInt("selectedTab", index).apply() },
-                        text = {
-                            Text(
-                                title,
-                                fontSize = if (isLandscape) 11.sp else 13.sp,
-                                fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal,
-                                modifier = if (selectedTab == index) Modifier
-                                    .background(Color.White.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
-                                    .padding(horizontal = 12.dp, vertical = 4.dp)
-                                    .shadow(2.dp, RoundedCornerShape(8.dp))
-                                else Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
-                            )
-                        },
-                        selectedContentColor = Color(0xFF1565C0),
-                        unselectedContentColor = Color(0xFF757575)
-                    )
+            // 金属质感底部导航栏
+            Box(modifier = Modifier.height(48.dp).fillMaxWidth().background(
+                brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                    colors = listOf(Color(0xFFF5F5F5), Color(0xFFC0C0C0), Color(0xFF808080), Color(0xFFA0A0A0))
+                )
+            ).shadow(8.dp, spotColor = Color.Black.copy(alpha = 0.3f))) {
+                Row(modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+                    tabTitles.forEachIndexed { index, title ->
+                        val isSelected = selectedTab == index
+                        Box(modifier = Modifier.weight(1f).fillMaxHeight().clickable { selectedTab = index; prefs.edit().putInt("selectedTab", index).apply() }, contentAlignment = Alignment.Center) {
+                            if (isSelected) {
+                                // 选中项：凸起金属按钮效果
+                                Box(modifier = Modifier.padding(4.dp).background(
+                                    brush = androidx.compose.ui.graphics.Brush.linearGradient(
+                                        colors = listOf(Color(0xFFE8E8E8), Color(0xFFB8B8B8), Color(0xFF888888))
+                                    ),
+                                    shape = RoundedCornerShape(12.dp)
+                                ).border(1.dp, Color.White.copy(alpha = 0.5f), RoundedCornerShape(12.dp)).shadow(4.dp, RoundedCornerShape(12.dp)).padding(horizontal = 16.dp, vertical = 6.dp)) {
+                                    Text(title, fontSize = if (isLandscape) 11.sp else 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1565C0))
+                                }
+                            } else {
+                                Text(title, fontSize = if (isLandscape) 11.sp else 13.sp, fontWeight = FontWeight.Normal, color = Color(0xFF444444))
+                            }
+                        }
+                    }
                 }
             }
             }
