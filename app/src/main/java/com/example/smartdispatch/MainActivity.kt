@@ -1730,7 +1730,7 @@ fun ProcessFlowTab(viewModel: MainViewModel) {
     val showDeleteProductConfirm = remember { mutableStateOf(false) }
     var deletingProduct by remember { mutableStateOf<Product?>(null) }
 
-    var processMap by remember { mutableStateOf<Map<Int, List<ProductProcess>>(emptyMap()) }
+    var processMap by remember { mutableStateOf(emptyMap<Int, List<ProductProcess>>()) }
     val processVer by viewModel.processVersion.collectAsState()
     LaunchedEffect(products, processVer) {
         val map = mutableMapOf<Int, List<ProductProcess>>()
@@ -1822,7 +1822,7 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
     val matchedProducts by viewModel.matchedProducts.collectAsState()
     val repo = (LocalContext.current.applicationContext as DispatchApplication).repository
     var showDebugLogs by remember { mutableStateOf(true) }
-    var processMap by remember { mutableStateOf<Map<Int, List<ProductProcess>>>(emptyMap()) }
+    var processMap by remember { mutableStateOf(emptyMap<Int, List<ProductProcess>>()) }
     val unassignedScrollState = rememberScrollState()
     val processVer by viewModel.processVersion.collectAsState()
     LaunchedEffect(products, processVer) {
