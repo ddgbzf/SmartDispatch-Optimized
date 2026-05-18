@@ -1313,20 +1313,20 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                             val isSelected = selectedTab == index
                             Box(modifier = Modifier.weight(1f).fillMaxHeight().clickable { selectedTab = index; prefs.edit().putInt("selectedTab", index).apply() }, contentAlignment = Alignment.Center) {
                                 if (isSelected) {
-                                    // 选中项：纯白胶囊，一色，加宽以容纳四个字
+                                    // 选中项：同底色高亮边框，一色风格
                                     Box(modifier = Modifier.padding(horizontal = 2.dp, vertical = 2.dp).background(
-                                        color = Color(0xFFFFFFFF),
+                                        color = Color(0xFFB8B8B8),
                                         shape = RoundedCornerShape(50)
-                                    ).border(1.5.dp, Color.White.copy(alpha = 0.9f), RoundedCornerShape(50)).shadow(6.dp, RoundedCornerShape(50)).padding(horizontal = 12.dp, vertical = 8.dp)) {
-                                        Text(title, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1565C0), maxLines = 1, overflow = TextOverflow.Visible)
+                                    ).border(2.dp, Color(0xFFFFFFFF), RoundedCornerShape(50)).padding(horizontal = 12.dp, vertical = 8.dp)) {
+                                        Text(title, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFFFFFF), maxLines = 1, overflow = TextOverflow.Visible)
                                     }
                                 } else {
-                                    Text(title, fontSize = 13.sp, fontWeight = FontWeight.Normal, color = Color(0xFF555555), maxLines = 1, overflow = TextOverflow.Visible)
+                                    Text(title, fontSize = 13.sp, fontWeight = FontWeight.Normal, color = Color(0xFFEEEEEE), maxLines = 1, overflow = TextOverflow.Visible)
                                 }
                             }
                         }
                     }
-                    // 系统导航栏区域填充
+                    // 系统导航栏区域填充（同色）
                     Box(modifier = Modifier.fillMaxWidth().navigationBarsPadding().background(Color(0xFFB8B8B8)))
                 }
             }
