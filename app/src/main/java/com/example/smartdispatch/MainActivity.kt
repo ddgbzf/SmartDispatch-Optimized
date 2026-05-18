@@ -1305,30 +1305,26 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
         bottomBar = {
             if (!isTableFullscreen) {
             val tabTitles = listOf("工序评分", "工序流程", "智能排工")
-            // 金属质感底部导航栏（统一底色，延伸到系统导航栏）
-            Box(modifier = Modifier.fillMaxWidth().background(Color(0xFFB8B8B8)).shadow(8.dp, spotColor = Color.Black.copy(alpha = 0.3f))) {
-                Column {
-                    Row(modifier = Modifier.fillMaxWidth().height(56.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-                        tabTitles.forEachIndexed { index, title ->
-                            val isSelected = selectedTab == index
-                            Box(modifier = Modifier.weight(1f).fillMaxHeight().clickable { selectedTab = index; prefs.edit().putInt("selectedTab", index).apply() }, contentAlignment = Alignment.Center) {
-                                if (isSelected) {
-                                    // 选中项：同底色高亮边框，一色风格
-                                    Box(modifier = Modifier.padding(horizontal = 2.dp, vertical = 2.dp).background(
-                                        color = Color(0xFFB8B8B8),
-                                        shape = RoundedCornerShape(50)
-                                    ).border(2.dp, Color(0xFFFFFFFF), RoundedCornerShape(50)).padding(horizontal = 12.dp, vertical = 8.dp)) {
-                                        Text(title, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFFFFFF), maxLines = 1, overflow = TextOverflow.Visible)
-                                    }
-                                } else {
-                                    Text(title, fontSize = 13.sp, fontWeight = FontWeight.Normal, color = Color(0xFFEEEEEE), maxLines = 1, overflow = TextOverflow.Visible)
-                                }
+            // 底部导航栏（浅蓝紫色背景，延伸到系统导航栏）
+            Column(
+                modifier = Modifier.fillMaxWidth().background(Color(0xFFE8EAF6))
+            ) {
+                Row(modifier = Modifier.fillMaxWidth().height(56.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+                    tabTitles.forEachIndexed { index, title ->
+                        val isSelected = selectedTab == index
+                        Box(modifier = Modifier.weight(1f).fillMaxHeight().clickable { selectedTab = index; prefs.edit().putInt("selectedTab", index).apply() }, contentAlignment = Alignment.Center) {
+                            if (isSelected) {
+                                // 选中项：白色文字加粗
+                                Text(title, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1A237E), maxLines = 1)
+                            } else {
+                                // 未选中项：深灰色文字
+                                Text(title, fontSize = 14.sp, fontWeight = FontWeight.Normal, color = Color(0xFF5C6BC0), maxLines = 1)
                             }
                         }
                     }
-                    // 系统导航栏区域填充（同色）
-                    Box(modifier = Modifier.fillMaxWidth().navigationBarsPadding().background(Color(0xFFB8B8B8)))
                 }
+                // 系统导航栏区域填充（同色背景延伸到底部）
+                Spacer(modifier = Modifier.fillMaxWidth().navigationBarsPadding())
             }
             }
         },
