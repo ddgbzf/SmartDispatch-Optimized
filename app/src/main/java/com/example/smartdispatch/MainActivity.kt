@@ -1305,25 +1305,30 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
         bottomBar = {
             if (!isTableFullscreen) {
             val tabTitles = listOf("工序评分", "工序流程", "智能排工")
-            // 底部导航栏（浅蓝紫色背景，延伸到系统导航栏）
+            val tabIcons = listOf(Icons.Default.Star, Icons.Default.List, Icons.Default.PlayArrow)
+            // 底部导航栏（浅蓝紫色背景，图标+文字，选中横条指示器）
             Column(
                 modifier = Modifier.fillMaxWidth().background(Color(0xFFE8EAF6))
             ) {
                 Row(modifier = Modifier.fillMaxWidth().height(56.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
                     tabTitles.forEachIndexed { index, title ->
                         val isSelected = selectedTab == index
-                        Box(modifier = Modifier.weight(1f).fillMaxHeight().clickable { selectedTab = index; prefs.edit().putInt("selectedTab", index).apply() }, contentAlignment = Alignment.Center) {
+                        Column(
+                            modifier = Modifier.weight(1f).fillMaxHeight().clickable { selectedTab = index; prefs.edit().putInt("selectedTab", index).apply() },
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(tabIcons[index], title, modifier = Modifier.size(22.dp), tint = if (isSelected) Color(0xFF1A237E) else Color(0xFF9E9E9E))
+                            Spacer(Modifier.height(2.dp))
+                            Text(title, fontSize = 11.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal, color = if (isSelected) Color(0xFF1A237E) else Color(0xFF9E9E9E), maxLines = 1)
+                            Spacer(Modifier.height(2.dp))
+                            // 选中项横条指示器
                             if (isSelected) {
-                                // 选中项：白色文字加粗
-                                Text(title, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1A237E), maxLines = 1)
-                            } else {
-                                // 未选中项：深灰色文字
-                                Text(title, fontSize = 14.sp, fontWeight = FontWeight.Normal, color = Color(0xFF5C6BC0), maxLines = 1)
+                                Box(modifier = Modifier.width(24.dp).height(3.dp).background(Color(0xFF1A237E), RoundedCornerShape(1.5.dp)))
                             }
                         }
                     }
                 }
-                // 系统导航栏区域填充（同色背景延伸到底部）
                 Spacer(modifier = Modifier.fillMaxWidth().navigationBarsPadding())
             }
             }
@@ -1531,7 +1536,14 @@ fun SkillScoreTab(viewModel: MainViewModel) {
                                         BasicTextField(
                                             value = editValue,
                                             onValueChange = { if (it.all { c -> c.isDigit() } && it.length <= 3) editValue = it },
-                                            modifier = Modifier.fillMaxSize().focusRequester(focusRequester),
+                                            modifier = Modifier.fillMaxSize().focusRequester(focusRequester).onFocusChanged { focusState ->
+                                                if (!focusState.isFocused && editing) {
+                                                    val newScore = editValue.toIntOrNull() ?: 0
+                                                    viewModel.setSkillScore(person.id, process, newScore)
+                                                    scoreMap = scoreMap.toMutableMap().apply { put(Pair(person.id, process), newScore) }
+                                                    editing = false
+                                                }
+                                            },
                                             textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Color(0xFF1565C0), textAlign = androidx.compose.ui.text.style.TextAlign.Center),
                                             singleLine = true,
                                             cursorBrush = androidx.compose.ui.graphics.SolidColor(Color(0xFF1565C0)),
@@ -2044,7 +2056,15 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
                                     viewModel.toggleLeave(p)
                                 }
                             },
-                            modifier = Modifier.fillMaxSize().padding(2.dp),
+                            modifier = Modifier.fillMaxSize().padding(2.dp).onFocusChanged { focusState ->
+                                if (!focusState.isFocused) {
+                                    // 失焦时自动添加请假人员
+                                    if (leaveInput0.isNotBlank() && p == null) {
+                                        val target = persons.find { it.name.trim() == leaveInput0.trim() }
+                                        if (target != null && !target.onLeave) viewModel.toggleLeave(target)
+                                    }
+                                }
+                            },
                             textStyle = androidx.compose.ui.text.TextStyle(fontSize = fontSize, color = Color(0xFF333333), textAlign = androidx.compose.ui.text.style.TextAlign.Center),
                             singleLine = true,
                             cursorBrush = androidx.compose.ui.graphics.SolidColor(Color(0xFF1976D2)),
@@ -2108,7 +2128,15 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
                                             viewModel.toggleLeave(person)
                                         }
                                     },
-                                    modifier = Modifier.fillMaxSize().padding(2.dp),
+                                    modifier = Modifier.fillMaxSize().padding(2.dp).onFocusChanged { focusState ->
+                                        if (!focusState.isFocused) {
+                                            // 失焦时自动添加请假人员
+                                            if (leaveInputN.isNotBlank() && person == null) {
+                                                val target = persons.find { it.name.trim() == leaveInputN.trim() }
+                                                if (target != null && !target.onLeave) viewModel.toggleLeave(target)
+                                            }
+                                        }
+                                    },
                                     textStyle = androidx.compose.ui.text.TextStyle(fontSize = fontSize, color = Color(0xFF333333), textAlign = androidx.compose.ui.text.style.TextAlign.Center),
                                     singleLine = true,
                                     cursorBrush = androidx.compose.ui.graphics.SolidColor(Color(0xFF1976D2)),
