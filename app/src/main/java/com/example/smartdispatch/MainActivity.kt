@@ -83,7 +83,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _logs = MutableStateFlow(listOf<String>())
     val logs: StateFlow<List<String>> = _logs.asStateFlow()
-    private val _dispatchResult = MutableStateFlow<DispatchResult?>(loadDispatchResult())
+    private val _dispatchResult = MutableStateFlow<DispatchResult?>(null)
     val dispatchResult: StateFlow<DispatchResult?> = _dispatchResult.asStateFlow()
 
     private val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
@@ -1730,22 +1730,12 @@ fun ProcessFlowTab(viewModel: MainViewModel) {
     val showDeleteProductConfirm = remember { mutableStateOf(false) }
     var deletingProduct by remember { mutableStateOf<Product?>(null) }
 
-    var processMap by remember { mutableStateOf<Map<Int, List<ProductProcess>>>(emptyMap()) }
+    var processMap by remember { mutableStateOf<Map<Int, List<ProductProcess>>(emptyMap()) }
     val processVer by viewModel.processVersion.collectAsState()
     LaunchedEffect(products, processVer) {
         val map = mutableMapOf<Int, List<ProductProcess>>()
         for (product in products) { map[product.id] = repo.getProcessesOnce(product.id) }
         processMap = map
-    }
-
-    // 启动时自动排工两次（消除首次排工分配错误）
-    LaunchedEffect(products) {
-        if (products.isNotEmpty() && inputNames.any { it.isNotBlank() }) {
-            kotlinx.coroutines.delay(300)
-            viewModel.autoDispatch()
-            kotlinx.coroutines.delay(500)
-            viewModel.autoDispatch()
-        }
     }
 
     val maxProcesses = processMap.values.maxOfOrNull { it.size } ?: 0
@@ -1839,6 +1829,16 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
         val map = mutableMapOf<Int, List<ProductProcess>>()
         for (product in products) { map[product.id] = repo.getProcessesOnce(product.id) }
         processMap = map
+    }
+
+    // 启动时自动排工两次（消除首次排工分配错误）
+    LaunchedEffect(products) {
+        if (products.isNotEmpty() && inputNames.any { it.isNotBlank() }) {
+            kotlinx.coroutines.delay(300)
+            viewModel.autoDispatch()
+            kotlinx.coroutines.delay(500)
+            viewModel.autoDispatch()
+        }
     }
 
     val selectedProducts = inputNames.mapNotNull { name ->
