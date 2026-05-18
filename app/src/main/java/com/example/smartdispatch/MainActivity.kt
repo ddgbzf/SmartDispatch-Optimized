@@ -1271,13 +1271,13 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                     },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primaryContainer, titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer),
                     actions = {
-                        // 发布版显示排工按钮
+                        IconButton(onClick = { filePicker.launch(arrayOf("*/*")) }) { Icon(Icons.Default.FileUpload, "导入", modifier = Modifier.size(20.dp)) }
+                        // 发布版显示排工按钮（与导出互换位置）
                         if (!BuildConfig.DEBUG) {
                             IconButton(onClick = { focusManager.clearFocus(); viewModel.autoDispatch() }) { 
                                 Icon(Icons.Default.PlayArrow, "排工", modifier = Modifier.size(20.dp), tint = Color(0xFF1976D2))
                             }
                         }
-                        IconButton(onClick = { filePicker.launch(arrayOf("*/*")) }) { Icon(Icons.Default.FileUpload, "导入", modifier = Modifier.size(20.dp)) }
                         IconButton(onClick = { exportPicker.launch("排工结果_${System.currentTimeMillis()}.xlsx") }) { Icon(Icons.Default.FileDownload, "导出", modifier = Modifier.size(20.dp)) }
                         IconButton(onClick = { showSettings = true }) { Icon(Icons.Default.Settings, "设置", modifier = Modifier.size(20.dp)) }
                     },
@@ -1288,13 +1288,13 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                     title = { Text("智能排工系统", fontWeight = FontWeight.Bold) },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primaryContainer, titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer),
                     actions = {
-                        // 发布版显示排工按钮
+                        IconButton(onClick = { filePicker.launch(arrayOf("*/*")) }) { Icon(Icons.Default.FileUpload, "导入") }
+                        // 发布版显示排工按钮（与导出互换位置）
                         if (!BuildConfig.DEBUG) {
                             IconButton(onClick = { focusManager.clearFocus(); viewModel.autoDispatch() }) { 
                                 Icon(Icons.Default.PlayArrow, "排工", tint = Color(0xFF1976D2))
                             }
                         }
-                        IconButton(onClick = { filePicker.launch(arrayOf("*/*")) }) { Icon(Icons.Default.FileUpload, "导入") }
                         IconButton(onClick = { exportPicker.launch("排工结果_${System.currentTimeMillis()}.xlsx") }) { Icon(Icons.Default.FileDownload, "导出") }
                         IconButton(onClick = { showSettings = true }) { Icon(Icons.Default.Settings, "设置") }
                     }
@@ -1970,7 +1970,7 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
             Column(modifier = Modifier.fillMaxSize()) {
                 // 第一行：请假人员标题 + 输入框（两行显示）
                 Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState).background(Color(0xFF90CAF9))) {
-                    Box(modifier = Modifier.width(60.dp).height(rowHeight * 2).padding(1.dp).background(Color.White), contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier.width(colWidth).height(rowHeight * 2).padding(1.dp).background(Color.White), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text("请假", fontWeight = FontWeight.Bold, fontSize = fontSize, color = Color.Black)
                             Text("人员", fontWeight = FontWeight.Bold, fontSize = fontSize, color = Color.Black)
@@ -2031,7 +2031,7 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
                 Divider()
                 // 第二行：请假人名 + 产能/人数
                 Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState)) {
-                    Box(modifier = Modifier.width(60.dp).height(rowHeight).border(0.5.dp, Color(0xFFE0E0E0)).background(Color(0xFFFFCDD2)), contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier.width(colWidth).height(rowHeight).border(0.5.dp, Color(0xFFE0E0E0)).background(Color(0xFFFFCDD2)), contentAlignment = Alignment.Center) {
                         val p = leavePeople.getOrNull(0)
                         // 可编辑的请假人员单元格（有值可编辑清空，无值可输入添加）
                         var leaveInput0 by remember { mutableStateOf(p?.name ?: "") }
@@ -2096,7 +2096,7 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
 
                     items(maxRows) { rowIndex ->
                         Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState)) {
-                            Box(modifier = Modifier.width(60.dp).height(rowHeight).border(0.5.dp, Color(0xFFE0E0E0)).background(Color(0xFFFFCDD2)), contentAlignment = Alignment.Center) {
+                            Box(modifier = Modifier.width(colWidth).height(rowHeight).border(0.5.dp, Color(0xFFE0E0E0)).background(Color(0xFFFFCDD2)), contentAlignment = Alignment.Center) {
                                 val person = leavePeople.getOrNull(rowIndex + 1)
                                 // 可编辑的请假人员单元格（有值可编辑清空，无值可输入添加）
                                 var leaveInputN by remember { mutableStateOf(person?.name ?: "") }
