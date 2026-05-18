@@ -2172,6 +2172,10 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
                         }
                     }
                 }
+            }
+        }
+    }
+}
 
 @Composable
 fun StatItem(label: String, value: String, valueColor: Color = MaterialTheme.colorScheme.primary) {
