@@ -1348,8 +1348,9 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                                         or android.view.View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
                                         or android.view.View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
                                         or android.view.View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                                    )
-                                it.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                                )
+                                // 保持当前屏幕方向，只全屏
+                                it.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
                             } else {
                                 it.window.decorView.systemUiVisibility = android.view.View.SYSTEM_UI_FLAG_VISIBLE
                                 it.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
