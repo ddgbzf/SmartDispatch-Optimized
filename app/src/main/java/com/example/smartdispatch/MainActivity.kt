@@ -1295,13 +1295,9 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
         },
         bottomBar = {
             if (!isTableFullscreen) {
-            val tabTitles = if (isLandscape) listOf("评分", "流程", "排工") else listOf("工序评分", "工序流程", "智能排工")
+            val tabTitles = listOf("工序评分", "工序流程", "智能排工")
             // 金属质感底部导航栏
-            Box(modifier = Modifier.height(48.dp).fillMaxWidth().background(
-                brush = androidx.compose.ui.graphics.Brush.verticalGradient(
-                    colors = listOf(Color(0xFFF5F5F5), Color(0xFFC0C0C0), Color(0xFF808080), Color(0xFFA0A0A0))
-                )
-            ).shadow(8.dp, spotColor = Color.Black.copy(alpha = 0.3f))) {
+            Box(modifier = Modifier.height(48.dp).fillMaxWidth().background(Color(0xFFD0D0D0)).shadow(8.dp, spotColor = Color.Black.copy(alpha = 0.3f))) {
                 Row(modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
                     tabTitles.forEachIndexed { index, title ->
                         val isSelected = selectedTab == index
@@ -1313,7 +1309,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                                         colors = listOf(Color(0xFFE8E8E8), Color(0xFFB8B8B8), Color(0xFF888888))
                                     ),
                                     shape = RoundedCornerShape(12.dp)
-                                ).border(1.dp, Color.White.copy(alpha = 0.5f), RoundedCornerShape(12.dp)).shadow(4.dp, RoundedCornerShape(12.dp)).padding(horizontal = 16.dp, vertical = 6.dp)) {
+                                ).border(1.dp, Color.White.copy(alpha = 0.5f), RoundedCornerShape(12.dp)).shadow(4.dp, RoundedCornerShape(12.dp)).padding(horizontal = 28.dp, vertical = 6.dp)) {
                                     Text(title, fontSize = if (isLandscape) 11.sp else 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1565C0))
                                 }
                             } else {
@@ -1783,11 +1779,22 @@ fun ProcessFlowTab(viewModel: MainViewModel) {
                 }
             }
         }
-        FloatingActionButton(
-            onClick = { showAddProductDialog.value = true },
-            modifier = Modifier.align(Alignment.BottomEnd).padding(start = 0.dp, top = 0.dp, end = 24.dp, bottom = 24.dp).size(40.dp),
-            containerColor = MaterialTheme.colorScheme.primary
-        ) { Icon(Icons.Default.Add, "添加产品", modifier = Modifier.size(20.dp)) }
+        // 金属质感悬浮按钮
+        Box(
+            modifier = Modifier.align(Alignment.BottomEnd).padding(end = 24.dp, bottom = 24.dp).size(48.dp)
+                .shadow(8.dp, RoundedCornerShape(24.dp), ambientColor = Color(0xFF1565C0).copy(alpha = 0.4f), spotColor = Color(0xFF1565C0).copy(alpha = 0.6f))
+                .background(
+                    brush = androidx.compose.ui.graphics.Brush.linearGradient(
+                        colors = listOf(Color(0xFF42A5F5), Color(0xFF1976D2), Color(0xFF0D47A1))
+                    ),
+                    shape = RoundedCornerShape(24.dp)
+                )
+                .border(1.5.dp, Color.White.copy(alpha = 0.4f), RoundedCornerShape(24.dp))
+                .clickable { showAddProductDialog.value = true },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(Icons.Default.Add, "添加产品", modifier = Modifier.size(24.dp), tint = Color.White.copy(alpha = 0.95f))
+        }
     }
 
     if (showAddProductDialog.value) {
