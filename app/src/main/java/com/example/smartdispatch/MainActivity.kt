@@ -1313,17 +1313,15 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                             val isSelected = selectedTab == index
                             Box(modifier = Modifier.weight(1f).fillMaxHeight().clickable { selectedTab = index; prefs.edit().putInt("selectedTab", index).apply() }, contentAlignment = Alignment.Center) {
                                 if (isSelected) {
-                                    // 选中项：柔和圆润白色胶囊
-                                    Box(modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp).background(
-                                        brush = androidx.compose.ui.graphics.Brush.verticalGradient(
-                                            colors = listOf(Color(0xFFFFFFFF), Color(0xFFF5F5F5), Color(0xFFE8E8E8))
-                                        ),
+                                    // 选中项：纯白胶囊，一色
+                                    Box(modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp).background(
+                                        color = Color(0xFFFFFFFF),
                                         shape = RoundedCornerShape(50)
-                                    ).border(1.5.dp, Color.White.copy(alpha = 0.9f), RoundedCornerShape(50)).shadow(6.dp, RoundedCornerShape(50)).padding(horizontal = 28.dp, vertical = 10.dp)) {
-                                        Text(title, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1565C0))
+                                    ).border(1.5.dp, Color.White.copy(alpha = 0.9f), RoundedCornerShape(50)).shadow(6.dp, RoundedCornerShape(50)).padding(horizontal = 16.dp, vertical = 8.dp)) {
+                                        Text(title, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1565C0))
                                     }
                                 } else {
-                                    Text(title, fontSize = 15.sp, fontWeight = FontWeight.Normal, color = Color(0xFF555555))
+                                    Text(title, fontSize = 14.sp, fontWeight = FontWeight.Normal, color = Color(0xFF555555))
                                 }
                             }
                         }
