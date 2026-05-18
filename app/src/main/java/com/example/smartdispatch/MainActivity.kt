@@ -2059,7 +2059,6 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
                                     val target = persons.find { it.name.trim() == leaveInput0.trim() }
                                     if (target != null && !target.onLeave) viewModel.toggleLeave(target)
                                 }
-                                leaveInput0 = ""
                                 focusManager.clearFocus()
                             }),
                             decorationBox = { innerTextField ->
@@ -2124,7 +2123,6 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
                                             val target = persons.find { it.name.trim() == leaveInputN.trim() }
                                             if (target != null && !target.onLeave) viewModel.toggleLeave(target)
                                         }
-                                        leaveInputN = ""
                                         focusManager.clearFocus()
                                     }),
                                     decorationBox = { innerTextField ->
@@ -2156,18 +2154,19 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
                             }
                         }
                     }
-                }
-                // 未分配人员（在LazyColumn外部）
-                val unassigned = result?.unassignedPeople ?: emptyList()
-                if (unassigned.isNotEmpty()) {
-                    Divider()
-                    Row(modifier = Modifier.fillMaxWidth().horizontalScroll(unassignedScrollState)) {
-                            Box(modifier = Modifier.width(60.dp).height(rowHeight).border(0.5.dp, Color(0xFFE0E0E0)).background(Color(0xFFFFE0B2)), contentAlignment = Alignment.Center) {
-                                Text("未分配", fontSize = fontSize, fontWeight = FontWeight.Bold, color = Color(0xFFE65100))
-                            }
-                            unassigned.forEach { person ->
-                                Box(modifier = Modifier.width(60.dp).height(rowHeight).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
-                                    Text(person, fontSize = fontSize, color = Color(0xFF757575), fontStyle = FontStyle.Italic)
+                    // 未分配人员（在LazyColumn内部，可滚动看到）
+                    val unassigned = result?.unassignedPeople ?: emptyList()
+                    if (unassigned.isNotEmpty()) {
+                        item {
+                            Divider()
+                            Row(modifier = Modifier.fillMaxWidth().horizontalScroll(unassignedScrollState)) {
+                                Box(modifier = Modifier.width(colWidth).height(rowHeight).border(0.5.dp, Color(0xFFE0E0E0)).background(Color(0xFFFFE0B2)), contentAlignment = Alignment.Center) {
+                                    Text("未分配", fontSize = fontSize, fontWeight = FontWeight.Bold, color = Color(0xFFE65100))
+                                }
+                                unassigned.forEach { person ->
+                                    Box(modifier = Modifier.width(colWidth).height(rowHeight).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
+                                        Text(person, fontSize = fontSize, color = Color(0xFF757575), fontStyle = FontStyle.Italic)
+                                    }
                                 }
                             }
                         }
