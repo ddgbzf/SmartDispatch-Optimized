@@ -1738,10 +1738,12 @@ fun ProcessFlowTab(viewModel: MainViewModel) {
         processMap = map
     }
 
-    // 启动时自动排工一次（消除排工分配错误）
+    // 启动时自动排工两次（消除首次排工分配错误）
     LaunchedEffect(products) {
         if (products.isNotEmpty() && inputNames.any { it.isNotBlank() }) {
             kotlinx.coroutines.delay(300)
+            viewModel.autoDispatch()
+            kotlinx.coroutines.delay(500)
             viewModel.autoDispatch()
         }
     }
