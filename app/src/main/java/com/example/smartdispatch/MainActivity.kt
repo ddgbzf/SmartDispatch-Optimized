@@ -1308,22 +1308,22 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
             // 金属质感底部导航栏（统一底色，延伸到系统导航栏）
             Box(modifier = Modifier.fillMaxWidth().background(Color(0xFFB8B8B8)).shadow(8.dp, spotColor = Color.Black.copy(alpha = 0.3f))) {
                 Column {
-                    Row(modifier = Modifier.fillMaxWidth().height(52.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+                    Row(modifier = Modifier.fillMaxWidth().height(56.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
                         tabTitles.forEachIndexed { index, title ->
                             val isSelected = selectedTab == index
                             Box(modifier = Modifier.weight(1f).fillMaxHeight().clickable { selectedTab = index; prefs.edit().putInt("selectedTab", index).apply() }, contentAlignment = Alignment.Center) {
                                 if (isSelected) {
-                                    // 选中项：凸起金属按钮效果（白条加大一倍）
-                                    Box(modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp).background(
-                                        brush = androidx.compose.ui.graphics.Brush.linearGradient(
-                                            colors = listOf(Color(0xFFF0F0F0), Color(0xFFD0D0D0), Color(0xFFA0A0A0))
+                                    // 选中项：柔和圆润白色胶囊
+                                    Box(modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp).background(
+                                        brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                                            colors = listOf(Color(0xFFFFFFFF), Color(0xFFF5F5F5), Color(0xFFE8E8E8))
                                         ),
-                                        shape = RoundedCornerShape(16.dp)
-                                    ).border(2.dp, Color.White.copy(alpha = 0.7f), RoundedCornerShape(16.dp)).shadow(6.dp, RoundedCornerShape(16.dp)).padding(horizontal = 24.dp, vertical = 10.dp)) {
-                                        Text(title, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1565C0))
+                                        shape = RoundedCornerShape(50)
+                                    ).border(1.5.dp, Color.White.copy(alpha = 0.9f), RoundedCornerShape(50)).shadow(6.dp, RoundedCornerShape(50)).padding(horizontal = 28.dp, vertical = 10.dp)) {
+                                        Text(title, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1565C0))
                                     }
                                 } else {
-                                    Text(title, fontSize = 14.sp, fontWeight = FontWeight.Normal, color = Color(0xFF444444))
+                                    Text(title, fontSize = 15.sp, fontWeight = FontWeight.Normal, color = Color(0xFF555555))
                                 }
                             }
                         }
