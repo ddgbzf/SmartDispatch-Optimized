@@ -1305,27 +1305,31 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
         bottomBar = {
             if (!isTableFullscreen) {
             val tabTitles = listOf("工序评分", "工序流程", "智能排工")
-            // 金属质感底部导航栏（统一底色）
-            Box(modifier = Modifier.height(52.dp).fillMaxWidth().background(Color(0xFFB8B8B8)).shadow(8.dp, spotColor = Color.Black.copy(alpha = 0.3f))) {
-                Row(modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-                    tabTitles.forEachIndexed { index, title ->
-                        val isSelected = selectedTab == index
-                        Box(modifier = Modifier.weight(1f).fillMaxHeight().clickable { selectedTab = index; prefs.edit().putInt("selectedTab", index).apply() }, contentAlignment = Alignment.Center) {
-                            if (isSelected) {
-                                // 选中项：凸起金属按钮效果（白条加大一倍）
-                                Box(modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp).background(
-                                    brush = androidx.compose.ui.graphics.Brush.linearGradient(
-                                        colors = listOf(Color(0xFFF0F0F0), Color(0xFFD0D0D0), Color(0xFFA0A0A0))
-                                    ),
-                                    shape = RoundedCornerShape(16.dp)
-                                ).border(2.dp, Color.White.copy(alpha = 0.7f), RoundedCornerShape(16.dp)).shadow(6.dp, RoundedCornerShape(16.dp)).padding(horizontal = 24.dp, vertical = 10.dp)) {
-                                    Text(title, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1565C0))
+            // 金属质感底部导航栏（统一底色，延伸到系统导航栏）
+            Box(modifier = Modifier.fillMaxWidth().background(Color(0xFFB8B8B8)).shadow(8.dp, spotColor = Color.Black.copy(alpha = 0.3f))) {
+                Column {
+                    Row(modifier = Modifier.fillMaxWidth().height(52.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+                        tabTitles.forEachIndexed { index, title ->
+                            val isSelected = selectedTab == index
+                            Box(modifier = Modifier.weight(1f).fillMaxHeight().clickable { selectedTab = index; prefs.edit().putInt("selectedTab", index).apply() }, contentAlignment = Alignment.Center) {
+                                if (isSelected) {
+                                    // 选中项：凸起金属按钮效果（白条加大一倍）
+                                    Box(modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp).background(
+                                        brush = androidx.compose.ui.graphics.Brush.linearGradient(
+                                            colors = listOf(Color(0xFFF0F0F0), Color(0xFFD0D0D0), Color(0xFFA0A0A0))
+                                        ),
+                                        shape = RoundedCornerShape(16.dp)
+                                    ).border(2.dp, Color.White.copy(alpha = 0.7f), RoundedCornerShape(16.dp)).shadow(6.dp, RoundedCornerShape(16.dp)).padding(horizontal = 24.dp, vertical = 10.dp)) {
+                                        Text(title, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1565C0))
+                                    }
+                                } else {
+                                    Text(title, fontSize = 14.sp, fontWeight = FontWeight.Normal, color = Color(0xFF444444))
                                 }
-                            } else {
-                                Text(title, fontSize = 14.sp, fontWeight = FontWeight.Normal, color = Color(0xFF444444))
                             }
                         }
                     }
+                    // 系统导航栏区域填充
+                    Box(modifier = Modifier.fillMaxWidth().navigationBarsPadding().background(Color(0xFFB8B8B8)))
                 }
             }
             }
