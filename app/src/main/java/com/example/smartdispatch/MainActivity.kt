@@ -1313,15 +1313,15 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                             val isSelected = selectedTab == index
                             Box(modifier = Modifier.weight(1f).fillMaxHeight().clickable { selectedTab = index; prefs.edit().putInt("selectedTab", index).apply() }, contentAlignment = Alignment.Center) {
                                 if (isSelected) {
-                                    // 选中项：纯白胶囊，一色
-                                    Box(modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp).background(
+                                    // 选中项：纯白胶囊，一色，加宽以容纳四个字
+                                    Box(modifier = Modifier.padding(horizontal = 2.dp, vertical = 2.dp).background(
                                         color = Color(0xFFFFFFFF),
                                         shape = RoundedCornerShape(50)
-                                    ).border(1.5.dp, Color.White.copy(alpha = 0.9f), RoundedCornerShape(50)).shadow(6.dp, RoundedCornerShape(50)).padding(horizontal = 16.dp, vertical = 8.dp)) {
-                                        Text(title, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1565C0))
+                                    ).border(1.5.dp, Color.White.copy(alpha = 0.9f), RoundedCornerShape(50)).shadow(6.dp, RoundedCornerShape(50)).padding(horizontal = 12.dp, vertical = 8.dp)) {
+                                        Text(title, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1565C0), maxLines = 1, overflow = TextOverflow.Visible)
                                     }
                                 } else {
-                                    Text(title, fontSize = 14.sp, fontWeight = FontWeight.Normal, color = Color(0xFF555555))
+                                    Text(title, fontSize = 13.sp, fontWeight = FontWeight.Normal, color = Color(0xFF555555), maxLines = 1, overflow = TextOverflow.Visible)
                                 }
                             }
                         }
