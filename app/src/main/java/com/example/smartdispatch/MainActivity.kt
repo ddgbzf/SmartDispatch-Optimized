@@ -90,6 +90,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _dispatchResult = MutableStateFlow<DispatchResult?>(null)
     val dispatchResult: StateFlow<DispatchResult?> = _dispatchResult.asStateFlow()
 
+    // 标记是否已执行过启动排工
+    var hasAutoDispatchedOnLaunch = false
+
     private val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
 
     private fun loadDispatchResult(): DispatchResult? {
@@ -1300,20 +1303,20 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
         bottomBar = {
             if (!isTableFullscreen) {
             val tabTitles = listOf("工序评分", "工序流程", "智能排工")
-            // 金属质感底部导航栏
-            Box(modifier = Modifier.height(52.dp).fillMaxWidth().background(Color(0xFFD0D0D0)).shadow(8.dp, spotColor = Color.Black.copy(alpha = 0.3f))) {
+            // 金属质感底部导航栏（统一底色）
+            Box(modifier = Modifier.height(52.dp).fillMaxWidth().background(Color(0xFFB8B8B8)).shadow(8.dp, spotColor = Color.Black.copy(alpha = 0.3f))) {
                 Row(modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
                     tabTitles.forEachIndexed { index, title ->
                         val isSelected = selectedTab == index
                         Box(modifier = Modifier.weight(1f).fillMaxHeight().clickable { selectedTab = index; prefs.edit().putInt("selectedTab", index).apply() }, contentAlignment = Alignment.Center) {
                             if (isSelected) {
-                                // 选中项：凸起金属按钮效果
-                                Box(modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp).background(
+                                // 选中项：凸起金属按钮效果（白条加大一倍）
+                                Box(modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp).background(
                                     brush = androidx.compose.ui.graphics.Brush.linearGradient(
-                                        colors = listOf(Color(0xFFE8E8E8), Color(0xFFB8B8B8), Color(0xFF888888))
+                                        colors = listOf(Color(0xFFF0F0F0), Color(0xFFD0D0D0), Color(0xFFA0A0A0))
                                     ),
-                                    shape = RoundedCornerShape(14.dp)
-                                ).border(1.dp, Color.White.copy(alpha = 0.5f), RoundedCornerShape(14.dp)).shadow(4.dp, RoundedCornerShape(14.dp)).padding(horizontal = 20.dp, vertical = 8.dp)) {
+                                    shape = RoundedCornerShape(16.dp)
+                                ).border(2.dp, Color.White.copy(alpha = 0.7f), RoundedCornerShape(16.dp)).shadow(6.dp, RoundedCornerShape(16.dp)).padding(horizontal = 24.dp, vertical = 10.dp)) {
                                     Text(title, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1565C0))
                                 }
                             } else {
@@ -1804,9 +1807,9 @@ fun ProcessFlowTab(viewModel: MainViewModel) {
                 }
             }
         }
-        // 金属质感悬浮按钮
+        // 金属质感悬浮按钮（上移，避免被底部导航栏遮挡）
         Box(
-            modifier = Modifier.align(Alignment.BottomEnd).padding(end = 24.dp, bottom = 24.dp).size(48.dp)
+            modifier = Modifier.align(Alignment.BottomEnd).padding(end = 24.dp, bottom = 80.dp).size(48.dp)
                 .shadow(8.dp, RoundedCornerShape(24.dp), ambientColor = Color(0xFF1565C0).copy(alpha = 0.4f), spotColor = Color(0xFF1565C0).copy(alpha = 0.6f))
                 .background(
                     brush = androidx.compose.ui.graphics.Brush.linearGradient(
@@ -1859,13 +1862,16 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
         processMap = map
     }
 
-    // 启动时自动排工两次（消除首次排工分配错误，仅在首次组合时执行）
+    // 启动时自动排工两次（仅在App启动时执行一次，切换Tab不执行）
     LaunchedEffect(Unit) {
-        kotlinx.coroutines.delay(800)
-        if (products.isNotEmpty() && inputNames.any { it.isNotBlank() }) {
-            viewModel.autoDispatch()
-            kotlinx.coroutines.delay(500)
-            viewModel.autoDispatch()
+        if (!viewModel.hasAutoDispatchedOnLaunch) {
+            viewModel.hasAutoDispatchedOnLaunch = true
+            kotlinx.coroutines.delay(800)
+            if (products.isNotEmpty() && inputNames.any { it.isNotBlank() }) {
+                viewModel.autoDispatch()
+                kotlinx.coroutines.delay(500)
+                viewModel.autoDispatch()
+            }
         }
     }
 
