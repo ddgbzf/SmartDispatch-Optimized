@@ -1245,6 +1245,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
     val focusManager = LocalFocusManager.current
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             if (!isTableFullscreen) {
             // 横屏时极限压缩顶部
