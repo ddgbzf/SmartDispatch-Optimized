@@ -28,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -1513,8 +1514,31 @@ fun SkillScoreTab(viewModel: MainViewModel) {
                             processNames.forEach { process ->
                                 val score = scoreMap[Pair(person.id, process)] ?: 0
                                 val bgColor = when { score >= 7 -> Color(0xFFE8F5E9); score >= 4 -> Color(0xFFFFFFF3); score > 0 -> Color(0xFFFFF3E0); else -> Color(0xFFFAFAFA) }
-                                Box(modifier = Modifier.width(64.dp).height(24.dp).background(bgColor).border(0.5.dp, Color(0xFFE0E0E0)).clickable { editingPerson = person; editingProcess = process; currentScore = score.toString(); showEditDialog.value = true }, contentAlignment = Alignment.Center) {
-                                    Text(if (score > 0) score.toString() else "", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = if (score >= 7) Color(0xFF2E7D32) else if (score > 0) Color(0xFFF57F17) else Color(0xFFBDBDBD))
+                                val cellKey = "${person.id}_$process"
+                                var editing by remember { mutableStateOf(false) }
+                                var editValue by remember(score) { mutableStateOf(if (score > 0) score.toString() else "") }
+                                val focusRequester = remember { FocusRequester() }
+                                LaunchedEffect(editing) { if (editing) focusRequester.requestFocus() }
+                                Box(modifier = Modifier.width(64.dp).height(24.dp).background(bgColor).border(0.5.dp, Color(0xFFE0E0E0)).clickable { editing = true; editValue = if (score > 0) score.toString() else "" }, contentAlignment = Alignment.Center) {
+                                    if (editing) {
+                                        BasicTextField(
+                                            value = editValue,
+                                            onValueChange = { if (it.all { c -> c.isDigit() } && it.length <= 3) editValue = it },
+                                            modifier = Modifier.fillMaxSize().focusRequester(focusRequester),
+                                            textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Color(0xFF1565C0), textAlign = androidx.compose.ui.text.style.TextAlign.Center),
+                                            singleLine = true,
+                                            cursorBrush = androidx.compose.ui.graphics.SolidColor(Color(0xFF1565C0)),
+                                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.foundation.text.KeyboardType.Number, imeAction = androidx.compose.ui.text.input.ImeAction.Done),
+                                            keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = {
+                                                val newScore = editValue.toIntOrNull() ?: 0
+                                                viewModel.setSkillScore(person.id, process, newScore)
+                                                scoreMap = scoreMap.toMutableMap().apply { put(Pair(person.id, process), newScore) }
+                                                editing = false
+                                            })
+                                        )
+                                    } else {
+                                        Text(if (score > 0) score.toString() else "", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = if (score >= 7) Color(0xFF2E7D32) else if (score > 0) Color(0xFFF57F17) else Color(0xFFBDBDBD))
+                                    }
                                 }
                             }
                         }
@@ -1524,10 +1548,8 @@ fun SkillScoreTab(viewModel: MainViewModel) {
         }
     }
 
-    // 评分编辑对话框
-    if (showEditDialog.value && editingPerson != null) {
-        AlertDialog(onDismissRequest = { showEditDialog.value = false }, title = { Text("编辑评分") }, text = { Column { Text("${editingPerson!!.name} - $editingProcess"); Spacer(Modifier.height(8.dp)); OutlinedTextField(value = currentScore, onValueChange = { if (it.all { c -> c.isDigit() } && it.length <= 3) currentScore = it }, label = { Text("评分") }, singleLine = true) } }, confirmButton = { TextButton(onClick = { viewModel.setSkillScore(editingPerson!!.id, editingProcess, currentScore.toIntOrNull() ?: 0); scoreMap = scoreMap.toMutableMap().apply { put(Pair(editingPerson!!.id, editingProcess), currentScore.toIntOrNull() ?: 0) }; showEditDialog.value = false }) { Text("保存") } }, dismissButton = { TextButton(onClick = { showEditDialog.value = false }) { Text("取消") } })
-    }
+    // 评分编辑对话框（已改为单元格内直接编辑，保留作为备用）
+    // if (showEditDialog.value && editingPerson != null) { ... }
 
     // 长按工序弹出菜单
     if (showProcessMenu.value) {
