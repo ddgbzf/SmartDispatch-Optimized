@@ -1298,17 +1298,32 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
             val tabTitles = if (isLandscape) listOf("评分", "流程", "排工") else listOf("工序评分", "工序流程", "智能排工")
             TabRow(
                 selectedTabIndex = selectedTab,
-                containerColor = MaterialTheme.colorScheme.surface,
+                containerColor = Color.Transparent,
                 contentColor = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.height(40.dp)
+                modifier = Modifier.height(40.dp).background(
+                    brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                        colors = listOf(Color(0xFFE8E8E8), Color(0xFFD0D0D0), Color(0xFFE0E0E0))
+                    )
+                ).shadow(4.dp)
             ) {
                 tabTitles.forEachIndexed { index, title ->
                     Tab(
                         selected = selectedTab == index,
                         onClick = { selectedTab = index; prefs.edit().putInt("selectedTab", index).apply() },
-                        text = { Text(title, fontSize = if (isLandscape) 11.sp else 13.sp) },
-                        selectedContentColor = MaterialTheme.colorScheme.primary,
-                        unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = {
+                            Text(
+                                title,
+                                fontSize = if (isLandscape) 11.sp else 13.sp,
+                                fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal,
+                                modifier = if (selectedTab == index) Modifier
+                                    .background(Color.White.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                                    .padding(horizontal = 12.dp, vertical = 4.dp)
+                                    .shadow(2.dp, RoundedCornerShape(8.dp))
+                                else Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                            )
+                        },
+                        selectedContentColor = Color(0xFF1565C0),
+                        unselectedContentColor = Color(0xFF757575)
                     )
                 }
             }
@@ -1338,11 +1353,22 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                             }
                         }
                     },
-                    modifier = Modifier.padding(start = 0.dp, top = 0.dp, end = 24.dp, bottom = 24.dp).size(36.dp),
-                    containerColor = Color(0xFF1976D2),
+                    modifier = Modifier.padding(start = 0.dp, top = 0.dp, end = 24.dp, bottom = 24.dp).size(36.dp)
+                        .shadow(8.dp, RoundedCornerShape(18.dp), ambientColor = Color(0xFF1565C0).copy(alpha = 0.4f), spotColor = Color(0xFF1565C0).copy(alpha = 0.6f)),
+                    containerColor = Color.Transparent,
                     contentColor = Color.White
                 ) {
-                    Icon(Icons.Default.Fullscreen, "全屏", modifier = Modifier.size(16.dp))
+                    Box(
+                        modifier = Modifier.fillMaxSize().background(
+                            brush = androidx.compose.ui.graphics.Brush.linearGradient(
+                                colors = listOf(Color(0xFF42A5F5), Color(0xFF1976D2), Color(0xFF0D47A1))
+                            ),
+                            shape = RoundedCornerShape(18.dp)
+                        ).border(1.dp, Color.White.copy(alpha = 0.3f), RoundedCornerShape(18.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.Fullscreen, contentDescription = "全屏", modifier = Modifier.size(20.dp), tint = Color.White.copy(alpha = 0.95f))
+                    }
                 }
             }
         }
@@ -1710,6 +1736,14 @@ fun ProcessFlowTab(viewModel: MainViewModel) {
         val map = mutableMapOf<Int, List<ProductProcess>>()
         for (product in products) { map[product.id] = repo.getProcessesOnce(product.id) }
         processMap = map
+    }
+
+    // 启动时自动排工一次（消除排工分配错误）
+    LaunchedEffect(products) {
+        if (products.isNotEmpty() && inputNames.any { it.isNotBlank() }) {
+            kotlinx.coroutines.delay(300)
+            viewModel.autoDispatch()
+        }
     }
 
     val maxProcesses = processMap.values.maxOfOrNull { it.size } ?: 0
