@@ -1307,9 +1307,9 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
             if (!isTableFullscreen) {
             val tabTitles = listOf("工序评分", "工序流程", "智能排工")
             val tabIcons = listOf(Icons.Default.Star, Icons.Default.List, Icons.Default.PlayArrow)
-            // 底部导航栏（浅蓝紫色背景，图标+文字，选中横条指示器）
+            // 底部导航栏（深灰色背景，延伸到系统导航栏）
             Column(
-                modifier = Modifier.fillMaxWidth().background(Color(0xFFE8EAF6))
+                modifier = Modifier.fillMaxWidth().background(Color(0xFF424242))
             ) {
                 Row(modifier = Modifier.fillMaxWidth().height(56.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
                     tabTitles.forEachIndexed { index, title ->
@@ -1319,18 +1319,19 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center
                         ) {
-                            Icon(tabIcons[index], title, modifier = Modifier.size(22.dp), tint = if (isSelected) Color(0xFF1A237E) else Color(0xFF9E9E9E))
+                            Icon(tabIcons[index], title, modifier = Modifier.size(22.dp), tint = if (isSelected) Color(0xFFFFFFFF) else Color(0xFFBDBDBD))
                             Spacer(Modifier.height(2.dp))
-                            Text(title, fontSize = 11.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal, color = if (isSelected) Color(0xFF1A237E) else Color(0xFF9E9E9E), maxLines = 1)
+                            Text(title, fontSize = 11.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal, color = if (isSelected) Color(0xFFFFFFFF) else Color(0xFFBDBDBD), maxLines = 1)
                             Spacer(Modifier.height(2.dp))
                             // 选中项横条指示器
                             if (isSelected) {
-                                Box(modifier = Modifier.width(24.dp).height(3.dp).background(Color(0xFF1A237E), RoundedCornerShape(1.5.dp)))
+                                Box(modifier = Modifier.width(24.dp).height(3.dp).background(Color(0xFFFFFFFF), RoundedCornerShape(1.5.dp)))
                             }
                         }
                     }
                 }
-                Spacer(modifier = Modifier.fillMaxWidth().navigationBarsPadding())
+                // 系统导航栏区域（实际高度，背景色延伸）
+                Spacer(modifier = Modifier.fillMaxWidth().height(WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()))
             }
             }
         },
@@ -2081,7 +2082,7 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
                                     val target = persons.find { it.name.trim() == leaveInput0.trim() }
                                     if (target != null && !target.onLeave) viewModel.toggleLeave(target)
                                 }
-                                focusManager.clearFocus()
+                                // 不调用 clearFocus()，避免触发 LaunchedEffect 重置输入值
                             }),
                             decorationBox = { innerTextField ->
                                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -2153,7 +2154,7 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
                                             val target = persons.find { it.name.trim() == leaveInputN.trim() }
                                             if (target != null && !target.onLeave) viewModel.toggleLeave(target)
                                         }
-                                        focusManager.clearFocus()
+                                        // 不调用 clearFocus()，避免触发 LaunchedEffect 重置输入值
                                     }),
                                     decorationBox = { innerTextField ->
                                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
