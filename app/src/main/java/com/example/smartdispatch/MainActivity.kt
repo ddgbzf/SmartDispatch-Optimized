@@ -1307,6 +1307,8 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
             if (!isTableFullscreen) {
             val tabTitles = listOf("工序评分", "工序流程", "智能排工")
             val tabIcons = listOf(Icons.Default.Star, Icons.Default.List, Icons.Default.PlayArrow)
+            val density = LocalDensity.current
+            val navigationBarHeight = with(density) { WindowInsets.navigationBars.getBottom(density).toDp() }
             // 底部导航栏（深灰色背景，延伸到系统导航栏）
             Column(
                 modifier = Modifier.fillMaxWidth().background(Color(0xFF424242))
@@ -1330,8 +1332,10 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                         }
                     }
                 }
-                // 系统导航栏区域（实际高度，背景色延伸）
-                Spacer(modifier = Modifier.fillMaxWidth().height(WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()))
+                // 系统导航栏区域（直接获取系统值，背景色延伸到底部）
+                if (navigationBarHeight > 0.dp) {
+                    Spacer(modifier = Modifier.fillMaxWidth().height(navigationBarHeight))
+                }
             }
             }
         },
