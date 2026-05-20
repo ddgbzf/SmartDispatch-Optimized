@@ -1249,7 +1249,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
     Scaffold(
         contentWindowInsets = WindowInsets(bottom = 0),
         topBar = {
-            if (!isTableFullscreen) {
+            if (!isTableFullscreen && selectedTab == 2) {
             // 横屏时极限压缩顶部
             if (isLandscape) {
                 TopAppBar(
@@ -1324,11 +1324,6 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                             Icon(tabIcons[index], title, modifier = Modifier.size(22.dp), tint = if (isSelected) Color(0xFFFFFFFF) else Color(0xFFBDBDBD))
                             Spacer(Modifier.height(2.dp))
                             Text(title, fontSize = 11.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal, color = if (isSelected) Color(0xFFFFFFFF) else Color(0xFFBDBDBD), maxLines = 1)
-                            Spacer(Modifier.height(2.dp))
-                            // 选中项横条指示器
-                            if (isSelected) {
-                                Box(modifier = Modifier.width(24.dp).height(3.dp).background(Color(0xFFFFFFFF), RoundedCornerShape(1.5.dp)))
-                            }
                         }
                     }
                 }
@@ -1385,7 +1380,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
         }
     ) { padding ->
         val topPadding = padding.calculateTopPadding()
-        val adjustedTopPadding = if (isLandscape) topPadding + 4.dp else topPadding - 4.dp
+        val adjustedTopPadding = if (isLandscape) topPadding + 8.dp else topPadding - 8.dp
         Box(modifier = Modifier.padding(top = adjustedTopPadding)) {
             when (selectedTab) {
                 0 -> SkillScoreTab(viewModel)
