@@ -1252,38 +1252,33 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
             if (!isTableFullscreen && selectedTab == 2) {
             // 横屏时极限压缩顶部
             if (isLandscape) {
-                TopAppBar(
-                    title = { 
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("智能排工", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                            Spacer(Modifier.width(8.dp))
-                            // 统计信息并入标题栏
-                            val result by viewModel.dispatchResult.collectAsState()
-                            result?.let { r ->
-                                Text("总${r.totalPeople}", fontSize = 12.sp, color = Color(0xFF666666))
-                                Spacer(Modifier.width(4.dp))
-                                Text("假${r.leaveCount}", fontSize = 12.sp, color = Color(0xFFC62828))
-                                Spacer(Modifier.width(4.dp))
-                                Text("分${r.assignedCount}", fontSize = 12.sp, color = Color(0xFF1976D2))
-                                Spacer(Modifier.width(4.dp))
-                                Text(if (r.remainingCount >= 0) "余${r.remainingCount}" else "缺${-r.remainingCount}", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (r.remainingCount >= 0) Color(0xFF2E7D32) else Color(0xFFC62828))
-                            }
+                // 自定义页眉，高度32dp，无多余内边距
+                Row(
+                    modifier = Modifier.fillMaxWidth().height(32.dp).background(MaterialTheme.colorScheme.primaryContainer).padding(horizontal = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("智能排工", fontWeight = FontWeight.Bold, fontSize = 14.sp, modifier = Modifier.padding(start = 8.dp))
+                    Spacer(Modifier.width(8.dp))
+                    val result by viewModel.dispatchResult.collectAsState()
+                    result?.let { r ->
+                        Text("总${r.totalPeople}", fontSize = 12.sp, color = Color(0xFF666666))
+                        Spacer(Modifier.width(4.dp))
+                        Text("假${r.leaveCount}", fontSize = 12.sp, color = Color(0xFFC62828))
+                        Spacer(Modifier.width(4.dp))
+                        Text("分${r.assignedCount}", fontSize = 12.sp, color = Color(0xFF1976D2))
+                        Spacer(Modifier.width(4.dp))
+                        Text(if (r.remainingCount >= 0) "余${r.remainingCount}" else "缺${-r.remainingCount}", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (r.remainingCount >= 0) Color(0xFF2E7D32) else Color(0xFFC62828))
+                    }
+                    Spacer(Modifier.weight(1f))
+                    IconButton(onClick = { filePicker.launch(arrayOf("*/*")) }) { Icon(Icons.Default.FileUpload, "导入", modifier = Modifier.size(20.dp)) }
+                    IconButton(onClick = { exportPicker.launch("排工结果_${System.currentTimeMillis()}.xlsx") }) { Icon(Icons.Default.FileDownload, "导出", modifier = Modifier.size(20.dp)) }
+                    if (!BuildConfig.DEBUG) {
+                        IconButton(onClick = { focusManager.clearFocus(); viewModel.autoDispatch() }) { 
+                            Icon(Icons.Default.PlayArrow, "排工", modifier = Modifier.size(20.dp), tint = Color(0xFF1976D2))
                         }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primaryContainer, titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer),
-                    actions = {
-                        IconButton(onClick = { filePicker.launch(arrayOf("*/*")) }) { Icon(Icons.Default.FileUpload, "导入", modifier = Modifier.size(20.dp)) }
-                        IconButton(onClick = { exportPicker.launch("排工结果_${System.currentTimeMillis()}.xlsx") }) { Icon(Icons.Default.FileDownload, "导出", modifier = Modifier.size(20.dp)) }
-                        // 发布版显示排工按钮（与导出互换位置）
-                        if (!BuildConfig.DEBUG) {
-                            IconButton(onClick = { focusManager.clearFocus(); viewModel.autoDispatch() }) { 
-                                Icon(Icons.Default.PlayArrow, "排工", modifier = Modifier.size(20.dp), tint = Color(0xFF1976D2))
-                            }
-                        }
-                        IconButton(onClick = { showSettings = true }) { Icon(Icons.Default.Settings, "设置", modifier = Modifier.size(20.dp)) }
-                    },
-                    modifier = Modifier.height(24.dp)
-                )
+                    }
+                    IconButton(onClick = { showSettings = true }) { Icon(Icons.Default.Settings, "设置", modifier = Modifier.size(20.dp)) }
+                }
             } else {
                 // 自定义页眉，高度40dp，无多余内边距
                 Row(
