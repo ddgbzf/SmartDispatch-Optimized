@@ -1386,7 +1386,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
     ) { padding ->
         val topPadding = padding.calculateTopPadding()
         val adjustedTopPadding = if (isLandscape) topPadding + 4.dp else topPadding - 4.dp
-        Box(modifier = Modifier.padding(top = adjustedTopPadding.coerceAtLeast(0.dp))) {
+        Box(modifier = Modifier.padding(top = adjustedTopPadding)) {
             when (selectedTab) {
                 0 -> SkillScoreTab(viewModel)
                 1 -> ProcessFlowTab(viewModel)
