@@ -661,7 +661,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
         setContent {
             智能排工Theme {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { MainScreen() }
@@ -1247,7 +1246,6 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
     val focusManager = LocalFocusManager.current
 
     Scaffold(
-        contentWindowInsets = WindowInsets.statusBars,
         topBar = {
             if (!isTableFullscreen && selectedTab == 2) {
             // 横屏时极限压缩顶部
