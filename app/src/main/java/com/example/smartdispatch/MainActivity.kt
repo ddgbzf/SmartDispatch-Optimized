@@ -1282,11 +1282,12 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                         }
                         IconButton(onClick = { showSettings = true }) { Icon(Icons.Default.Settings, "设置", modifier = Modifier.size(20.dp)) }
                     },
-                    modifier = Modifier.height(32.dp)
+                    modifier = Modifier.height(24.dp)
                 )
             } else {
                 TopAppBar(
                     title = { Text("智能排工系统", fontWeight = FontWeight.Bold) },
+                    modifier = Modifier.height(48.dp),
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primaryContainer, titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer),
                     actions = {
                         IconButton(onClick = { filePicker.launch(arrayOf("*/*")) }) { Icon(Icons.Default.FileUpload, "导入") }
@@ -1380,8 +1381,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
         }
     ) { padding ->
         val topPadding = padding.calculateTopPadding()
-        val adjustedTopPadding = if (isLandscape) topPadding + 8.dp else topPadding - 8.dp
-        Box(modifier = Modifier.padding(top = adjustedTopPadding)) {
+        Box(modifier = Modifier.padding(top = topPadding)) {
             when (selectedTab) {
                 0 -> SkillScoreTab(viewModel)
                 1 -> ProcessFlowTab(viewModel)
