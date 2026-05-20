@@ -1285,22 +1285,21 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                     modifier = Modifier.height(24.dp)
                 )
             } else {
-                TopAppBar(
-                    title = { Text("智能排工系统", fontWeight = FontWeight.Bold) },
-                    modifier = Modifier.height(48.dp),
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primaryContainer, titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer),
-                    actions = {
-                        IconButton(onClick = { filePicker.launch(arrayOf("*/*")) }) { Icon(Icons.Default.FileUpload, "导入") }
-                        IconButton(onClick = { exportPicker.launch("排工结果_${System.currentTimeMillis()}.xlsx") }) { Icon(Icons.Default.FileDownload, "导出") }
-                        // 发布版显示排工按钮（与导出互换位置）
-                        if (!BuildConfig.DEBUG) {
-                            IconButton(onClick = { focusManager.clearFocus(); viewModel.autoDispatch() }) { 
-                                Icon(Icons.Default.PlayArrow, "排工", tint = Color(0xFF1976D2))
-                            }
+                // 自定义页眉，高度40dp，无多余内边距
+                Row(
+                    modifier = Modifier.fillMaxWidth().height(40.dp).background(MaterialTheme.colorScheme.primaryContainer).padding(horizontal = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("智能排工系统", fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.weight(1f).padding(start = 8.dp))
+                    IconButton(onClick = { filePicker.launch(arrayOf("*/*")) }) { Icon(Icons.Default.FileUpload, "导入", modifier = Modifier.size(20.dp)) }
+                    IconButton(onClick = { exportPicker.launch("排工结果_${System.currentTimeMillis()}.xlsx") }) { Icon(Icons.Default.FileDownload, "导出", modifier = Modifier.size(20.dp)) }
+                    if (!BuildConfig.DEBUG) {
+                        IconButton(onClick = { focusManager.clearFocus(); viewModel.autoDispatch() }) { 
+                            Icon(Icons.Default.PlayArrow, "排工", modifier = Modifier.size(20.dp), tint = Color(0xFF1976D2))
                         }
-                        IconButton(onClick = { showSettings = true }) { Icon(Icons.Default.Settings, "设置") }
                     }
-                )
+                    IconButton(onClick = { showSettings = true }) { Icon(Icons.Default.Settings, "设置", modifier = Modifier.size(20.dp)) }
+                }
             }
             }
         },
