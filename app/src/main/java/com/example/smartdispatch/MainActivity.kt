@@ -1536,39 +1536,34 @@ fun SkillScoreTab(viewModel: MainViewModel) {
                                 var editing by remember { mutableStateOf(false) }
                                 var editValue by remember(score) { mutableStateOf(if (score > 0) score.toString() else "") }
                                 val focusRequester = remember { FocusRequester() }
-                                Box(modifier = Modifier.width(64.dp).height(24.dp).background(bgColor).border(0.5.dp, Color(0xFFE0E0E0)).clickable(enabled = !editing) {
-                                    editing = true
-                                    editValue = if (score > 0) score.toString() else ""
-                                }, contentAlignment = Alignment.Center) {
-                                    if (editing) {
-                                        val focusManager = LocalFocusManager.current
-                                        LaunchedEffect(Unit) { focusRequester.requestFocus() }
-                                        BasicTextField(
-                                            value = editValue,
-                                            onValueChange = { if (it.all { c -> c.isDigit() } && it.length <= 3) editValue = it },
-                                            modifier = Modifier.fillMaxSize().focusRequester(focusRequester).onFocusChanged { focusState ->
-                                                if (!focusState.isFocused && editing) {
-                                                    val newScore = editValue.toIntOrNull() ?: 0
-                                                    viewModel.setSkillScore(person.id, process, newScore)
-                                                    scoreMap = scoreMap.toMutableMap().apply { put(Pair(person.id, process), newScore) }
-                                                    editing = false
-                                                }
-                                            },
-                                            textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Color(0xFF1565C0), textAlign = androidx.compose.ui.text.style.TextAlign.Center),
-                                            singleLine = true,
-                                            cursorBrush = androidx.compose.ui.graphics.SolidColor(Color(0xFF1565C0)),
-                                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = androidx.compose.ui.text.input.ImeAction.Done),
-                                            keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = {
+                                LaunchedEffect(editing) { if (editing) focusRequester.requestFocus() }
+                                Box(modifier = Modifier.width(64.dp).height(24.dp).background(bgColor).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
+                                    BasicTextField(
+                                        value = editValue,
+                                        onValueChange = { if (it.all { c -> c.isDigit() } && it.length <= 3) editValue = it },
+                                        modifier = Modifier.fillMaxSize().focusRequester(focusRequester).onFocusChanged { focusState ->
+                                            if (focusState.isFocused) {
+                                                editing = true
+                                                editValue = if (score > 0) score.toString() else ""
+                                            } else if (editing) {
                                                 val newScore = editValue.toIntOrNull() ?: 0
                                                 viewModel.setSkillScore(person.id, process, newScore)
                                                 scoreMap = scoreMap.toMutableMap().apply { put(Pair(person.id, process), newScore) }
                                                 editing = false
-                                                focusManager.clearFocus()
-                                            })
-                                        )
-                                    } else {
-                                        Text(if (score > 0) score.toString() else "", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = if (score >= 7) Color(0xFF2E7D32) else if (score > 0) Color(0xFFF57F17) else Color(0xFFBDBDBD))
-                                    }
+                                            }
+                                        },
+                                        textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Medium, color = if (editing) Color(0xFF1565C0) else if (score >= 7) Color(0xFF2E7D32) else if (score > 0) Color(0xFFF57F17) else Color(0xFFBDBDBD), textAlign = androidx.compose.ui.text.style.TextAlign.Center),
+                                        singleLine = true,
+                                        cursorBrush = androidx.compose.ui.graphics.SolidColor(Color(0xFF1565C0)),
+                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = androidx.compose.ui.text.input.ImeAction.Done),
+                                        keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = {
+                                            val newScore = editValue.toIntOrNull() ?: 0
+                                            viewModel.setSkillScore(person.id, process, newScore)
+                                            scoreMap = scoreMap.toMutableMap().apply { put(Pair(person.id, process), newScore) }
+                                            editing = false
+                                            focusRequester.freeFocus()
+                                        })
+                                    )
                                 }
                             }
                         }
