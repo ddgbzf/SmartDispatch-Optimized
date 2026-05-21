@@ -1309,7 +1309,8 @@ private fun CompactHeaderButton(
 ) {
     Box(
         modifier = Modifier
-            .size(22.dp)
+            .width(28.dp)
+            .height(24.dp)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
@@ -1336,16 +1337,16 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
             if (!isTableFullscreen && selectedTab == 2) {
             // 横屏时极限压缩顶部
             if (isLandscape) {
-                // 横屏极限压缩页眉：24dp，高度只保留标题、统计和常用按钮
+                // 横屏极限压缩页眉：24dp，标题保留“智能排工”，字号11
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(24.dp)
                         .background(MaterialTheme.colorScheme.primaryContainer)
-                        .padding(start = 4.dp, end = 2.dp),
+                        .padding(start = 4.dp, end = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("排工", fontWeight = FontWeight.Bold, fontSize = 12.sp, lineHeight = 12.sp)
+                    Text("智能排工", fontWeight = FontWeight.Bold, fontSize = 11.sp, lineHeight = 11.sp)
                     Spacer(Modifier.width(6.dp))
                     val result by viewModel.dispatchResult.collectAsState()
                     result?.let { r ->
@@ -1397,7 +1398,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
             Column(
                 modifier = Modifier.fillMaxWidth().background(Color(0xFF424242))
             ) {
-                Row(modifier = Modifier.fillMaxWidth().height(if (isLandscape) 32.dp else 56.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+                Row(modifier = Modifier.fillMaxWidth().height(if (isLandscape) 24.dp else 56.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
                     tabTitles.forEachIndexed { index, title ->
                         val isSelected = selectedTab == index
                         Column(
@@ -1405,11 +1406,11 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center
                         ) {
-                            Icon(tabIcons[index], title, modifier = Modifier.size(if (isLandscape) 16.dp else 22.dp), tint = if (isSelected) Color(0xFFFFFFFF) else Color(0xFFBDBDBD))
                             if (!isLandscape) {
+                                Icon(tabIcons[index], title, modifier = Modifier.size(22.dp), tint = if (isSelected) Color(0xFFFFFFFF) else Color(0xFFBDBDBD))
                                 Spacer(Modifier.height(2.dp))
                             }
-                            Text(title, fontSize = if (isLandscape) 9.sp else 11.sp, lineHeight = if (isLandscape) 9.sp else 11.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal, color = if (isSelected) Color(0xFFFFFFFF) else Color(0xFFBDBDBD), maxLines = 1)
+                            Text(title, fontSize = 11.sp, lineHeight = 11.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal, color = if (isSelected) Color(0xFFFFFFFF) else Color(0xFFBDBDBD), maxLines = 1)
                         }
                     }
                 }
