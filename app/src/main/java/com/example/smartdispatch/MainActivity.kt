@@ -35,6 +35,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -1299,6 +1300,23 @@ fun FixedColumnScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
     )
 }
 
+@Composable
+private fun CompactHeaderButton(
+    icon: ImageVector,
+    contentDescription: String,
+    tint: Color = LocalContentColor.current,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .size(22.dp)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(icon, contentDescription = contentDescription, modifier = Modifier.size(16.dp), tint = tint)
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(viewModel: MainViewModel = viewModel()) {
@@ -1318,32 +1336,37 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
             if (!isTableFullscreen && selectedTab == 2) {
             // 横屏时极限压缩顶部
             if (isLandscape) {
-                // 自定义页眉，高度32dp，无多余内边距
+                // 横屏极限压缩页眉：24dp，高度只保留标题、统计和常用按钮
                 Row(
-                    modifier = Modifier.fillMaxWidth().height(32.dp).background(MaterialTheme.colorScheme.primaryContainer).padding(horizontal = 4.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(24.dp)
+                        .background(MaterialTheme.colorScheme.primaryContainer)
+                        .padding(start = 4.dp, end = 2.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("智能排工", fontWeight = FontWeight.Bold, fontSize = 14.sp, modifier = Modifier.padding(start = 8.dp))
-                    Spacer(Modifier.width(8.dp))
+                    Text("排工", fontWeight = FontWeight.Bold, fontSize = 12.sp, lineHeight = 12.sp)
+                    Spacer(Modifier.width(6.dp))
                     val result by viewModel.dispatchResult.collectAsState()
                     result?.let { r ->
-                        Text("总${r.totalPeople}", fontSize = 12.sp, color = Color(0xFF666666))
-                        Spacer(Modifier.width(4.dp))
-                        Text("假${r.leaveCount}", fontSize = 12.sp, color = Color(0xFFC62828))
-                        Spacer(Modifier.width(4.dp))
-                        Text("分${r.assignedCount}", fontSize = 12.sp, color = Color(0xFF1976D2))
-                        Spacer(Modifier.width(4.dp))
-                        Text(if (r.remainingCount >= 0) "余${r.remainingCount}" else "缺${-r.remainingCount}", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (r.remainingCount >= 0) Color(0xFF2E7D32) else Color(0xFFC62828))
+                        Text("总${r.totalPeople}", fontSize = 10.sp, lineHeight = 10.sp, color = Color(0xFF666666))
+                        Spacer(Modifier.width(3.dp))
+                        Text("假${r.leaveCount}", fontSize = 10.sp, lineHeight = 10.sp, color = Color(0xFFC62828))
+                        Spacer(Modifier.width(3.dp))
+                        Text("分${r.assignedCount}", fontSize = 10.sp, lineHeight = 10.sp, color = Color(0xFF1976D2))
+                        Spacer(Modifier.width(3.dp))
+                        Text(if (r.remainingCount >= 0) "余${r.remainingCount}" else "缺${-r.remainingCount}", fontSize = 10.sp, lineHeight = 10.sp, fontWeight = FontWeight.Bold, color = if (r.remainingCount >= 0) Color(0xFF2E7D32) else Color(0xFFC62828))
                     }
                     Spacer(Modifier.weight(1f))
-                    IconButton(onClick = { filePicker.launch(arrayOf("*/*")) }) { Icon(Icons.Default.FileUpload, "导入", modifier = Modifier.size(20.dp)) }
-                    IconButton(onClick = { exportPicker.launch("排工结果_${System.currentTimeMillis()}.xlsx") }) { Icon(Icons.Default.FileDownload, "导出", modifier = Modifier.size(20.dp)) }
+                    CompactHeaderButton(Icons.Default.FileUpload, "导入") { filePicker.launch(arrayOf("*/*")) }
+                    CompactHeaderButton(Icons.Default.FileDownload, "导出") { exportPicker.launch("排工结果_${System.currentTimeMillis()}.xlsx") }
                     if (!BuildConfig.DEBUG) {
-                        IconButton(onClick = { focusManager.clearFocus(); viewModel.autoDispatch() }) { 
-                            Icon(Icons.Default.PlayArrow, "排工", modifier = Modifier.size(20.dp), tint = Color(0xFF1976D2))
+                        CompactHeaderButton(Icons.Default.PlayArrow, "排工", tint = Color(0xFF1976D2)) {
+                            focusManager.clearFocus()
+                            viewModel.autoDispatch()
                         }
                     }
-                    IconButton(onClick = { showSettings = true }) { Icon(Icons.Default.Settings, "设置", modifier = Modifier.size(20.dp)) }
+                    CompactHeaderButton(Icons.Default.Settings, "设置") { showSettings = true }
                 }
             } else {
                 // 自定义页眉，高度40dp，无多余内边距
@@ -1374,7 +1397,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
             Column(
                 modifier = Modifier.fillMaxWidth().background(Color(0xFF424242))
             ) {
-                Row(modifier = Modifier.fillMaxWidth().height(56.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+                Row(modifier = Modifier.fillMaxWidth().height(if (isLandscape) 32.dp else 56.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
                     tabTitles.forEachIndexed { index, title ->
                         val isSelected = selectedTab == index
                         Column(
@@ -1382,14 +1405,16 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center
                         ) {
-                            Icon(tabIcons[index], title, modifier = Modifier.size(22.dp), tint = if (isSelected) Color(0xFFFFFFFF) else Color(0xFFBDBDBD))
-                            Spacer(Modifier.height(2.dp))
-                            Text(title, fontSize = 11.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal, color = if (isSelected) Color(0xFFFFFFFF) else Color(0xFFBDBDBD), maxLines = 1)
+                            Icon(tabIcons[index], title, modifier = Modifier.size(if (isLandscape) 16.dp else 22.dp), tint = if (isSelected) Color(0xFFFFFFFF) else Color(0xFFBDBDBD))
+                            if (!isLandscape) {
+                                Spacer(Modifier.height(2.dp))
+                            }
+                            Text(title, fontSize = if (isLandscape) 9.sp else 11.sp, lineHeight = if (isLandscape) 9.sp else 11.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal, color = if (isSelected) Color(0xFFFFFFFF) else Color(0xFFBDBDBD), maxLines = 1)
                         }
                     }
                 }
-                // 系统导航栏区域（直接获取系统值，背景色延伸到底部）
-                if (navigationBarHeight > 0.dp) {
+                // 系统导航栏区域（竖屏保留，横屏极限压缩为0，给表格让空间）
+                if (!isLandscape && navigationBarHeight > 0.dp) {
                     Spacer(modifier = Modifier.fillMaxWidth().height(navigationBarHeight))
                 }
             }
