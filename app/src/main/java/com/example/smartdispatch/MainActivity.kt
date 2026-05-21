@@ -4,13 +4,8 @@ import com.example.smartdispatch.BuildConfig
 import android.app.Application
 import android.content.Context
 import android.graphics.Color as AndroidColor
-import android.graphics.drawable.ColorDrawable
 import android.net.Uri
 import android.os.Bundle
-import android.os.Build
-import android.view.WindowInsets as AndroidWindowInsets
-import android.view.WindowInsetsController as AndroidWindowInsetsController
-import android.view.WindowManager
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -701,19 +696,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            window.attributes = window.attributes.apply {
-                layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_NEVER
-            }
-        }
-        val appBackgroundColor = AndroidColor.rgb(237, 232, 245)
         window.statusBarColor = AndroidColor.rgb(237, 231, 246)
         window.navigationBarColor = AndroidColor.rgb(66, 66, 66)
-        window.setBackgroundDrawable(ColorDrawable(appBackgroundColor))
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            window.insetsController?.show(AndroidWindowInsets.Type.systemBars())
-            window.insetsController?.systemBarsBehavior = AndroidWindowInsetsController.BEHAVIOR_DEFAULT
-        }
         @Suppress("DEPRECATION")
         window.decorView.systemUiVisibility = android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
         setContent {
@@ -1323,32 +1307,6 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
     val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let { viewModel.importFromExcel(it) } }
     val exportPicker = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")) { uri -> uri?.let { viewModel.exportToExcel(it) } }
     val focusManager = LocalFocusManager.current
-    val applySystemUi = {
-        val activity = context as? android.app.Activity
-        activity?.window?.let { window ->
-            if (isLandscape) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    window.insetsController?.hide(AndroidWindowInsets.Type.statusBars())
-                    window.insetsController?.show(AndroidWindowInsets.Type.navigationBars())
-                    window.insetsController?.systemBarsBehavior = AndroidWindowInsetsController.BEHAVIOR_DEFAULT
-                } else {
-                    @Suppress("DEPRECATION")
-                    window.decorView.systemUiVisibility = android.view.View.SYSTEM_UI_FLAG_FULLSCREEN
-                }
-            } else {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    window.insetsController?.show(AndroidWindowInsets.Type.systemBars())
-                    window.insetsController?.systemBarsBehavior = AndroidWindowInsetsController.BEHAVIOR_DEFAULT
-                }
-                @Suppress("DEPRECATION")
-                window.decorView.systemUiVisibility = android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
-            }
-        }
-    }
-
-    LaunchedEffect(isLandscape, isTableFullscreen) {
-        applySystemUi()
-    }
 
     Scaffold(
         topBar = {
@@ -1357,7 +1315,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
             if (isLandscape) {
                 // 自定义页眉，高度32dp，无多余内边距
                 Row(
-                    modifier = Modifier.fillMaxWidth().height(32.dp).background(MaterialTheme.colorScheme.primaryContainer).padding(start = 4.dp, end = 4.dp),
+                    modifier = Modifier.fillMaxWidth().height(32.dp).background(MaterialTheme.colorScheme.primaryContainer).padding(horizontal = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text("智能排工", fontWeight = FontWeight.Bold, fontSize = 14.sp, modifier = Modifier.padding(start = 8.dp))
@@ -1435,7 +1393,28 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
         floatingActionButton = {
             if (selectedTab == 2) {
                 FloatingActionButton(
-                    onClick = { isTableFullscreen = !isTableFullscreen; applySystemUi() },
+                    onClick = {
+                        isTableFullscreen = !isTableFullscreen
+                        val activity = context as? android.app.Activity
+                        activity?.let {
+                            if (isTableFullscreen) {
+                                @Suppress("DEPRECATION")
+                                it.window.decorView.systemUiVisibility = (
+                                    android.view.View.SYSTEM_UI_FLAG_FULLSCREEN
+                                        or android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                                        or android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                                        or android.view.View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                                        or android.view.View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                                        or android.view.View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                                )
+                                // 保持当前屏幕方向，只全屏
+                                it.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                            } else {
+                                it.window.decorView.systemUiVisibility = android.view.View.SYSTEM_UI_FLAG_VISIBLE
+                                it.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                            }
+                        }
+                    },
                     modifier = Modifier.padding(start = 0.dp, top = 0.dp, end = 24.dp, bottom = 24.dp).size(36.dp)
                         .shadow(8.dp, RoundedCornerShape(18.dp), ambientColor = Color(0xFF1565C0).copy(alpha = 0.4f), spotColor = Color(0xFF1565C0).copy(alpha = 0.6f)),
                     containerColor = Color.Transparent,
@@ -1458,7 +1437,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
     ) { padding ->
         val topPadding = if (isTableFullscreen) 0.dp else padding.calculateTopPadding()
         val bottomPadding = if (isTableFullscreen) 0.dp else padding.calculateBottomPadding()
-        Box(modifier = Modifier.fillMaxSize().padding(top = topPadding, bottom = bottomPadding).background(MaterialTheme.colorScheme.background)) {
+        Box(modifier = Modifier.fillMaxSize().padding(top = topPadding, bottom = bottomPadding)) {
             when (selectedTab) {
                 0 -> SkillScoreTab(viewModel)
                 1 -> ProcessFlowTab(viewModel)
