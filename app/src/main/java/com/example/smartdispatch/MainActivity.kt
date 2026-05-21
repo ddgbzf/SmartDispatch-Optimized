@@ -698,6 +698,11 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         window.statusBarColor = AndroidColor.rgb(237, 231, 246)
         window.navigationBarColor = AndroidColor.rgb(66, 66, 66)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+            window.attributes = window.attributes.apply {
+                layoutInDisplayCutoutMode = android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+            }
+        }
         @Suppress("DEPRECATION")
         window.decorView.systemUiVisibility = android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
         setContent {
