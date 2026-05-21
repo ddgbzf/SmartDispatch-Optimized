@@ -23,7 +23,8 @@ private data class ProcessQueueItem(
     val productCol: Int,
     val rowIndex: Int,
     val processName: String,
-    val productName: String
+    val productName: String,
+    val inputIndex: Int
 )
 
 class DispatchEngine {
@@ -160,7 +161,9 @@ class DispatchEngine {
             val processName = product.processes[processIndex]
             
             // 分配
-            assignments.add(ProcessAssignment(productName, processName, personName, rowIndex, colIndex + 1))
+            val slotIndex = productKeys.indexOf(productName)
+            val displayName = product.name.substringAfter(":")
+            assignments.add(ProcessAssignment(displayName, processName, personName, rowIndex, colIndex + 1, slotIndex))
             assignedPeople.add(personName)
             fixedCellPeople.add(personName)
             debugLogs.add("[固定单元格] $personName → 行$rowIndex 列$colIndex ($productName / $processName)")
@@ -188,6 +191,7 @@ class DispatchEngine {
         for ((productName, product) in productInfo) {
             val productCol = productColumnMap[productName] ?: continue
             val slotIndex = productKeys.indexOf(productName)
+            val displayName = product.name.substringAfter(":")
             for ((offset, processName) in product.processes.withIndex()) {
                 val rowIndex = 3 + offset
                 if (product.isFixed) {
@@ -195,7 +199,7 @@ class DispatchEngine {
                     val historyPerson = fixedPositionMap[positionKey]
                     if (historyPerson != null && historyPerson in allPeople && historyPerson !in leaveList) {
                         // 原地保持
-                        assignments.add(ProcessAssignment(productName, processName, historyPerson, rowIndex, productCol + 1))
+                        assignments.add(ProcessAssignment(displayName, processName, historyPerson, rowIndex, productCol + 1, slotIndex))
                         assignedPeople.add(historyPerson)
                         fixedAssignedPeople.add(historyPerson)
                         debugLogs.add("[固定列留任] 槽${slotIndex} ${rowIndex}行 → $historyPerson")
@@ -206,11 +210,11 @@ class DispatchEngine {
                             debugLogs.add("[固定列新] 槽${slotIndex} ${rowIndex}行 → 无历史人员")
                         }
                         val processPriorityVal = processPriority[processName] ?: Int.MAX_VALUE
-                        processQueue.add(ProcessQueueItem(processPriorityVal, productCol, rowIndex, processName, productName))
+                        processQueue.add(ProcessQueueItem(processPriorityVal, productCol, rowIndex, processName, productName, slotIndex))
                     }
                 } else {
                     val processPriorityVal = processPriority[processName] ?: Int.MAX_VALUE
-                    processQueue.add(ProcessQueueItem(processPriorityVal, productCol, rowIndex, processName, productName))
+                    processQueue.add(ProcessQueueItem(processPriorityVal, productCol, rowIndex, processName, productName, slotIndex))
                 }
             }
         }
@@ -225,24 +229,27 @@ class DispatchEngine {
         for (item in processQueue) {
             val currentAvailable = assignablePool.filter { it !in assignedPeople }
             val person = findBestCandidate(item.processName, currentAvailable)
+            val displayName = item.productName.substringAfter(":")
             if (person != null) {
                 assignments.add(ProcessAssignment(
-                    productName = item.productName,
+                    productName = displayName,
                     processName = item.processName,
                     assignedPerson = person,
                     rowIndex = item.rowIndex,
-                    columnIndex = item.productCol + 1
+                    columnIndex = item.productCol + 1,
+                    inputIndex = item.inputIndex
                 ))
                 assignedPeople.add(person)
                 val score = skillScores[person]?.get(item.processName) ?: 0
                 debugLogs.add("[排工] ${item.productCol + 1}列${item.rowIndex}行 ${item.processName} → $person (评分:$score)")
             } else {
                 assignments.add(ProcessAssignment(
-                    productName = item.productName,
+                    productName = displayName,
                     processName = item.processName,
                     assignedPerson = null,
                     rowIndex = item.rowIndex,
-                    columnIndex = item.productCol + 1
+                    columnIndex = item.productCol + 1,
+                    inputIndex = item.inputIndex
                 ))
                 debugLogs.add("[排工] ${item.productCol + 1}列${item.rowIndex}行 ${item.processName} → 留空")
             }

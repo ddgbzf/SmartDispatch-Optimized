@@ -22,7 +22,8 @@ data class ProcessAssignment(
     val processName: String,
     val assignedPerson: String?,
     val rowIndex: Int,
-    val columnIndex: Int
+    val columnIndex: Int,
+    val inputIndex: Int = -1
 )
 
 /**

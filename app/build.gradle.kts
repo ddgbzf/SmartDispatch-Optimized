@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.example.smartdispatch"
-    compileSdk = 35
+    compileSdk = 34
     buildFeatures {
         buildConfig = true
     }
@@ -50,9 +50,6 @@ android {
     }
     kotlinOptions {
         jvmTarget = "17"
-    }
-    kotlin {
-        jvmToolchain(17)
     }
     buildFeatures {
         compose = true

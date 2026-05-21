@@ -3,6 +3,7 @@ package com.example.smartdispatch
 import com.example.smartdispatch.BuildConfig
 import android.app.Application
 import android.content.Context
+import android.graphics.Color as AndroidColor
 import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
@@ -183,6 +184,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _fixedInputSlots.value = current
         saveFixedInputSlots(current)
     }
+
+    fun isInputSlotFixed(index: Int): Boolean = index in _fixedInputSlots.value
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
     private val _scoreVersion = MutableStateFlow(0)
@@ -319,6 +322,28 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _processVersion.value++
     }
 
+    fun refreshProcessVersion() {
+        _processVersion.value++
+    }
+
+    // 同名产品多次输入时，用列索引+同名序号生成唯一 key，避免 Map 覆盖
+    private fun inputProductKey(slotIndex: Int, name: String): String = "$slotIndex:${name.trim()}"
+
+    private fun resultAssignmentsByInput(result: DispatchResult?, inputNames: List<String>, products: List<com.example.smartdispatch.data.entity.Product>): Map<Int, List<ProcessAssignment>> {
+        val r = result ?: return emptyMap()
+        val productNameMap = products.associateBy { it.name.trim().lowercase() }
+        val buckets = r.assignments.groupBy { if (it.inputIndex >= 0) it.inputIndex else (it.columnIndex - 1) / 2 }
+        return inputNames.withIndex().mapNotNull { (index, name) ->
+            val expectedName = productNameMap[name.trim().lowercase()]?.name ?: return@mapNotNull null
+            val matched = buckets[index].orEmpty().filter { it.productName.substringAfter(":") == expectedName }
+            if (matched.isEmpty()) null else index to matched
+        }.toMap()
+    }
+
+    fun assignmentsByInput(result: DispatchResult?, inputNames: List<String>, products: List<com.example.smartdispatch.data.entity.Product>): Map<Int, List<ProcessAssignment>> {
+        return resultAssignmentsByInput(result, inputNames, products)
+    }
+
     fun addProduct(name: String, capacity: Int, requiredPeople: Int) = viewModelScope.launch {
         repo.addProduct(name, capacity, requiredPeople)
     }
@@ -337,18 +362,35 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val engine = DispatchEngine()
             val persons = allPersons.first()
             val allProductsList = allProducts.first()
+            val productByName = allProductsList.associateBy { it.name }
             val processNames = allProcessNames.first()
             val peopleNames = persons.map { it.name }
             val leaveNames = persons.filter { it.onLeave }.map { it.name }
 
+            // 按输入框槽位构建唯一产品 key，支持同一型号多列同时排工
+            val productMap = mutableMapOf<String, com.example.smartdispatch.model.Product>()
+            selectedProductNames.forEachIndexed { slotIndex, name ->
+                val product = productByName[name]
+                if (product != null) {
+                    val key = inputProductKey(slotIndex, name)
+                    val processes = repo.getProcessesOnce(product.id)
+                    productMap[key] = com.example.smartdispatch.model.Product(
+                        "$slotIndex:${name.trim()}", product.capacity, product.requiredPeople,
+                        processes.map { it.processName }, product.isFixed
+                    )
+                }
+            }
+            addLog("排工产品数: ${productMap.size}")
+
             // ===== 第一步：检测固定列，从上次排工结果中读取人员 =====
             val fixedSlotSet = _fixedInputSlots.value.toMutableSet()
             val lastResult = _dispatchResult.value
-            // 按columnIndex分组，取每个槽位的产品名（支持同一产品多实例）
+            // 按输入框槽位读取上次产品名（新结果用 inputIndex，旧结果回退到列号）
+            fun displayProductName(rawName: String): String = rawName.substringAfter(":")
             val lastProductKeys = lastResult?.assignments
-                ?.groupBy { it.columnIndex }
+                ?.groupBy { assignment -> if (assignment.inputIndex >= 0) assignment.inputIndex else (assignment.columnIndex - 1) / 2 }
                 ?.toSortedMap()
-                ?.map { (_, assignments) -> assignments.first().productName }
+                ?.map { (_, assignments) -> displayProductName(assignments.first().productName) }
                 ?: emptyList()
             
             // 检测产品变更：产品变了就取消固定列
@@ -378,28 +420,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             if (lastResult != null && fixedSlotSet.isNotEmpty()) {
                 for (slotIndex in fixedSlotSet) {
                     if (slotIndex < lastProductKeys.size) {
-                        val productKey = lastProductKeys[slotIndex]
+                        val productName = lastProductKeys[slotIndex]
                         lastResult.assignments
-                            .filter { it.productName == productKey && it.assignedPerson != null }
+                            .filter { assignment ->
+                                assignment.assignedPerson != null &&
+                                    ((assignment.inputIndex == slotIndex) ||
+                                        (assignment.inputIndex < 0 && displayProductName(assignment.productName) == productName))
+                            }
                             .forEach { fixedColumnPersons["${slotIndex}_${it.rowIndex}"] = it.assignedPerson!! }
                     }
                 }
                 addLog("固定列人员: ${fixedColumnPersons.size}个已读取")
             }
-
-            // 产品映射（直接用产品名作为key，不区分同产品多实例）
-            val productMap = mutableMapOf<String, com.example.smartdispatch.model.Product>()
-            for (name in selectedProductNames) {
-                val product = allProductsList.find { it.name == name }
-                if (product != null) {
-                    val processes = repo.getProcessesOnce(product.id)
-                    productMap[name] = com.example.smartdispatch.model.Product(
-                        name, product.capacity, product.requiredPeople,
-                        processes.map { it.processName }, product.isFixed
-                    )
-                }
-            }
-            addLog("排工产品数: ${productMap.size}")
 
             val scoreMap = mutableMapOf<String, MutableMap<String, Int>>()
             for (person in persons) {
@@ -415,7 +447,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val fixedPeople = fixedColumnPersons.values.toSet()
 
             // 固定列槽位索引 → 产品key的映射
-            val productKeys = productMap.keys.toList()
+            val productKeys = selectedProductNames.mapIndexedNotNull { slotIndex, name ->
+                val key = inputProductKey(slotIndex, name)
+                if (productMap.containsKey(key)) key else null
+            }
             val fixedProductKeys = mutableSetOf<String>()
             for (slotIndex in fixedSlotSet) {
                 if (slotIndex < productKeys.size) {
@@ -442,7 +477,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             saveDispatchResult(result)
             // 更新固定列人员集合（用于显示）
             val newFixedPeople = result.assignments
-                .filter { productMap[it.productName]?.isFixed == true }
+                .filter { assignment -> productKeys.getOrNull(assignment.inputIndex)?.let { productMap[it]?.isFixed == true } == true }
                 .mapNotNull { it.assignedPerson }
                 .toSet()
             _fixedPeople.value = newFixedPeople
@@ -453,7 +488,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     val productName = productKeys[slotIndex]
                     val colIndex = slotIndex * 2 + 1
                     val cells = result.assignments
-                        .filter { it.productName == productName && !it.assignedPerson.isNullOrBlank() }
+                        .filter { it.inputIndex == slotIndex && !it.assignedPerson.isNullOrBlank() }
                         .map { FixedCell(colIndex = colIndex, rowIndex = it.rowIndex, personName = it.assignedPerson!!) }
                     if (cells.isNotEmpty()) {
                         repo.saveFixedCells(colIndex, cells)
@@ -661,6 +696,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        window.statusBarColor = AndroidColor.rgb(237, 231, 246)
+        window.navigationBarColor = AndroidColor.rgb(66, 66, 66)
+        @Suppress("DEPRECATION")
+        window.decorView.systemUiVisibility = android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
         setContent {
             智能排工Theme {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { MainScreen() }
@@ -847,6 +886,7 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
     var editingProcesses by remember { mutableStateOf<List<ProductProcess>>(emptyList()) }
     var originalProcesses by remember { mutableStateOf<List<ProductProcess>>(emptyList()) }
     var newProcessName by remember { mutableStateOf("") }
+    var nextTempProcessId by remember { mutableIntStateOf(-1) }
     // 拖动状态提升到外层，避免重组时丢失
     var dragFromIndex by remember { mutableStateOf(-1) }
     var dragAccumY by remember { mutableStateOf(0f) }
@@ -877,13 +917,23 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
             editCapacity = editingProduct!!.capacity.toString()
             editPeople = editingProduct!!.requiredPeople.toString()
             history = emptyList()  // 清空历史
+            nextTempProcessId = -1
             android.widget.Toast.makeText(context, "加载: ${editingProduct!!.name}, ${processes.size}个工序", android.widget.Toast.LENGTH_SHORT).show()
         }
     }
     
+    fun saveProcessesForDatabase(): List<ProductProcess> {
+        return editingProcesses.mapIndexed { index, process ->
+            process.copy(
+                id = process.id.coerceAtLeast(0),
+                sortOrder = index
+            )
+        }
+    }
+
     // 保存历史
     fun saveHistory() {
-        history = history + Triple(editCapacity, editPeople, editingProcesses.map { it.copy() })
+        history = history + Triple(editCapacity, editPeople, saveProcessesForDatabase().map { it.copy() })
         if (history.size > 20) history = history.drop(1)  // 最多20步
     }
     
@@ -955,7 +1005,9 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                             modifier = Modifier.fillMaxSize(),
                             verticalArrangement = Arrangement.spacedBy(1.dp)
                         ) {
-                            items(editingProcesses.size, key = { editingProcesses[it].id }) { index ->
+                            items(editingProcesses.size, key = { index ->
+                                editingProcesses[index].id
+                            }) { index ->
                                 val process = editingProcesses[index]
                                 var editName by remember(process.id, process.processName) { mutableStateOf(process.processName) }
                                 val isDragging = dragFromIndex == index
@@ -1064,17 +1116,23 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                                         }
                                     )
                                     Spacer(Modifier.weight(1f))
-                                    IconButton(onClick = {
-                                        if (newProcessName.isNotBlank() && editingProduct != null) {
-                                            saveHistory()
-                                            editingProcesses = editingProcesses + ProductProcess(
-                                                productId = editingProduct!!.id,
-                                                processName = newProcessName.trim(),
-                                                sortOrder = editingProcesses.size
-                                            )
-                                            newProcessName = ""
-                                        }
-                                    }, enabled = newProcessName.isNotBlank() && editingProduct != null, modifier = Modifier.size(26.dp)) {
+                                        IconButton(onClick = {
+                                            if (newProcessName.isNotBlank() && editingProduct != null) {
+                                                saveHistory()
+                                                val processName = newProcessName.trim()
+                                                val productId = editingProduct!!.id
+                                                val sortOrder = editingProcesses.size
+                                                newProcessName = ""
+                                                coroutineScope.launch {
+                                                    repo.addProcess(productId, processName, sortOrder)
+                                                    val refreshedProcesses = repo.getProcessesOnce(productId)
+                                                    originalProcesses = refreshedProcesses
+                                                    editingProcesses = refreshedProcesses
+                                                    nextTempProcessId = -1
+                                                    viewModel.refreshProcessVersion()
+                                                }
+                                            }
+                                        }, enabled = newProcessName.isNotBlank() && editingProduct != null, modifier = Modifier.size(26.dp)) {
                                         Icon(Icons.Default.Add, null, tint = Color(0xFF1976D2), modifier = Modifier.size(14.dp))
                                     }
                                     Spacer(Modifier.width(8.dp))
@@ -1136,10 +1194,15 @@ fun ProcessEditScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                             ))
                             // 删除旧工序，插入新工序
                             repo.deleteProcessesByProduct(editingProduct!!.id)
-                            editingProcesses.forEachIndexed { i, p ->
-                                repo.addProcess(editingProduct!!.id, p.processName, i)
+                            saveProcessesForDatabase().forEach { p ->
+                                repo.addProcess(editingProduct!!.id, p.processName, p.sortOrder)
                             }
+                            viewModel.refreshProcessVersion()
+                            val savedProductId = editingProduct!!.id
                             editingProduct = null
+                            val refreshedProcesses = repo.getProcessesOnce(savedProductId)
+                            originalProcesses = refreshedProcesses
+                            editingProcesses = refreshedProcesses
                         }
                     }) {
                         Icon(Icons.Default.Check, null, tint = Color(0xFF2E7D32), modifier = Modifier.size(18.dp))
@@ -1201,7 +1264,7 @@ fun FixedColumnScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                                         if (result != null) {
                                             val colIndex = index * 2 + 1
                                             val cells = result.assignments
-                                                .filter { it.productName == name && !it.assignedPerson.isNullOrBlank() }
+                                                .filter { it.inputIndex == index && !it.assignedPerson.isNullOrBlank() }
                                                 .map { FixedCell(colIndex = colIndex, rowIndex = it.rowIndex, personName = it.assignedPerson!!) }
                                             if (cells.isNotEmpty()) {
                                                 viewModel.saveFixedCells(colIndex, cells)
@@ -1372,8 +1435,9 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
             }
         }
     ) { padding ->
-        val topPadding = padding.calculateTopPadding()
-        Box(modifier = Modifier.padding(top = topPadding)) {
+        val topPadding = if (isTableFullscreen) 0.dp else padding.calculateTopPadding()
+        val bottomPadding = if (isTableFullscreen) 0.dp else padding.calculateBottomPadding()
+        Box(modifier = Modifier.fillMaxSize().padding(top = topPadding, bottom = bottomPadding)) {
             when (selectedTab) {
                 0 -> SkillScoreTab(viewModel)
                 1 -> ProcessFlowTab(viewModel)
@@ -1860,8 +1924,9 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
     val focusedIndex by viewModel.focusedInputIndex.collectAsState()
     val matchedProducts by viewModel.matchedProducts.collectAsState()
     val repo = (LocalContext.current.applicationContext as DispatchApplication).repository
-    var showDebugLogs by remember { mutableStateOf(true) }
+    var showDebugLogs by remember { mutableStateOf(false) }
     var processMap by remember { mutableStateOf(emptyMap<Int, List<ProductProcess>>()) }
+    val processesByProductId = remember(processMap) { processMap.mapValues { (_, list) -> list.sortedBy { it.sortOrder } } }
     val unassignedScrollState = rememberScrollState()
     val processVer by viewModel.processVersion.collectAsState()
     LaunchedEffect(products, processVer) {
@@ -1883,36 +1948,17 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
         }
     }
 
-    val selectedProducts = inputNames.mapNotNull { name ->
-        if (name.isBlank()) null
-        else products.find { it.name.equals(name.trim(), ignoreCase = true) }
+    val productNameMap = remember(products) { products.associateBy { it.name.trim().lowercase() } }
+    val selectedProducts = remember(inputNames, productNameMap) {
+        inputNames.mapNotNull { name -> productNameMap[name.trim().lowercase()] }
     }
 
     // 按输入框索引匹配分配结果（支持相同型号多实例）
-    val assignmentsByIndex = remember(result, inputNames, products) {
-        val r = result ?: return@remember emptyMap<Int, List<ProcessAssignment>>()
-        val map = mutableMapOf<Int, List<ProcessAssignment>>()
-        for ((index, name) in inputNames.withIndex()) {
-            if (name.isBlank()) continue
-            val cleanName = products.find { it.name.equals(name.trim(), ignoreCase = true) }?.name
-                ?: continue
-            // 按 rowIndex 匹配分配人员
-            map[index] = r.assignments.filter { it.productName == cleanName }
-        }
-        map
-    }
+    val assignmentsByIndex = remember(result, inputNames, products) { viewModel.assignmentsByInput(result, inputNames, products) }
     val scrollState = rememberScrollState()
     val leavePeople = persons.filter { it.onLeave }
 
-    // 自动排工（仅调试版）
-    if (BuildConfig.DEBUG) {
-        LaunchedEffect(inputNames) {
-            kotlinx.coroutines.delay(500)
-            if (inputNames.all { it.isBlank() }) {
-                viewModel.autoDispatch()
-            }
-        }
-    }
+    // 调试状态下不再根据输入框变化自动排工，避免中低端手机频繁重算导致卡顿。
 
     // 从设置读取尺寸
     val settingsFontSize by viewModel.fontSize.collectAsState()
@@ -1972,6 +2018,20 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
         // 表格区域
         Box(modifier = Modifier.fillMaxSize().background(brush = androidx.compose.ui.graphics.Brush.verticalGradient(colors = listOf(Color(0xFFF5F0FF), Color(0xFFEDE8F5))))) {
             Column(modifier = Modifier.fillMaxSize()) {
+                val productByInput = remember(inputNames, productNameMap) {
+                    inputNames.map { name -> productNameMap[name.trim().lowercase()] }
+                }
+                val processNamesByInput = remember(productByInput, processesByProductId) {
+                    productByInput.map { product ->
+                        if (product != null) (processesByProductId[product.id] ?: emptyList()).map { it.processName } else emptyList()
+                    }
+                }
+                val assignedPeopleByInput = remember(assignmentsByIndex, inputNames.size) {
+                    inputNames.indices.map { inputIndex ->
+                        assignmentsByIndex[inputIndex].orEmpty().associate { it.rowIndex to (it.assignedPerson ?: "") }
+                    }
+                }
+
                 // 第一行：请假人员标题 + 输入框（两行显示）
                 Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState).background(Color(0xFF90CAF9))) {
                     Box(modifier = Modifier.width(colWidth).height(rowHeight * 2).padding(1.dp).background(Color.White), contentAlignment = Alignment.Center) {
@@ -1981,7 +2041,14 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
                         }
                     }
                     inputNames.forEachIndexed { index, name ->
-                        Box(modifier = Modifier.width(productWidth).height(rowHeight * 2).padding(1.dp)) {
+                        val product = productByInput.getOrNull(index)
+                        val headerBgColor = when {
+                            viewModel.isInputSlotFixed(index) -> Color(0xFFFFD600)
+                            product?.isFixed == true -> Color(0xFFFFD54F)
+                            name.isNotBlank() -> Color(0xFFE3F2FD)
+                            else -> Color.White
+                        }
+                        Box(modifier = Modifier.width(productWidth).height(rowHeight * 2).padding(1.dp).background(headerBgColor, RoundedCornerShape(2.dp))) {
                             val focusManager = LocalFocusManager.current
                             BasicTextField(
                                 value = name,
@@ -1997,7 +2064,7 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
                                 keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Done),
                                 keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = { focusManager.clearFocus() }),
                                 decorationBox = { innerTextField ->
-                                    Box(modifier = Modifier.fillMaxSize().background(Color.White, RoundedCornerShape(2.dp)).padding(horizontal = 2.dp, vertical = 4.dp), contentAlignment = Alignment.TopCenter) {
+                                    Box(modifier = Modifier.fillMaxSize().background(headerBgColor, RoundedCornerShape(2.dp)).padding(horizontal = 2.dp, vertical = 4.dp), contentAlignment = Alignment.TopCenter) {
                                         if (name.isEmpty()) {
                                             Text("型号${index + 1}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFFAAAAAA), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                                         }
@@ -2018,12 +2085,8 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .background(Color.White, RoundedCornerShape(4.dp))
-                                    .clickable { 
-                                        if (BuildConfig.DEBUG) {
-                                            viewModel.selectProductAndDispatch(focusedIndex, productName)
-                                        } else {
-                                            viewModel.selectProduct(focusedIndex, productName)
-                                        }
+                                    .clickable {
+                                        viewModel.selectProduct(focusedIndex, productName)
                                     }
                                     .padding(horizontal = 8.dp, vertical = 4.dp),
                                 color = Color(0xFF1565C0),
@@ -2080,7 +2143,7 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
                         )
                     }
                     inputNames.forEachIndexed { index, name ->
-                        val product = if (name.isNotBlank()) products.find { it.name.equals(name.trim(), ignoreCase = true) } else null
+                        val product = productByInput.getOrNull(index)
                         // 固定产品显示黄色背景
                         val cellBg = if (product?.isFixed == true) Color(0xFFFFF9C4) else Color.Transparent
                         Row(modifier = Modifier.width(productWidth).height(rowHeight).background(cellBg)) {
@@ -2095,17 +2158,19 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
                 }
                 Divider()
                 // 数据行
-                LazyColumn(modifier = Modifier.weight(1f)) {
-                    val maxProductRows = inputNames.indices.maxOfOrNull { index ->
-                        val name = inputNames[index]
-                        val product = if (name.isNotBlank()) products.find { it.name.equals(name.trim(), ignoreCase = true) } else null
-                        val processes = if (product != null) (processMap[product.id] ?: emptyList()) else emptyList()
-                        val assignments = assignmentsByIndex[index] ?: emptyList()
-                        maxOf(processes.size, assignments.size)
+                val maxProductRows = remember(processNamesByInput, assignedPeopleByInput) {
+                    inputNames.indices.maxOfOrNull { index ->
+                        maxOf(
+                            processNamesByInput.getOrNull(index)?.size ?: 0,
+                            assignedPeopleByInput.getOrNull(index)?.size ?: 0
+                        )
                     } ?: 0
-                    val maxRows = maxOf(maxProductRows, max(leavePeople.size - 1, 0), 1)
-
-                    items(maxRows) { rowIndex ->
+                }
+                val maxRows = remember(maxProductRows, leavePeople.size) {
+                    maxOf(maxProductRows, max(leavePeople.size - 1, 0), 1)
+                }
+                LazyColumn(modifier = Modifier.weight(1f)) {
+                    items(maxRows, key = { rowIndex -> "schedule-row-$rowIndex" }) { rowIndex ->
                         Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState)) {
                             Box(modifier = Modifier.width(colWidth).height(rowHeight).border(0.5.dp, Color(0xFFE0E0E0)).background(Color(0xFFFFCDD2)), contentAlignment = Alignment.Center) {
                                 val person = leavePeople.getOrNull(rowIndex + 1)
@@ -2151,14 +2216,12 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
                                     }
                                 )
                             }
-                            inputNames.forEachIndexed { index, name ->
-                                val product = if (name.isNotBlank()) products.find { it.name.equals(name.trim(), ignoreCase = true) } else null
-                                val processes = if (product != null) (processMap[product.id] ?: emptyList()) else emptyList()
-                                val assignments = assignmentsByIndex[index] ?: emptyList()
-                                val processName = processes.getOrNull(rowIndex)?.processName ?: ""
+                            inputNames.indices.forEach { index ->
+                                val product = productByInput.getOrNull(index)
+                                val processName = processNamesByInput.getOrNull(index)?.getOrNull(rowIndex) ?: ""
                                 // 按 rowIndex 匹配分配人员（rowIndex = 3 + 工序偏移）
                                 val currentRowIndex = rowIndex + 3
-                                val assignedPerson = assignments.find { it.rowIndex == currentRowIndex }?.assignedPerson ?: ""
+                                val assignedPerson = assignedPeopleByInput.getOrNull(index)?.get(currentRowIndex) ?: ""
                                 // 固定产品显示深黄色背景
                                 val cellBg = if (product?.isFixed == true) Color(0xFFFFD54F) else Color.Transparent
 
