@@ -1980,61 +1980,23 @@ fun SkillScoreTab(viewModel: MainViewModel) {
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun ProcessFlowTab(viewModel: MainViewModel) {
+    val products by viewModel.allProducts.collectAsState()
     val repo = (LocalContext.current.applicationContext as DispatchApplication).repository
     val showAddProductDialog = remember { mutableStateOf(false) }
     val showAddProcessDialog = remember { mutableStateOf(false) }
     val showDeleteProductConfirm = remember { mutableStateOf(false) }
     var deletingProduct by remember { mutableStateOf<Product?>(null) }
 
-    // 分页加载状态
-    var products by remember { mutableStateOf<List<Product>>(emptyList()) }
     var processMap by remember { mutableStateOf(emptyMap<Int, List<ProductProcess>>()) }
-    var isLoading by remember { mutableStateOf(false) }
-    var hasMore by remember { mutableStateOf(true) }
-    val pageSize = 100
-    var currentOffset by remember { mutableIntStateOf(0) }
-
-    // 初始加载
-    LaunchedEffect(Unit) {
-        isLoading = true
-        val initialProducts = repo.getProductsPaged(0, pageSize)
-        products = initialProducts
-        if (initialProducts.isNotEmpty()) {
-            val processes = repo.getProcessesByProductIds(initialProducts.map { it.id })
-            processMap = processes.groupBy { it.productId }
-        }
-        hasMore = initialProducts.size >= pageSize
-        isLoading = false
-    }
-
-    // 加载更多
-    val loadMore: suspend () -> Unit = {
-        if (isLoading || !hasMore) return@loadMore
-        isLoading = true
-        val newProducts = repo.getProductsPaged(currentOffset + pageSize, pageSize)
-        if (newProducts.isNotEmpty()) {
-            val processes = repo.getProcessesByProductIds(newProducts.map { it.id })
-            processMap = processMap + processes.groupBy { it.productId }
-            products = products + newProducts
-            currentOffset += pageSize
-        }
-        hasMore = newProducts.size >= pageSize
-        isLoading = false
+    val processVer by viewModel.processVersion.collectAsState()
+    LaunchedEffect(products, processVer) {
+        val map = mutableMapOf<Int, List<ProductProcess>>()
+        for (product in products) { map[product.id] = repo.getProcessesOnce(product.id) }
+        processMap = map
     }
 
     val maxProcesses = processMap.values.maxOfOrNull { it.size } ?: 0
     val scrollState = rememberScrollState()
-    val listState = rememberLazyListState()
-
-    // 监听滚动到底部自动加载
-    LaunchedEffect(listState) {
-        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
-            .collect { lastVisibleIndex ->
-                if (lastVisibleIndex != null && lastVisibleIndex >= products.size - 10 && hasMore && !isLoading) {
-                    loadMore()
-                }
-            }
-    }
 
     Box(modifier = Modifier.fillMaxSize().background(brush = androidx.compose.ui.graphics.Brush.verticalGradient(colors = listOf(Color(0xFFF0FFF4), Color(0xFFE8F5ED))))) {
         if (products.isEmpty()) {
@@ -2056,7 +2018,7 @@ fun ProcessFlowTab(viewModel: MainViewModel) {
                 }
                 Divider()
                 // 数据行：型号名称列固定，其余列随水平滚动
-                LazyColumn(modifier = Modifier.fillMaxSize(), state = listState) {
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
                     items(products, key = { it.id }) { product ->
                         val processes = processMap[product.id] ?: emptyList()
                         val rowBg = if (product.isFixed) Color(0xFFFFF9C4) else Color.Transparent
@@ -2075,14 +2037,6 @@ fun ProcessFlowTab(viewModel: MainViewModel) {
                                         if (pp != null) { Text(pp.processName, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                                     }
                                 }
-                            }
-                        }
-                    }
-                    // 加载更多指示器
-                    if (isLoading) {
-                        item {
-                            Box(modifier = Modifier.fillMaxWidth().padding(12.dp), contentAlignment = Alignment.Center) {
-                                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                             }
                         }
                     }

@@ -26,10 +26,4 @@ interface ProductDao {
 
     @Query("SELECT * FROM products WHERE name = :name LIMIT 1")
     suspend fun findByName(name: String): Product?
-
-    @Query("SELECT * FROM products ORDER BY id LIMIT :limit OFFSET :offset")
-    suspend fun getPaged(offset: Int, limit: Int): List<Product>
-
-    @Query("SELECT COUNT(*) FROM products")
-    suspend fun getCount(): Int
 }

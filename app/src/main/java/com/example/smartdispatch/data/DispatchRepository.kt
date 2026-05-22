@@ -72,12 +72,6 @@ class DispatchRepository(
 
     suspend fun getProcessesOnce(productId: Int): List<ProductProcess> = productProcessDao.getByProductOnce(productId)
 
-    suspend fun getProductsPaged(offset: Int, limit: Int): List<Product> = productDao.getPaged(offset, limit)
-
-    suspend fun getProductCount(): Int = productDao.getCount()
-
-    suspend fun getProcessesByProductIds(productIds: List<Int>): List<ProductProcess> = productProcessDao.getByProductIds(productIds)
-
     suspend fun updateAssignment(assignment: Assignment) = assignmentDao.update(assignment)
     suspend fun deleteDynamicAssignments() = assignmentDao.deleteDynamic()
     suspend fun clearAllAssignments() = assignmentDao.deleteAll()
