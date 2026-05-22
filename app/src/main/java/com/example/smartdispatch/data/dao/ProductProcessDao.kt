@@ -32,4 +32,7 @@ interface ProductProcessDao {
 
     @Query("SELECT * FROM product_processes WHERE productId = :productId ORDER BY sortOrder")
     suspend fun getByProductOnce(productId: Int): List<ProductProcess>
+
+    @Query("SELECT * FROM product_processes WHERE productId IN (:productIds) ORDER BY productId, sortOrder")
+    suspend fun getByProductIds(productIds: List<Int>): List<ProductProcess>
 }
