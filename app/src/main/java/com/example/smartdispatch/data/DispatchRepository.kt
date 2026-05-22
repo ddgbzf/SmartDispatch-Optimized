@@ -70,6 +70,8 @@ class DispatchRepository(
 
     suspend fun getScoresByPerson(personId: Int): List<SkillScore> = skillScoreDao.getByPersonOnce(personId)
 
+    suspend fun getAllScoresOnce(): List<SkillScore> = skillScoreDao.getAllOnce()
+
     suspend fun getProcessesOnce(productId: Int): List<ProductProcess> = productProcessDao.getByProductOnce(productId)
 
     suspend fun updateAssignment(assignment: Assignment) = assignmentDao.update(assignment)

@@ -1537,13 +1537,9 @@ fun SkillScoreTab(viewModel: MainViewModel) {
     }
 
     var scoreMap by remember { mutableStateOf<Map<Pair<Int, String>, Int>>(emptyMap()) }
-    LaunchedEffect(persons, scoreVer) {
-        val map = mutableMapOf<Pair<Int, String>, Int>()
-        for (person in persons) {
-            val scores = repo.getScoresByPerson(person.id)
-            for (s in scores) { map[Pair(person.id, s.processName)] = s.score }
-        }
-        scoreMap = map
+    LaunchedEffect(scoreVer) {
+        val allScores = repo.getAllScoresOnce()
+        scoreMap = allScores.associate { (it.personId to it.processName) to it.score }
     }
 
     val showEditDialog = remember { mutableStateOf(false) }
@@ -1998,6 +1994,11 @@ fun ProcessFlowTab(viewModel: MainViewModel) {
     val maxProcesses = processMap.values.maxOfOrNull { it.size } ?: 0
     val scrollState = rememberScrollState()
 
+    // 确保横向滚动从左侧开始
+    LaunchedEffect(maxProcesses) {
+        if (scrollState.value != 0) scrollState.scrollTo(0)
+    }
+
     Box(modifier = Modifier.fillMaxSize().background(brush = androidx.compose.ui.graphics.Brush.verticalGradient(colors = listOf(Color(0xFFF0FFF4), Color(0xFFE8F5ED))))) {
         if (products.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -2008,7 +2009,7 @@ fun ProcessFlowTab(viewModel: MainViewModel) {
                 // 固定左上角"型号名称"单元格 + 可滚动的表头
                 Row(modifier = Modifier.fillMaxWidth()) {
                     Box(modifier = Modifier.width(140.dp).height(24.dp).background(MaterialTheme.colorScheme.primaryContainer), contentAlignment = Alignment.Center) { Text("型号名称", fontWeight = FontWeight.Bold, fontSize = 14.sp) }
-                    Row(modifier = Modifier.weight(1f).horizontalScroll(scrollState, reverseScrolling = false).background(MaterialTheme.colorScheme.primaryContainer)) {
+                    Row(modifier = Modifier.weight(1f).horizontalScroll(scrollState).background(MaterialTheme.colorScheme.primaryContainer)) {
                         Box(modifier = Modifier.width(60.dp).height(24.dp), contentAlignment = Alignment.Center) { Text("产能", fontWeight = FontWeight.Bold, fontSize = 14.sp) }
                         Box(modifier = Modifier.width(50.dp).height(24.dp), contentAlignment = Alignment.Center) { Text("人数", fontWeight = FontWeight.Bold, fontSize = 14.sp) }
                         repeat(maxProcesses) { i ->
@@ -2027,7 +2028,7 @@ fun ProcessFlowTab(viewModel: MainViewModel) {
                                 onClick = {},
                                 onLongClick = { deletingProduct = product; showDeleteProductConfirm.value = true }
                             ), contentAlignment = Alignment.CenterStart) { Text(product.name, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
-                            Row(modifier = Modifier.weight(1f).horizontalScroll(scrollState, reverseScrolling = false).background(rowBg)) {
+                            Row(modifier = Modifier.weight(1f).horizontalScroll(scrollState).background(rowBg)) {
                                 Box(modifier = Modifier.width(60.dp).height(24.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) { Text(product.capacity.toString(), fontSize = 12.sp) }
                                 Box(modifier = Modifier.width(50.dp).height(24.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) { Text(product.requiredPeople.toString(), fontSize = 12.sp) }
                                 // 工序列表（固定产品黄色背景）

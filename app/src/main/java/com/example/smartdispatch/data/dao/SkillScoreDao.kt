@@ -9,6 +9,9 @@ interface SkillScoreDao {
     @Query("SELECT * FROM skill_scores ORDER BY personId, sortOrder, processName")
     fun getAll(): Flow<List<SkillScore>>
 
+    @Query("SELECT * FROM skill_scores ORDER BY personId, sortOrder, processName")
+    suspend fun getAllOnce(): List<SkillScore>
+
     @Query("SELECT * FROM skill_scores WHERE personId = :personId")
     fun getByPerson(personId: Int): Flow<List<SkillScore>>
 
