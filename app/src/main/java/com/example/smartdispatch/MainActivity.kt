@@ -2008,13 +2008,12 @@ fun ProcessFlowTab(viewModel: MainViewModel) {
                 // 固定左上角"型号名称"单元格 + 可滚动的表头
                 Row(modifier = Modifier.fillMaxWidth()) {
                     Box(modifier = Modifier.width(140.dp).height(24.dp).background(MaterialTheme.colorScheme.primaryContainer), contentAlignment = Alignment.Center) { Text("型号名称", fontWeight = FontWeight.Bold, fontSize = 14.sp) }
-                    Row(modifier = Modifier.weight(1f).horizontalScroll(scrollState).background(MaterialTheme.colorScheme.primaryContainer)) {
+                    Row(modifier = Modifier.weight(1f).horizontalScroll(scrollState, reverseScrolling = false).background(MaterialTheme.colorScheme.primaryContainer)) {
                         Box(modifier = Modifier.width(60.dp).height(24.dp), contentAlignment = Alignment.Center) { Text("产能", fontWeight = FontWeight.Bold, fontSize = 14.sp) }
                         Box(modifier = Modifier.width(50.dp).height(24.dp), contentAlignment = Alignment.Center) { Text("人数", fontWeight = FontWeight.Bold, fontSize = 14.sp) }
                         repeat(maxProcesses) { i ->
                             Box(modifier = Modifier.width(72.dp).height(24.dp), contentAlignment = Alignment.Center) { Text("工序${i + 1}", fontWeight = FontWeight.Bold, fontSize = 14.sp) }
                         }
-                        Box(modifier = Modifier.width(48.dp).height(24.dp)) {}
                     }
                 }
                 Divider()
@@ -2024,8 +2023,11 @@ fun ProcessFlowTab(viewModel: MainViewModel) {
                         val processes = processMap[product.id] ?: emptyList()
                         val rowBg = if (product.isFixed) Color(0xFFFFF9C4) else Color.Transparent
                         Row(modifier = Modifier.fillMaxWidth()) {
-                            Box(modifier = Modifier.width(140.dp).height(24.dp).border(0.5.dp, Color(0xFFE0E0E0)).padding(horizontal = 4.dp).background(rowBg), contentAlignment = Alignment.CenterStart) { Text(product.name, fontSize = 12.sp) }
-                            Row(modifier = Modifier.weight(1f).horizontalScroll(scrollState).background(rowBg)) {
+                            Box(modifier = Modifier.width(140.dp).height(24.dp).border(0.5.dp, Color(0xFFE0E0E0)).padding(horizontal = 4.dp).background(rowBg).combinedClickable(
+                                onClick = {},
+                                onLongClick = { deletingProduct = product; showDeleteProductConfirm.value = true }
+                            ), contentAlignment = Alignment.CenterStart) { Text(product.name, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                            Row(modifier = Modifier.weight(1f).horizontalScroll(scrollState, reverseScrolling = false).background(rowBg)) {
                                 Box(modifier = Modifier.width(60.dp).height(24.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) { Text(product.capacity.toString(), fontSize = 12.sp) }
                                 Box(modifier = Modifier.width(50.dp).height(24.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) { Text(product.requiredPeople.toString(), fontSize = 12.sp) }
                                 // 工序列表（固定产品黄色背景）
@@ -2034,9 +2036,6 @@ fun ProcessFlowTab(viewModel: MainViewModel) {
                                     Box(modifier = Modifier.width(72.dp).height(24.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
                                         if (pp != null) { Text(pp.processName, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                                     }
-                                }
-                                Box(modifier = Modifier.width(48.dp).height(24.dp), contentAlignment = Alignment.Center) {
-                                    IconButton(onClick = { deletingProduct = product; showDeleteProductConfirm.value = true }, modifier = Modifier.size(24.dp)) { Icon(Icons.Default.Delete, null, tint = Color(0xFFC62828), modifier = Modifier.size(14.dp)) }
                                 }
                             }
                         }
