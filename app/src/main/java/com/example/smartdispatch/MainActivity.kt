@@ -1695,11 +1695,14 @@ fun SkillScoreTab(viewModel: MainViewModel) {
                                 val borderColor = if (isEditing || isHighlighted) Color(0xFF1976D2) else Color(0xFFE0E0E0)
                                 val value = editValues[cellKey] ?: if (score > 0) score.toString() else ""
                                 val focusRequester = getFocusRequester(cellKey)
-                                // Request focus when editing starts — stable cellKey survives recomposition
+                                // Use SideEffect so focus request fires after every composition where editingCell matches
+                                SideEffect {
+                                    if (editingCell == cellKey && editValues[cellKey].isNullOrEmpty()) {
+                                        editValues[cellKey] = value
+                                    }
+                                }
                                 LaunchedEffect(cellKey) {
                                     if (editingCell == cellKey) {
-                                        editValues[cellKey] = value
-                                        delay(50)
                                         focusRequester.requestFocus()
                                     }
                                 }
@@ -2015,6 +2018,10 @@ fun ProcessFlowTab(viewModel: MainViewModel) {
 
     val maxProcesses = processMap.values.maxOfOrNull { it.size } ?: 0
     val scrollState = rememberScrollState()
+    // Fix: prevent initial scroll-to-end on some Android versions
+    LaunchedEffect(scrollState) {
+        scrollState.scrollTo(0)
+    }
 
     Box(modifier = Modifier.fillMaxSize().background(brush = androidx.compose.ui.graphics.Brush.verticalGradient(colors = listOf(Color(0xFFF0FFF4), Color(0xFFE8F5ED))))) {
         if (products.isEmpty()) {
