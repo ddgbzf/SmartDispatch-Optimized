@@ -1694,7 +1694,15 @@ fun SkillScoreTab(viewModel: MainViewModel) {
                                 }
                                 val borderColor = if (isEditing || isHighlighted) Color(0xFF1976D2) else Color(0xFFE0E0E0)
                                 val focusRequester = getFocusRequester(cellKey)
-                                val context = LocalContext.current
+                                // Use snapshotFlow to react when editingCell becomes this cell (handles re-clicks)
+                                LaunchedEffect(cellKey) {
+                                    snapshotFlow { editingCell }.collect { ec ->
+                                        if (ec == cellKey) {
+                                            editValues[cellKey] = if (score > 0) score.toString() else ""
+                                            focusRequester.requestFocus()
+                                        }
+                                    }
+                                }
                                 Box(
                                     modifier = Modifier
                                         .width(cellWidth)
@@ -1705,8 +1713,6 @@ fun SkillScoreTab(viewModel: MainViewModel) {
                                             editValues[cellKey] = if (score > 0) score.toString() else ""
                                             highlightedCell = cellKey
                                             editingCell = cellKey
-                                            // Post to next frame so BasicTextField is composed first
-                                            android.os.Handler(context.mainLooper).post({ focusRequester.requestFocus() })
                                         },
                                     contentAlignment = Alignment.Center
                                 ) {
@@ -2036,7 +2042,7 @@ fun ProcessFlowTab(viewModel: MainViewModel) {
                         val processes = processMap[product.id] ?: emptyList()
                         val rowBg = if (product.isFixed) Color(0xFFFFF9C4) else Color.Transparent
                         Row(modifier = Modifier.fillMaxWidth()) {
-                            Box(modifier = Modifier.width(140.dp).height(24.dp).border(0.5.dp, Color(0xFFE0E0E0)).padding(horizontal = 4.dp).background(rowBg), contentAlignment = Alignment.CenterStart) { Text(product.name, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                            Box(modifier = Modifier.width(140.dp).height(24.dp).border(0.5.dp, Color(0xFFE0E0E0)).padding(horizontal = 4.dp).background(rowBg), contentAlignment = Alignment.CenterStart) { Text(product.name, fontSize = 14.sp) }
                             Row(modifier = Modifier.weight(1f).horizontalScroll(scrollState).background(rowBg)) {
                                 Box(modifier = Modifier.width(60.dp).height(24.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) { Text(product.capacity.toString(), fontSize = 14.sp) }
                                 Box(modifier = Modifier.width(50.dp).height(24.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) { Text(product.requiredPeople.toString(), fontSize = 14.sp) }
