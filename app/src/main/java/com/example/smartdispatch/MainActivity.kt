@@ -1977,7 +1977,7 @@ fun SkillScoreTab(viewModel: MainViewModel) {
 }
 
 // ========== Tab 3: 工序流程（固定左上角型号名称单元格，行高28dp） ==========
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun ProcessFlowTab(viewModel: MainViewModel) {
     val products by viewModel.allProducts.collectAsState()
