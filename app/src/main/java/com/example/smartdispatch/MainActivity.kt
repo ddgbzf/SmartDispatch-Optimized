@@ -1585,11 +1585,6 @@ fun SkillScoreTab(viewModel: MainViewModel) {
     var editingCell by remember { mutableStateOf<Pair<Int, String>?>(null) }
     var highlightedCell by remember { mutableStateOf<Pair<Int, String>?>(null) }
     val editValues = remember { mutableStateMapOf<Pair<Int, String>, String>() }
-    // Stable FocusRequester per cell — created once, survives recompositions
-    val focusRequesters = remember { mutableStateMapOf<Pair<Int, String>, FocusRequester>() }
-    fun getFocusRequester(cellKey: Pair<Int, String>): FocusRequester {
-        return focusRequesters.getOrPut(cellKey) { FocusRequester() }
-    }
     var showSearchDialog by remember { mutableStateOf(false) }
     var searchPersonText by remember { mutableStateOf("") }
     var searchProcessText by remember { mutableStateOf("") }
@@ -1693,14 +1688,11 @@ fun SkillScoreTab(viewModel: MainViewModel) {
                                     else -> Color(0xFFFAFAFA)
                                 }
                                 val borderColor = if (isEditing || isHighlighted) Color(0xFF1976D2) else Color(0xFFE0E0E0)
-                                val focusRequester = getFocusRequester(cellKey)
-                                // Use snapshotFlow to react when editingCell becomes this cell (handles re-clicks)
-                                LaunchedEffect(cellKey) {
-                                    snapshotFlow { editingCell }.collect { ec ->
-                                        if (ec == cellKey) {
-                                            editValues[cellKey] = if (score > 0) score.toString() else ""
-                                            focusRequester.requestFocus()
-                                        }
+                                val focusRequester = remember(cellKey) { FocusRequester() }
+                                LaunchedEffect(editingCell) {
+                                    if (editingCell == cellKey) {
+                                        editValues[cellKey] = if (score > 0) score.toString() else ""
+                                        focusRequester.requestFocus()
                                     }
                                 }
                                 Box(
