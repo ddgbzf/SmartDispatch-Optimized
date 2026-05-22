@@ -1693,16 +1693,12 @@ fun SkillScoreTab(viewModel: MainViewModel) {
                                     else -> Color(0xFFFAFAFA)
                                 }
                                 val borderColor = if (isEditing || isHighlighted) Color(0xFF1976D2) else Color(0xFFE0E0E0)
-                                val value = editValues[cellKey] ?: if (score > 0) score.toString() else ""
                                 val focusRequester = getFocusRequester(cellKey)
-                                // Use SideEffect so focus request fires after every composition where editingCell matches
-                                SideEffect {
-                                    if (editingCell == cellKey && editValues[cellKey].isNullOrEmpty()) {
-                                        editValues[cellKey] = value
-                                    }
-                                }
-                                LaunchedEffect(cellKey) {
+                                // Focus when editingCell changes to this cell — use editingCell as key (stable reference)
+                                LaunchedEffect(editingCell) {
                                     if (editingCell == cellKey) {
+                                        editValues[cellKey] = if (score > 0) score.toString() else ""
+                                        delay(60)
                                         focusRequester.requestFocus()
                                     }
                                 }
@@ -1713,7 +1709,6 @@ fun SkillScoreTab(viewModel: MainViewModel) {
                                         .background(bgColor)
                                         .border(if (isEditing || isHighlighted) 1.dp else 0.5.dp, borderColor)
                                         .clickable {
-                                            editValues[cellKey] = value
                                             highlightedCell = cellKey
                                             editingCell = cellKey
                                         },
@@ -2018,8 +2013,10 @@ fun ProcessFlowTab(viewModel: MainViewModel) {
 
     val maxProcesses = processMap.values.maxOfOrNull { it.size } ?: 0
     val scrollState = rememberScrollState()
-    // Fix: prevent initial scroll-to-end on some Android versions
-    LaunchedEffect(scrollState) {
+    // Fix: scroll to start after layout is complete (maxValue becomes available after layout)
+    LaunchedEffect(Unit) {
+        // Wait for layout to compute maxValue
+        withFrameNanos { } // one frame
         scrollState.scrollTo(0)
     }
 
@@ -2032,7 +2029,7 @@ fun ProcessFlowTab(viewModel: MainViewModel) {
             Column(modifier = Modifier.fillMaxSize()) {
                 // 固定左上角"型号名称"单元格 + 可滚动的表头
                 Row(modifier = Modifier.fillMaxWidth()) {
-                    Box(modifier = Modifier.width(120.dp).height(24.dp).background(MaterialTheme.colorScheme.primaryContainer), contentAlignment = Alignment.Center) { Text("型号名称", fontWeight = FontWeight.Bold, fontSize = 14.sp) }
+                    Box(modifier = Modifier.width(125.dp).height(24.dp).background(MaterialTheme.colorScheme.primaryContainer), contentAlignment = Alignment.Center) { Text("型号名称", fontWeight = FontWeight.Bold, fontSize = 14.sp) }
                     Row(modifier = Modifier.weight(1f).horizontalScroll(scrollState).background(MaterialTheme.colorScheme.primaryContainer)) {
                         Box(modifier = Modifier.width(60.dp).height(24.dp), contentAlignment = Alignment.Center) { Text("产能", fontWeight = FontWeight.Bold, fontSize = 14.sp) }
                         Box(modifier = Modifier.width(50.dp).height(24.dp), contentAlignment = Alignment.Center) { Text("人数", fontWeight = FontWeight.Bold, fontSize = 14.sp) }
@@ -2049,7 +2046,7 @@ fun ProcessFlowTab(viewModel: MainViewModel) {
                         val processes = processMap[product.id] ?: emptyList()
                         val rowBg = if (product.isFixed) Color(0xFFFFF9C4) else Color.Transparent
                         Row(modifier = Modifier.fillMaxWidth()) {
-                            Box(modifier = Modifier.width(120.dp).height(24.dp).border(0.5.dp, Color(0xFFE0E0E0)).padding(horizontal = 4.dp).background(rowBg), contentAlignment = Alignment.CenterStart) { Text(product.name, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                            Box(modifier = Modifier.width(125.dp).height(24.dp).border(0.5.dp, Color(0xFFE0E0E0)).padding(horizontal = 4.dp).background(rowBg), contentAlignment = Alignment.CenterStart) { Text(product.name, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                             Row(modifier = Modifier.weight(1f).horizontalScroll(scrollState).background(rowBg)) {
                                 Box(modifier = Modifier.width(60.dp).height(24.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) { Text(product.capacity.toString(), fontSize = 14.sp) }
                                 Box(modifier = Modifier.width(50.dp).height(24.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) { Text(product.requiredPeople.toString(), fontSize = 14.sp) }
