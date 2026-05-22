@@ -1585,6 +1585,11 @@ fun SkillScoreTab(viewModel: MainViewModel) {
     var editingCell by remember { mutableStateOf<Pair<Int, String>?>(null) }
     var highlightedCell by remember { mutableStateOf<Pair<Int, String>?>(null) }
     val editValues = remember { mutableStateMapOf<Pair<Int, String>, String>() }
+    // Stable FocusRequester per cell — created once, survives recompositions
+    val focusRequesters = remember { mutableStateMapOf<Pair<Int, String>, FocusRequester>() }
+    fun getFocusRequester(cellKey: Pair<Int, String>): FocusRequester {
+        return focusRequesters.getOrPut(cellKey) { FocusRequester() }
+    }
     var showSearchDialog by remember { mutableStateOf(false) }
     var searchPersonText by remember { mutableStateOf("") }
     var searchProcessText by remember { mutableStateOf("") }
@@ -1661,7 +1666,7 @@ fun SkillScoreTab(viewModel: MainViewModel) {
             }
             Divider()
             // 数据行：工号+姓名列固定，评分列随水平滚动
-            LazyColumn(modifier = Modifier.fillMaxSize().padding(bottom = 76.dp), state = listState) {
+            LazyColumn(modifier = Modifier.fillMaxSize(), state = listState) {
                 items(persons, key = { it.id }) { person ->
                     Row(modifier = Modifier.fillMaxWidth()) {
                         Box(modifier = Modifier.width(60.dp).height(24.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
@@ -1689,12 +1694,12 @@ fun SkillScoreTab(viewModel: MainViewModel) {
                                 }
                                 val borderColor = if (isEditing || isHighlighted) Color(0xFF1976D2) else Color(0xFFE0E0E0)
                                 val value = editValues[cellKey] ?: if (score > 0) score.toString() else ""
-                                val focusRequester = remember { FocusRequester() }
-                                // Request focus when editing starts
-                                LaunchedEffect(cellKey, isEditing) {
-                                    if (isEditing) {
+                                val focusRequester = getFocusRequester(cellKey)
+                                // Request focus when editing starts — stable cellKey survives recomposition
+                                LaunchedEffect(cellKey) {
+                                    if (editingCell == cellKey) {
                                         editValues[cellKey] = value
-                                        kotlinx.coroutines.delay(30)
+                                        delay(50)
                                         focusRequester.requestFocus()
                                     }
                                 }
@@ -1754,16 +1759,17 @@ fun SkillScoreTab(viewModel: MainViewModel) {
             }
         }
 
-        // Small search button at top-right corner
+        // Search button at bottom-right corner
         IconButton(
             onClick = { showSearchDialog = true },
             modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(8.dp)
-                .size(40.dp)
-                .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(8.dp))
+                .align(Alignment.BottomEnd)
+                .padding(16.dp)
+                .size(48.dp)
+                .shadow(4.dp, RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp))
         ) {
-            Icon(Icons.Default.Search, contentDescription = "搜索评分", tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(20.dp))
+            Icon(Icons.Default.Search, contentDescription = "搜索评分", tint = Color.White, modifier = Modifier.size(24.dp))
         }
     }
 
