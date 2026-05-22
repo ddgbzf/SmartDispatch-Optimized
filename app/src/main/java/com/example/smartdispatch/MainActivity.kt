@@ -1695,57 +1695,44 @@ fun SkillScoreTab(viewModel: MainViewModel) {
                                         .width(cellWidth)
                                         .height(24.dp)
                                         .background(bgColor)
-                                        .border(if (isEditing || isHighlighted) 1.dp else 0.5.dp, borderColor)
-                                        .clickable {
-                                            editValues[cellKey] = if (score > 0) score.toString() else ""
-                                            highlightedCell = cellKey
-                                            editingCell = cellKey
-                                        },
+                                        .border(if (isEditing || isHighlighted) 1.dp else 0.5.dp, borderColor),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    if (isEditing) {
-                                        // 在组合时初始化编辑值并请求焦点
-                                        LaunchedEffect(Unit) {
-                                            editValues[cellKey] = if (score > 0) score.toString() else ""
-                                            focusRequester.requestFocus()
-                                        }
-                                        
-                                        BasicTextField(
-                                            value = editValues[cellKey] ?: "",
-                                            onValueChange = {
-                                                if (it.all { c -> c.isDigit() } && it.length <= 3) {
-                                                    editValues[cellKey] = it
+                                    BasicTextField(
+                                        value = if (isEditing) (editValues[cellKey] ?: "") else (if (score > 0) score.toString() else ""),
+                                        onValueChange = {
+                                            if (it.all { c -> c.isDigit() } && it.length <= 3) {
+                                                editValues[cellKey] = it
+                                            }
+                                        },
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .focusRequester(focusRequester)
+                                            .onFocusChanged { focusState ->
+                                                if (focusState.isFocused) {
+                                                    editValues[cellKey] = if (score > 0) score.toString() else ""
+                                                    editingCell = cellKey
+                                                    highlightedCell = cellKey
+                                                } else if (editingCell == cellKey) {
+                                                    saveScore(person.id, process, editValues[cellKey].orEmpty())
+                                                    editingCell = null
                                                 }
                                             },
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .focusRequester(focusRequester)
-                                                .onFocusChanged { focusState ->
-                                                    if (!focusState.isFocused && editingCell == cellKey) {
-                                                        saveScore(person.id, process, editValues[cellKey].orEmpty())
-                                                        editingCell = null
-                                                    }
-                                                },
-                                            textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Color(0xFF1565C0), textAlign = TextAlign.Center),
-                                            singleLine = true,
-                                            cursorBrush = androidx.compose.ui.graphics.SolidColor(Color(0xFF1565C0)),
-                                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
-                                            keyboardActions = KeyboardActions(onDone = {
-                                                saveScore(person.id, process, editValues[cellKey].orEmpty())
-                                                editingCell = null
-                                                focusManager.clearFocus(force = true)
-                                            })
-                                        )
-                                    } else {
-                                        Text(
-                                            text = if (score > 0) score.toString() else "",
+                                        textStyle = androidx.compose.ui.text.TextStyle(
                                             fontSize = 13.sp,
                                             fontWeight = FontWeight.Medium,
-                                            color = if (score >= 7) Color(0xFF2E7D32) else if (score > 0) Color(0xFFF57F17) else Color(0xFFBDBDBD),
-                                            textAlign = TextAlign.Center,
-                                            modifier = Modifier.fillMaxWidth()
-                                        )
-                                    }
+                                            color = if (isEditing) Color(0xFF1565C0) else if (score >= 7) Color(0xFF2E7D32) else if (score > 0) Color(0xFFF57F17) else Color(0xFFBDBDBD),
+                                            textAlign = TextAlign.Center
+                                        ),
+                                        singleLine = true,
+                                        cursorBrush = androidx.compose.ui.graphics.SolidColor(Color(0xFF1565C0)),
+                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                                        keyboardActions = KeyboardActions(onDone = {
+                                            saveScore(person.id, process, editValues[cellKey].orEmpty())
+                                            editingCell = null
+                                            focusManager.clearFocus(force = true)
+                                        })
+                                    )
                                 }
                             }
                         }
