@@ -61,6 +61,7 @@ import com.example.smartdispatch.model.ProcessAssignment
 import com.example.smartdispatch.ui.theme.智能排工Theme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.max
@@ -1576,7 +1577,10 @@ fun SkillScoreTab(viewModel: MainViewModel) {
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
+    val density = LocalDensity.current
 
+    val cellWidthPx = with(density) { 64.dp.toPx() }
+    val cellHeightPx = with(density) { 24.dp.toPx() }
     val cellWidth = 64.dp
     var editingCell by remember { mutableStateOf<Pair<Int, String>?>(null) }
     var highlightedCell by remember { mutableStateOf<Pair<Int, String>?>(null) }
@@ -1622,7 +1626,10 @@ fun SkillScoreTab(viewModel: MainViewModel) {
                 focusManager.clearFocus(force = true)
                 coroutineScope.launch {
                     listState.animateScrollToItem(personIndex)
-                    scrollState.animateScrollTo((processIndex * 64).coerceAtLeast(0))
+                    delay(50) // wait for list scroll to start
+                    val targetScrollX = (processIndex * cellWidthPx).toInt()
+                    val maxScroll = scrollState.maxValue
+                    scrollState.animateScrollTo(targetScrollX.coerceIn(0, maxScroll))
                 }
             }
         }
@@ -1683,9 +1690,11 @@ fun SkillScoreTab(viewModel: MainViewModel) {
                                 val borderColor = if (isEditing || isHighlighted) Color(0xFF1976D2) else Color(0xFFE0E0E0)
                                 val value = editValues[cellKey] ?: if (score > 0) score.toString() else ""
                                 val focusRequester = remember { FocusRequester() }
-                                LaunchedEffect(isEditing) {
+                                // Request focus when editing starts
+                                LaunchedEffect(cellKey, isEditing) {
                                     if (isEditing) {
                                         editValues[cellKey] = value
+                                        kotlinx.coroutines.delay(30)
                                         focusRequester.requestFocus()
                                     }
                                 }
@@ -1704,7 +1713,7 @@ fun SkillScoreTab(viewModel: MainViewModel) {
                                 ) {
                                     if (isEditing) {
                                         BasicTextField(
-                                            value = value,
+                                            value = editValues[cellKey] ?: "",
                                             onValueChange = {
                                                 if (it.all { c -> c.isDigit() } && it.length <= 3) editValues[cellKey] = it
                                             },
@@ -1745,14 +1754,16 @@ fun SkillScoreTab(viewModel: MainViewModel) {
             }
         }
 
-        FloatingActionButton(
+        // Small search button at top-right corner
+        IconButton(
             onClick = { showSearchDialog = true },
             modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(16.dp),
-            containerColor = MaterialTheme.colorScheme.primary
+                .align(Alignment.TopEnd)
+                .padding(8.dp)
+                .size(40.dp)
+                .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(8.dp))
         ) {
-            Icon(Icons.Default.Search, contentDescription = "搜索评分", tint = Color.White)
+            Icon(Icons.Default.Search, contentDescription = "搜索评分", tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(20.dp))
         }
     }
 
