@@ -1690,13 +1690,6 @@ fun SkillScoreTab(viewModel: MainViewModel) {
                                 val borderColor = if (isEditing || isHighlighted) Color(0xFF1976D2) else Color(0xFFE0E0E0)
                                 val focusRequester = remember(cellKey) { FocusRequester() }
                                 
-                                // 使用 SideEffect 确保在组合完成后请求焦点
-                                SideEffect {
-                                    if (editingCell == cellKey) {
-                                        focusRequester.requestFocus()
-                                    }
-                                }
-                                
                                 Box(
                                     modifier = Modifier
                                         .width(cellWidth)
@@ -1711,10 +1704,10 @@ fun SkillScoreTab(viewModel: MainViewModel) {
                                     contentAlignment = Alignment.Center
                                 ) {
                                     if (isEditing) {
-                                        // 确保在组合时初始化编辑值
-                                        DisposableEffect(cellKey) {
+                                        // 在组合时初始化编辑值并请求焦点
+                                        LaunchedEffect(Unit) {
                                             editValues[cellKey] = if (score > 0) score.toString() else ""
-                                            onDispose { }
+                                            focusRequester.requestFocus()
                                         }
                                         
                                         BasicTextField(
@@ -2044,15 +2037,15 @@ fun ProcessFlowTab(viewModel: MainViewModel) {
                         val processes = processMap[product.id] ?: emptyList()
                         val rowBg = if (product.isFixed) Color(0xFFFFF9C4) else Color.Transparent
                         Row(modifier = Modifier.fillMaxWidth()) {
-                            Box(modifier = Modifier.width(140.dp).height(24.dp).border(0.5.dp, Color(0xFFE0E0E0)).padding(horizontal = 4.dp).background(rowBg), contentAlignment = Alignment.CenterStart) { Text(product.name, fontSize = 10.sp) }
+                            Box(modifier = Modifier.width(140.dp).height(24.dp).border(0.5.dp, Color(0xFFE0E0E0)).padding(horizontal = 4.dp).background(rowBg), contentAlignment = Alignment.CenterStart) { Text(product.name, fontSize = 12.sp) }
                             Row(modifier = Modifier.weight(1f).horizontalScroll(scrollState).background(rowBg)) {
-                                Box(modifier = Modifier.width(60.dp).height(24.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) { Text(product.capacity.toString(), fontSize = 10.sp) }
-                                Box(modifier = Modifier.width(50.dp).height(24.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) { Text(product.requiredPeople.toString(), fontSize = 10.sp) }
+                                Box(modifier = Modifier.width(60.dp).height(24.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) { Text(product.capacity.toString(), fontSize = 12.sp) }
+                                Box(modifier = Modifier.width(50.dp).height(24.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) { Text(product.requiredPeople.toString(), fontSize = 12.sp) }
                                 // 工序列表（固定产品黄色背景）
                                 for (i in 0 until maxProcesses) {
                                     val pp = processes.getOrNull(i)
                                     Box(modifier = Modifier.width(72.dp).height(24.dp).border(0.5.dp, Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
-                                        if (pp != null) { Text(pp.processName, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                                        if (pp != null) { Text(pp.processName, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                                     }
                                 }
                                 Box(modifier = Modifier.width(48.dp).height(24.dp), contentAlignment = Alignment.Center) {
