@@ -29,7 +29,7 @@ jobs:
     - name: Rename APK
       run: |
         VERSION=${GITHUB_REF_NAME:-v1.0.0}
-        mv app/build/outputs/apk/release/app-release-unsigned.apk app/build/outputs/apk/release/SmartDispatch-${VERSION}.apk
+        mv app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/release/SmartDispatch-${VERSION}.apk
 
     - name: Create Release
       uses: softprops/action-gh-release@v1
