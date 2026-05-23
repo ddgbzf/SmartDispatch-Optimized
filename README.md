@@ -1,4 +1,4 @@
-# 智能排工 (SmartDispatch)
+# 智能排工 (SmartDispatch) — 优化版
 
 > 工厂生产排工管理系统 —— 根据技能评分智能分配人员到各工序
 
@@ -24,32 +24,37 @@
 | **结果导出** | 排工完成后导出Excel，方便打印和存档 |
 | **实时统计** | 总人数、请假人数、已分配、剩余/欠缺人数一目了然 |
 
-## 页面说明
+## 优化内容
 
-### 工序评分
-管理每个人员对各工序的技能评分。
-- 点击评分格可编辑评分
-- 长按工序名可编辑/插入/删除工序
-- 长按人员名可编辑/插入/删除人员
+### 代码结构优化
+- **拆分 MainActivity**：2448行单文件 → 9个独立文件，按功能模块划分
+- **提取 MainViewModel**：业务逻辑与UI分离，ViewModel独立管理
+- **提取 UI 组件**：每个标签页独立文件（DispatchScreen、SkillScoreScreen、ProcessEditScreen、PersonEditScreen、ProductEditScreen）
+- **提取对话框**：SettingsScreen、HelpScreen、FixedColumnScreen 独立管理
 
-### 工序流程
-管理每个产品型号的工序流程。
-- 显示产品名称、产能、需求人数、工序列表
-- 长按产品名称可添加新产品或删除产品
-- 工序编辑在设置页完成（支持拖动排序）
+### 构建配置优化
+- **AGP 8.2.0 → 8.5.2**：最新Android Gradle Plugin
+- **Kotlin 1.9.20 → 1.9.24**：最新Kotlin版本
+- **KSP 1.9.20-1.0.14 → 1.9.24-1.0.20**：对应KSP版本
+- **Compose BOM 2023.10.01 → 2024.06.00**：最新Compose稳定版
+- **启用 R8 全模式**：`android.enableR8.fullMode=true`，更激进的代码压缩
+- **启用资源压缩**：`isShrinkResources = true`，移除未使用资源
+- **签名密码环境变量化**：支持 `KEYSTORE_PASSWORD` / `KEY_PASSWORD` 环境变量
 
-### 智能排工
-核心排工页面，APP启动后默认显示。
-- 输入产品型号名称，系统自动匹配
-- 点击排工按钮，系统自动分配人员
-- 左侧可输入请假人员
-- 底部显示未分配人员
+### 依赖版本更新
+| 依赖 | 旧版本 | 新版本 |
+|------|--------|--------|
+| core-ktx | 1.12.0 | 1.13.1 |
+| lifecycle-runtime-ktx | 2.6.2 | 2.8.0 |
+| lifecycle-viewmodel-compose | 2.6.2 | 2.8.0 |
+| activity-compose | 1.8.1 | 1.9.0 |
+| kotlinx-coroutines | 1.7.3 | 1.8.1 |
+| kotlinx-serialization | 1.6.0 | 1.7.1 |
+| datastore-preferences | 1.0.0 | 1.1.1 |
 
-### 设置
-- **使用说明** - 查看帮助
-- **编辑工序流程** - 编辑产品的产能、人数和工序列表
-- **固定列** - 设置固定岗位
-- **字体大小/行高/列宽** - 自定义排工表格显示
+### 横屏适配
+- AndroidManifest 添加 `configChanges="orientation|screenSize|screenLayout|keyboardHidden"`
+- 添加 `windowSoftInputMode="adjustResize"`
 
 ## 技术栈
 
@@ -77,8 +82,8 @@
 
 ```bash
 # 克隆仓库
-git clone https://github.com/ddgbzf/SmartDispatch.git
-cd SmartDispatch
+git clone https://github.com/ddgbzf/SmartDispatch-Optimized.git
+cd SmartDispatch-Optimized
 
 # 构建
 ./gradlew assembleDebug
@@ -96,9 +101,3 @@ app/build/outputs/apk/debug/app-debug.apk
 ## License
 
 MIT
-
-## 联系方式
-
-微信：ddg18933639
-
-如需帮助或有任何问题，欢迎联系我。
