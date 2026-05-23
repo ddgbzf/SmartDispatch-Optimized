@@ -859,7 +859,7 @@ fun HelpScreen(onDismiss: () -> Unit) {
                 Spacer(Modifier.height(16.dp))
 
                 Text("【工序评分】", fontWeight = FontWeight.Bold, color = Color(0xFF1976D2))
-                Text("• 显示所有人员对各工序的技能评分（1-10分）", fontSize = 13.sp)
+                Text("• 显示所有人员对各工序的技能评分", fontSize = 13.sp)
                 Text("• 点击评分格可直接编辑评分", fontSize = 13.sp)
                 Text("• 长按工序名：编辑/插入/删除工序", fontSize = 13.sp)
                 Text("• 长按人员名：编辑/插入/删除人员（姓名、工号、工种）", fontSize = 13.sp)
