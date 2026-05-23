@@ -22,6 +22,8 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:windowSoftInputMode="adjustResize"
             android:theme="@style/Theme.智能排工">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
