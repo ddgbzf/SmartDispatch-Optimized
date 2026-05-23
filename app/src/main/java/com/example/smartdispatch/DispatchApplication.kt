@@ -6,8 +6,13 @@ import com.example.smartdispatch.data.DispatchRepository
 import com.example.smartdispatch.data.UserPreferences
 
 class DispatchApplication : Application() {
-    val database by lazy { AppDatabase.getInstance(this) }
-    val repository by lazy { DispatchRepository(database) }
+    val database by lazy { AppDatabase.getDatabase(this) }
+    val repository by lazy { DispatchRepository(
+        database,
+        database.personDao(), database.skillScoreDao(),
+        database.productDao(), database.productProcessDao(), database.assignmentDao(),
+        database.fixedCellDao()
+    ) }
     val userPrefs by lazy { UserPreferences(this) }
 
     override fun onCreate() {
