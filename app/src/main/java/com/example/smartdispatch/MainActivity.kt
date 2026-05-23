@@ -852,27 +852,42 @@ fun HelpScreen(onDismiss: () -> Unit) {
             Column(
                 modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
             ) {
+                Text("快速上手", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color(0xFF1976D2))
+                Text("1. 点击右上角导入按钮，选择Excel文件导入数据", fontSize = 13.sp)
+                Text("2. 在「智能排工」页输入产品型号，点击排工", fontSize = 13.sp)
+                Text("3. 排工完成后点击导出，保存结果到Excel", fontSize = 13.sp)
+                Spacer(Modifier.height(16.dp))
+
                 Text("【工序评分】", fontWeight = FontWeight.Bold, color = Color(0xFF1976D2))
-                Text("• 导入Excel时自动读取工序评分数据", fontSize = 13.sp)
-                Text("• 点击评分格可编辑单个评分", fontSize = 13.sp)
-                Text("• 长按工序名可编辑/插入/删除工序", fontSize = 13.sp)
+                Text("• 显示所有人员对各工序的技能评分（1-10分）", fontSize = 13.sp)
+                Text("• 点击评分格可直接编辑评分", fontSize = 13.sp)
+                Text("• 长按工序名：编辑/插入/删除工序", fontSize = 13.sp)
+                Text("• 长按人员名：编辑/插入/删除人员（姓名、工号、工种）", fontSize = 13.sp)
                 Spacer(Modifier.height(12.dp))
+
                 Text("【工序流程】", fontWeight = FontWeight.Bold, color = Color(0xFF1976D2))
-                Text("• 添加产品，设置产能和人数需求", fontSize = 13.sp)
-                Text("• 为每个产品配置工序流程", fontSize = 13.sp)
+                Text("• 显示所有产品的工序流程（名称、产能、需求人数、工序列表）", fontSize = 13.sp)
+                Text("• 长按产品名称：添加新产品或删除产品", fontSize = 13.sp)
+                Text("• 工序编辑在设置→编辑工序流程中完成", fontSize = 13.sp)
                 Spacer(Modifier.height(12.dp))
+
                 Text("【智能排工】", fontWeight = FontWeight.Bold, color = Color(0xFF1976D2))
-                Text("• 输入产品名称，点击排工", fontSize = 13.sp)
-                Text("• 系统自动分配人员到各工序", fontSize = 13.sp)
-                Text("• 点击人员名可标记请假/删除", fontSize = 13.sp)
+                Text("• 输入产品型号名称，系统自动匹配", fontSize = 13.sp)
+                Text("• 点击排工按钮，系统根据评分自动分配最优人员", fontSize = 13.sp)
+                Text("• 左侧输入框可标记请假人员（输入姓名后回车）", fontSize = 13.sp)
+                Text("• 底部橙色区域显示未分配人员", fontSize = 13.sp)
+                Text("• 顶部统计栏显示总人数、请假、已分配、欠缺人数", fontSize = 13.sp)
                 Spacer(Modifier.height(12.dp))
-                Text("【固定列】", fontWeight = FontWeight.Bold, color = Color(0xFF1976D2))
-                Text("• 设置固定列后，该列人员排工时留任原位置", fontSize = 13.sp)
-                Text("• 取消固定列会同时解除单元格绑定", fontSize = 13.sp)
+
+                Text("【设置】", fontWeight = FontWeight.Bold, color = Color(0xFF1976D2))
+                Text("• 编辑工序流程：修改产品的产能、人数和工序列表（支持拖动排序）", fontSize = 13.sp)
+                Text("• 固定列：设置后该列人员排工时留任原岗位不变", fontSize = 13.sp)
+                Text("• 字体大小/行高/列宽：自定义排工表格显示效果", fontSize = 13.sp)
                 Spacer(Modifier.height(12.dp))
-                Text("【导出/导入】", fontWeight = FontWeight.Bold, color = Color(0xFF1976D2))
-                Text("• 支持导出Excel排工结果", fontSize = 13.sp)
-                Text("• 支持从Excel导入人员评分和产品数据", fontSize = 13.sp)
+
+                Text("【导入/导出】", fontWeight = FontWeight.Bold, color = Color(0xFF1976D2))
+                Text("• 导入：Excel需包含「工序评分」和「工序流程」两个工作表", fontSize = 13.sp)
+                Text("• 导出：排工结果保存为Excel文件，方便打印和存档", fontSize = 13.sp)
             }
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("知道了") } }
