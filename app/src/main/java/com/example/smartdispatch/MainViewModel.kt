@@ -64,6 +64,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
     // 固定列人员缓存（上次排工中被分配到固定列产品的人员）
     private val _fixedPeople = MutableStateFlow<Set<String>>(emptySet())
+    val fixedPeople: StateFlow<Set<String>> = _fixedPeople.asStateFlow()
     // 固定列输入槽位索引集合（哪些输入框被标记为固定列）
     private val _fixedInputSlots = MutableStateFlow(loadFixedInputSlots())
     val fixedInputSlots: StateFlow<Set<Int>> = _fixedInputSlots.asStateFlow()
@@ -136,8 +137,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun isInputSlotFixed(index: Int): Boolean = index in _fixedInputSlots.value
 
     // 输入框状态
-    private val _inputNames = MutableStateFlow(List(7) { "" })
+    private val _inputNames = MutableStateFlow(loadInputNames())
     val inputNames: StateFlow<List<String>> = _inputNames.asStateFlow()
+
+    private fun loadInputNames(): List<String> {
+        return (1..7).map { i -> prefs.getString("input_$i", "") ?: "" }
+    }
+
+    private fun saveInputNames(names: List<String>) {
+        prefs.edit().apply {
+            names.forEachIndexed { i, v -> putString("input_${i+1}", v) }
+            apply()
+        }
+    }
     private val _focusedInputIndex = MutableStateFlow(-1)
     val focusedInputIndex: StateFlow<Int> = _focusedInputIndex.asStateFlow()
 
@@ -651,6 +663,50 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private fun <T> runBlockingOnMain(block: suspend () -> T): T {
         return kotlinx.coroutines.runBlocking {
             block()
+        }
+    }
+
+    fun clearFocus() { _focusedInputIndex.value = -1 }
+
+    fun selectProduct(index: Int, productName: String) {
+        val oldList = _inputNames.value
+        val newList = oldList.toMutableList().apply { set(index, productName) }
+        saveInputNames(newList)
+        _inputNames.value = newList
+        _focusedInputIndex.value = -1 // 关闭下拉列表
+    }
+
+    fun selectProductAndDispatch(index: Int, productName: String) {
+        selectProduct(index, productName)
+        autoDispatch()
+    }
+
+    fun toggleLeave(person: Person) = viewModelScope.launch {
+        repo.updatePerson(person.copy(onLeave = !person.onLeave))
+    }
+
+    fun toggleLeaveAndDispatch(person: Person) = viewModelScope.launch {
+        repo.updatePerson(person.copy(onLeave = !person.onLeave))
+        autoDispatch()
+    }
+
+    fun updatePersonInfo(person: Person, name: String, employeeId: String, jobType: String) = viewModelScope.launch {
+        repo.updatePerson(person.copy(name = name, employeeId = employeeId, jobType = jobType))
+    }
+
+    // 自动执行排工（当输入框变化时调用）
+    fun autoDispatch() {
+        viewModelScope.launch {
+            val names = _inputNames.value.mapNotNull { name ->
+                if (name.isNotBlank()) {
+                    allProducts.first().find { it.name.equals(name.trim(), ignoreCase = true) }?.name
+                } else {
+                    null
+                }
+            }
+            if (names.isNotEmpty()) {
+                executeDispatchInternal(names)
+            }
         }
     }
 }

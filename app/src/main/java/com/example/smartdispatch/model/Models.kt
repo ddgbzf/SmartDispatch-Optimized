@@ -39,7 +39,9 @@ data class DispatchResult(
     val unassignedPeople: List<String>,
     val statusMessage: String,
     val debugLogs: List<String> = emptyList()  // 调试日志
-)
+) {
+    val unassignedCount: Int get() = remainingCount
+}
 
 /**
  * 技能评分记录

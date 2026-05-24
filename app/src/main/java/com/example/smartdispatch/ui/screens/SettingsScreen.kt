@@ -3,6 +3,7 @@ package com.example.smartdispatch.ui.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -16,6 +17,9 @@ import com.example.smartdispatch.MainViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
+    val fontSize by viewModel.fontSize.collectAsState()
+    val rowHeight by viewModel.rowHeight.collectAsState()
+    val colWidth by viewModel.colWidth.collectAsState()
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("显示设置", fontWeight = FontWeight.Bold) },
@@ -27,7 +31,7 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                     IconButton(onClick = { viewModel.adjustFontSize(-1f) }, modifier = Modifier.size(28.dp)) {
                         Icon(Icons.Default.Remove, "减小", modifier = Modifier.size(16.dp))
                     }
-                    Text("${viewModel.fontSize.toInt()}", fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(40.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                    Text("${fontSize.toInt()}", fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(40.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                     IconButton(onClick = { viewModel.adjustFontSize(1f) }, modifier = Modifier.size(28.dp)) {
                         Icon(Icons.Default.Add, "增大", modifier = Modifier.size(16.dp))
                     }
@@ -39,7 +43,7 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                     IconButton(onClick = { viewModel.adjustRowHeight(-2f) }, modifier = Modifier.size(28.dp)) {
                         Icon(Icons.Default.Remove, "减小", modifier = Modifier.size(16.dp))
                     }
-                    Text("${viewModel.rowHeight}", fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(40.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                    Text("${rowHeight}", fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(40.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                     IconButton(onClick = { viewModel.adjustRowHeight(2f) }, modifier = Modifier.size(28.dp)) {
                         Icon(Icons.Default.Add, "增大", modifier = Modifier.size(16.dp))
                     }
@@ -51,7 +55,7 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                     IconButton(onClick = { viewModel.adjustColWidth(-5f) }, modifier = Modifier.size(28.dp)) {
                         Icon(Icons.Default.Remove, "减小", modifier = Modifier.size(16.dp))
                     }
-                    Text("${viewModel.colWidth}", fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(40.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                    Text("${colWidth}", fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(40.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                     IconButton(onClick = { viewModel.adjustColWidth(5f) }, modifier = Modifier.size(28.dp)) {
                         Icon(Icons.Default.Add, "增大", modifier = Modifier.size(16.dp))
                     }
@@ -116,7 +120,7 @@ fun FixedColumnScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                         modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)
                     ) {
                         Icon(
-                            if (isFixed) Icons.Default.PushPin else Icons.Default.PushPinOutlined,
+                            if (isFixed) Icons.Default.PushPin else Icons.Outlined.PushPin,
                             "固定",
                             tint = if (isFixed) Color(0xFFFFD600) else Color.Gray,
                             modifier = Modifier.size(18.dp)

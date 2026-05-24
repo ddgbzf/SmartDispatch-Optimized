@@ -13,6 +13,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -92,7 +93,7 @@ fun DispatchTab(viewModel: MainViewModel, isLandscape: Boolean = false) {
                         modifier = Modifier.size(if (isLandscapeMode) 24.dp else 28.dp)
                     ) {
                         Icon(
-                            if (isFixed) Icons.Default.PushPin else Icons.Default.PushPinOutlined,
+                            if (isFixed) Icons.Default.PushPin else Icons.Outlined.PushPin,
                             "固定",
                             tint = if (isFixed) Color(0xFFFFD600) else Color.Gray,
                             modifier = Modifier.size(if (isLandscapeMode) 14.dp else 18.dp)
@@ -279,9 +280,9 @@ private fun DispatchResultTable(
     fixedPeople: Set<String>,
     isLandscape: Boolean
 ) {
-    val fs = viewModel.fontSize
-    val rh = viewModel.rowHeight
-    val cw = viewModel.colWidth
+    val fs by viewModel.fontSize.collectAsState()
+    val rh by viewModel.rowHeight.collectAsState()
+    val cw by viewModel.colWidth.collectAsState()
 
     val allProcessNames = dispatchResult.assignments.map { it.processName }.distinct()
     val maxRows = dispatchResult.assignments.maxOfOrNull { it.rowIndex + 1 } ?: 0
