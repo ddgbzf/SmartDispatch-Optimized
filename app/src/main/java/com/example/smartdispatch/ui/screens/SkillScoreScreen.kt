@@ -275,7 +275,9 @@ fun SkillScoreTab(viewModel: MainViewModel) {
                         // 查找并滚动到目标位置
                         val personIndex = persons.indexOfFirst { it.name.contains(searchPerson, ignoreCase = true) }
                         if (personIndex >= 0) {
-                            scrollState.animateScrollToItem(personIndex)
+                            kotlinx.coroutines.MainScope().launch {
+                                scrollState.animateScrollToItem(personIndex)
+                            }
                         }
                         showSearchDialog.value = false
                     }) { Text("定位") }
