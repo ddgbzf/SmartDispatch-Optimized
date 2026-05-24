@@ -653,6 +653,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // 获取所有人员（一次性）
     fun getAllPersonsOnce(): List<Person> = runBlockingOnMain { repo.allPersons.first() }
 
+    // 获取单个评分（一次性）
+    fun getScoreOnce(personId: Int, processName: String): Int? = runBlockingOnMain { repo.getScoreOnce(personId, processName) }
+
     // 清空所有数据
     fun clearAllData() = viewModelScope.launch {
         repo.clearAll()

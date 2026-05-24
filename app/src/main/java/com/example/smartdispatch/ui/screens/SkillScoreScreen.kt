@@ -17,7 +17,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -27,7 +26,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.smartdispatch.DispatchApplication
 import com.example.smartdispatch.MainViewModel
 import kotlinx.coroutines.launch
 import com.example.smartdispatch.data.entity.Person
@@ -39,7 +37,6 @@ fun SkillScoreTab(viewModel: MainViewModel) {
     val persons by viewModel.allPersons.collectAsState()
     val processNames by viewModel.allProcessNames.collectAsState()
     val scoreVer by viewModel.scoreVersion.collectAsState()
-    val repo = (LocalContext.current.applicationContext as DispatchApplication).repository
 
     if (persons.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -173,7 +170,7 @@ fun SkillScoreTab(viewModel: MainViewModel) {
                                 val cellKey = "${person.id}_$processName"
                                 val isEditing = editingCell.value == Pair(person.id, processName)
                                 val score = editValues[cellKey]?.toIntOrNull()
-                                    ?: repo.getScoreOnce(person.id, processName)
+                                    ?: viewModel.getScoreOnce(person.id, processName)
 
                                 Box(
                                     modifier = Modifier
@@ -231,9 +228,9 @@ fun SkillScoreTab(viewModel: MainViewModel) {
                                         )
                                     } else {
                                         Text(
-                                            if (score > 0) "$score" else "-",
+                                            if (score != null && score > 0) "$score" else "-",
                                             fontSize = 11.sp,
-                                            color = if (score > 0) Color.Black else Color(0xFFBDBDBD),
+                                            color = if (score != null && score > 0) Color.Black else Color(0xFFBDBDBD),
                                             textAlign = TextAlign.Center
                                         )
                                     }
